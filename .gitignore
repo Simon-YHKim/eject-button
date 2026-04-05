@@ -1,0 +1,35 @@
+# Built outputs
+/build/
+/app/build/
+
+# Gradle
+.gradle/
+gradle-app.setting
+
+# Local config (machine-specific)
+local.properties
+
+# Keystore and signing credentials
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+
+# IDE
+.idea/
+*.iml
+.navigation/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Claude Code local settings
+.claude/
+
+# Misc
+stop
+
+# Crash dumps
+*.hprof
