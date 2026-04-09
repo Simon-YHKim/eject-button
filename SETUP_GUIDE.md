@@ -2,15 +2,28 @@
 
 ## 1. 로컬 빌드
 
+### 사전 준비
+1. **Android Studio** 설치 (https://developer.android.com/studio)
+2. Android Studio 실행 → SDK Manager → **Android 14 (API 34)** 설치
+3. 프로젝트 clone:
 ```bash
-# 디버그 빌드
-./gradlew assembleDebug
-
-# 릴리즈 빌드 (keystore.properties 필요)
-./gradlew assembleRelease
+git clone https://github.com/Learner-thepoorman/eject-button.git
+cd eject-button
 ```
 
-릴리즈 APK 위치: `app/build/outputs/apk/release/app-release.apk`
+### 디버그 빌드 (테스트용)
+```bash
+./gradlew assembleDebug
+```
+APK 위치: `app/build/outputs/apk/debug/app-debug.apk`
+
+### 릴리즈 AAB 빌드 (Play Store 업로드용)
+```bash
+./gradlew bundleRelease
+```
+AAB 위치: `app/build/outputs/bundle/release/app-release.aab`
+
+> **참고:** Android Studio에서 프로젝트를 열면 `local.properties`의 SDK 경로가 자동 설정됩니다.
 
 ---
 
@@ -19,19 +32,33 @@
 ### keystore.properties (릴리즈 서명)
 프로젝트 루트에 `keystore.properties` 생성:
 ```properties
-storeFile=../eject-button-release.jks
-storePassword=YOUR_PASSWORD
-keyAlias=eject-button
-keyPassword=YOUR_PASSWORD
+storeFile=eject-upload.jks
+storePassword=ejectbutton2024
+keyAlias=eject-upload
+keyPassword=ejectbutton2024
 ```
 
 ### secrets.properties (API 키)
 프로젝트 루트에 `secrets.properties` 생성:
 ```properties
-CLARITY_PROJECT_ID=your_clarity_project_id
+# MS Clarity (선택)
+CLARITY_PROJECT_ID=
+
+# AdMob (테스트 ID → 출시 전 실제 ID로 교체)
+ADMOB_BANNER_ID=ca-app-pub-3940256099942544/6300978111
+ADMOB_INTERSTITIAL_ID=ca-app-pub-3940256099942544/1033173712
 ```
 
+### AdMob 실제 키 발급 방법
+1. https://admob.google.com 접속
+2. **앱 추가** → Android → 패키지명: `com.ejectbutton.app`
+3. **광고 단위 생성**:
+   - 배너 광고 → ID 복사 → `ADMOB_BANNER_ID`에 입력
+   - 전면 광고 → ID 복사 → `ADMOB_INTERSTITIAL_ID`에 입력
+4. **AdMob App ID** 복사 → `AndroidManifest.xml`의 `com.google.android.gms.ads.APPLICATION_ID` 값 교체
+
 > 두 파일 모두 `.gitignore`에 포함되어 GitHub에 업로드되지 않음.
+> **중요:** `eject-upload.jks` 파일을 잃어버리면 앱 업데이트가 불가합니다. 안전한 곳에 백업하세요!
 
 ---
 
@@ -132,13 +159,45 @@ Claude 웹에서 작업 시:
 
 ---
 
-## 7. Play Store 출시 체크리스트
+## 7. 인앱 결제 (Google Play Billing) 설정
 
+### Play Console에서 인앱 상품 등록
+1. Google Play Console → 앱 선택 → **수익 창출** → **인앱 상품**
+2. **상품 만들기** 클릭
+3. 상품 ID: `eject_premium`  (코드에 하드코딩되어 있으므로 정확히 입력)
+4. 이름: "Eject Premium" / 설명: "광고 제거 + 무제한 커스텀 발신자"
+5. 가격: $2.99 (한국 ₩3,900 / 일본 ¥400)
+6. **활성화** 클릭
+
+### 라이선스 테스터 설정 (결제 테스트)
+1. Play Console → **설정** → **라이선스 테스트**
+2. 테스트용 Gmail 주소 추가
+3. 라이선스 응답: "RESPOND_NORMALLY"
+4. 이 Gmail로 로그인한 기기에서 결제하면 실제 과금 없이 테스트 가능
+
+---
+
+## 8. Play Store 출시 체크리스트
+
+### 필수 준비물
 - [ ] Google Play Console 가입 ($25)
 - [ ] `PLAY_STORE_ASO.md` 내용으로 스토어 리스팅 작성
 - [ ] 스크린샷 5장 (메인, 수신화면, 통화화면, 설정, 발신자 설정)
-- [ ] 512x512 아이콘 업로드
-- [ ] 1024x500 그래픽 이미지 제작
-- [ ] 개인정보 처리방침 URL 필요
+- [ ] 512x512 앱 아이콘 업로드
+- [ ] 1024x500 기능 그래픽 이미지
+- [ ] 개인정보 처리방침 URL
 - [ ] 콘텐츠 등급 질문지 작성
-- [ ] 타겟 국가: 한국, 일본, 영어권 우선
+- [ ] 타겟 국가: 한국 → 일본 → 영어권
+
+### 수익화 설정
+- [ ] AdMob 계정 생성 → 앱 등록 → 광고 단위 생성
+- [ ] `secrets.properties`에 실제 광고 ID 입력
+- [ ] `AndroidManifest.xml`에 실제 AdMob App ID 입력
+- [ ] Play Console에서 인앱 상품 `eject_premium` 등록 ($2.99)
+- [ ] 라이선스 테스터로 결제 흐름 테스트
+
+### 빌드 & 업로드
+- [ ] `./gradlew bundleRelease`로 AAB 빌드
+- [ ] Play Console → 내부 테스트 → AAB 업로드
+- [ ] 테스트 완료 후 프로덕션으로 승격
+- [ ] 단계적 출시 (10% → 50% → 100%)
