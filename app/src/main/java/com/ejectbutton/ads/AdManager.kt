@@ -7,18 +7,47 @@ import com.ejectbutton.BuildConfig
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.nativead.NativeAd
+import com.google.android.gms.ads.nativead.NativeAdOptions
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 object AdManager {
 
     private var interstitialAd: InterstitialAd? = null
     private var isInitialized = false
 
+    private val _nativeAd = MutableStateFlow<NativeAd?>(null)
+    val nativeAd: StateFlow<NativeAd?> = _nativeAd
+
     fun initialize(context: Context) {
         if (isInitialized) return
         MobileAds.initialize(context) {}
         isInitialized = true
         loadInterstitial(context)
+        loadNativeAd(context)
     }
+
+    // ── 네이티브 광고 ────────────────────────────────────────────────────────
+
+    fun loadNativeAd(context: Context) {
+        val adLoader = AdLoader.Builder(context, BuildConfig.ADMOB_NATIVE_ID)
+            .forNativeAd { ad ->
+                _nativeAd.value?.destroy()
+                _nativeAd.value = ad
+            }
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    Log.d("AdManager", "Native ad failed: ${error.message}")
+                }
+            })
+            .withNativeAdOptions(NativeAdOptions.Builder().build())
+            .build()
+
+        adLoader.loadAd(AdRequest.Builder().build())
+    }
+
+    // ── 전면 광고 ────────────────────────────────────────────────────────────
 
     fun loadInterstitial(context: Context) {
         val adRequest = AdRequest.Builder().build()
@@ -60,5 +89,8 @@ object AdManager {
         }
     }
 
-    fun createBannerAdRequest(): AdRequest = AdRequest.Builder().build()
+    fun destroy() {
+        _nativeAd.value?.destroy()
+        _nativeAd.value = null
+    }
 }

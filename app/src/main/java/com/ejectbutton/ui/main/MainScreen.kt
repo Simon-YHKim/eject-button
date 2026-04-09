@@ -36,8 +36,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
-import com.ejectbutton.BuildConfig
+import com.ejectbutton.ads.AdManager
 import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
@@ -46,9 +47,11 @@ import com.ejectbutton.data.TriggerMode
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
 import com.ejectbutton.ui.theme.*
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.nativead.NativeAd
+import com.google.android.gms.ads.nativead.NativeAdView
+import android.widget.ImageView
+import android.widget.TextView
+import android.view.LayoutInflater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -241,9 +244,12 @@ fun MainScreen(
 
         Spacer(Modifier.weight(1f))
 
-        // 배너 광고 (무료 사용자만)
+        // 네이티브 광고 (무료 사용자만)
         if (!isPremium) {
-            BannerAd(modifier = Modifier.fillMaxWidth())
+            val nativeAd by AdManager.nativeAd.collectAsState()
+            nativeAd?.let { ad ->
+                NativeAdCard(ad = ad, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp))
+            }
             Spacer(Modifier.height(8.dp))
         }
 
@@ -810,20 +816,79 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
     )
 }
 
-// ─── 배너 광고 ──────────────────────────────────────────────────────────────
+// ─── 네이티브 광고 ──────────────────────────────────────────────────────────
 
 @Composable
-private fun BannerAd(modifier: Modifier = Modifier) {
-    AndroidView(
-        modifier = modifier.padding(horizontal = 24.dp),
-        factory = { context ->
-            AdView(context).apply {
-                setAdSize(AdSize.BANNER)
-                adUnitId = BuildConfig.ADMOB_BANNER_ID
-                loadAd(AdRequest.Builder().build())
+private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
+            .shadow(1.dp, RoundedCornerShape(16.dp))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // 광고 표시 + 헤드라인
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                ad.icon?.drawable?.let { icon ->
+                    AndroidView(
+                        factory = { ctx -> ImageView(ctx).apply { setImageDrawable(icon) } },
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    ad.headline?.let { headline ->
+                        Text(
+                            headline,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = EjectOnSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    ad.body?.let { body ->
+                        Text(
+                            body,
+                            fontSize = 11.sp,
+                            color = EjectSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                // 광고 라벨
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(EjectSecondary.copy(alpha = 0.15f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text("AD", fontSize = 9.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
+                }
             }
-        },
-    )
+
+            // CTA 버튼
+            ad.callToAction?.let { cta ->
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(EjectCoral.copy(alpha = 0.1f))
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(cta, fontSize = 12.sp, color = EjectCoral, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
 }
 
 // ─── 프리미엄 업그레이드 다이얼로그 ─────────────────────────────────────────

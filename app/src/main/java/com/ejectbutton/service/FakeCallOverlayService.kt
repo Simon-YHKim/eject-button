@@ -24,6 +24,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.*
 import androidx.savedstate.*
+import com.ejectbutton.ads.AdManager
 import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
@@ -41,6 +42,10 @@ class FakeCallOverlayService : Service() {
         const val EXTRA_DELAY_MS     = "delay_ms"
         private const val NOTIF_CHANNEL = "eject_call"
         private const val NOTIF_ID      = 1001
+
+        // 전화 종료 후 전면 광고 표시용 플래그
+        var showInterstitialOnNextResume = false
+            internal set
 
         fun start(ctx: Context, callerName: String, callerLabel: String, prompter: String, delayMs: Long = 0L) {
             ctx.startForegroundService(
@@ -194,6 +199,12 @@ class FakeCallOverlayService : Service() {
     fun dismiss() {
         if (isDismissing) return
         isDismissing = true
+
+        // 통화 중 상태에서 종료 → 전면 광고 플래그 설정 (무료 사용자만)
+        if (callState.value && !EjectPrefs.loadPremium(this)) {
+            showInterstitialOnNextResume = true
+        }
+
         val view = overlay
         overlay = null
         stopRing()

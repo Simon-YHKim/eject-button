@@ -178,11 +178,6 @@ class MainActivity : ComponentActivity() {
                                     }
                                     val count = EjectPrefs.incrementEjectCount(this@MainActivity)
                                     maybeRequestReview(count)
-
-                                    // 무료 사용자: 3회 사용마다 전면 광고
-                                    if (!isPremium && count % 3 == 0) {
-                                        AdManager.showInterstitialIfReady(this@MainActivity)
-                                    }
                                 }
                             )
                         }
@@ -199,9 +194,19 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    override fun onResume() {
+        super.onResume()
+        // 가짜 전화 종료 후 → 전면 광고 표시
+        if (FakeCallOverlayService.showInterstitialOnNextResume) {
+            FakeCallOverlayService.showInterstitialOnNextResume = false
+            AdManager.showInterstitialIfReady(this)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         billingManager.destroy()
+        AdManager.destroy()
     }
 }
 

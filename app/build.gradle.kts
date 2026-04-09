@@ -32,8 +32,8 @@ android {
         // secrets.properties에서 API 키 주입 (보안: 소스코드에 키 노출 방지)
         buildConfigField("String", "CLARITY_PROJECT_ID",
             "\"${secretsProps.getProperty("CLARITY_PROJECT_ID", "")}\"")
-        buildConfigField("String", "ADMOB_BANNER_ID",
-            "\"${secretsProps.getProperty("ADMOB_BANNER_ID", "ca-app-pub-3940256099942544/6300978111")}\"")
+        buildConfigField("String", "ADMOB_NATIVE_ID",
+            "\"${secretsProps.getProperty("ADMOB_NATIVE_ID", "ca-app-pub-3940256099942544/2247696110")}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID",
             "\"${secretsProps.getProperty("ADMOB_INTERSTITIAL_ID", "ca-app-pub-3940256099942544/1033173712")}\"")
     }
