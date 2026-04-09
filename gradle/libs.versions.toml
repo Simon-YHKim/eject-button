@@ -5,6 +5,8 @@ coreKtx = "1.13.1"
 lifecycleRuntimeKtx = "2.8.3"
 activityCompose = "1.9.0"
 composeBom = "2024.06.00"
+playBilling = "7.0.0"
+admob = "23.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -21,6 +23,8 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 androidx-savedstate = { group = "androidx.savedstate", name = "savedstate-ktx", version = "1.2.1" }
 androidx-lifecycle-common = { group = "androidx.lifecycle", name = "lifecycle-common", version.ref = "lifecycleRuntimeKtx" }
 play-review = { group = "com.google.android.play", name = "review-ktx", version = "2.0.2" }
+play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
+google-admob = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "admob" }
 ms-clarity = { group = "com.microsoft.clarity", name = "clarity", version = "3.1.2" }
 
 [plugins]

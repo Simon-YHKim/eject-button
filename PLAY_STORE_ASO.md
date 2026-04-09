@@ -194,10 +194,81 @@ awkward meeting exit, prank free, fake phone call app, work dinner escape, fake 
 
 ---
 
-## 첫 수익 달성을 위한 체크리스트
+## 수익 모델 (Business Model)
 
-- [ ] Play Store 게시 (이 파일 내용 활용)
+### Freemium + 광고 + 일회성 프리미엄 구매
+
+| 구분 | Free | Premium ($2.99) |
+|------|------|-----------------|
+| 기본 발신자 (엄마, 아빠) | O | O |
+| 커스텀 발신자 | 최대 1명 | 무제한 |
+| 모든 트리거 모드 | O | O |
+| 배너 광고 (메인 화면) | O | X |
+| 전면 광고 (3회 사용마다) | O | X |
+| 통화 중 스크립트 힌트 | X | O |
+
+### 수익 구조
+- **AdMob 배너 광고**: 메인 화면 하단 (가짜 전화 화면에는 표시 안 됨)
+- **AdMob 전면 광고**: 3회 사용마다 1회 노출
+- **인앱 결제**: `eject_premium` 일회성 구매 ($2.99)
+
+### Google Play Console 설정
+- **인앱 상품 ID**: `eject_premium`
+- **가격**: $2.99 (한국 ₩3,900 / 일본 ¥400)
+- **유형**: 관리형 상품 (소비되지 않는 일회성)
+
+---
+
+## Play Store 등록 전 체크리스트
+
+### 1단계: Google Play Console 설정
+- [ ] Google Play 개발자 계정 생성 ($25 일회성 등록비)
+- [ ] 개발자 프로필 설정 (이름, 이메일, 전화번호)
+- [ ] 앱 생성 → 앱 이름: "Eject Button — Escape Call"
+
+### 2단계: 앱 서명 및 빌드
+- [ ] `keystore.properties` 파일 생성 (Upload Key)
+- [ ] `secrets.properties`에 실제 API 키 설정:
+  - `CLARITY_PROJECT_ID=실제_ID`
+  - `ADMOB_BANNER_ID=실제_배너_광고_ID`
+  - `ADMOB_INTERSTITIAL_ID=실제_전면_광고_ID`
+- [ ] AndroidManifest.xml의 AdMob App ID를 실제 ID로 교체
+- [ ] Release APK/AAB 빌드: `./gradlew bundleRelease`
+
+### 3단계: 스토어 등록 정보
+- [ ] 앱 아이콘 업로드 (512x512 PNG)
+- [ ] 기능 그래픽 (1024x500 PNG)
+- [ ] 스크린샷 최소 2장 (권장 5장, 위 촬영 순서 참고)
+- [ ] 짧은 설명 입력 (위 언어별 내용 복붙)
+- [ ] 긴 설명 입력 (위 언어별 내용 복붙)
+- [ ] 카테고리: Tools (도구)
+- [ ] 콘텐츠 등급 설문 완료
+- [ ] 개인정보처리방침 URL 등록
+
+### 4단계: 인앱 상품 설정
+- [ ] Google Play Console → 수익화 → 인앱 상품
+- [ ] 상품 ID: `eject_premium`, 가격: $2.99 설정
+- [ ] AdMob 계정 생성 및 앱 등록
+- [ ] 실제 광고 단위 ID 생성 (배너 + 전면)
+
+### 5단계: 테스트
+- [ ] 내부 테스트 트랙에 AAB 업로드
+- [ ] 라이선스 테스트 계정으로 인앱 결제 테스트
+- [ ] 광고 테스트 ID → 실제 ID 전환 확인
+- [ ] 프리미엄 구매 → 광고 제거 확인
+- [ ] 구매 복원 기능 확인
+
+### 6단계: 출시
+- [ ] 프로덕션 트랙으로 승격
+- [ ] 단계적 출시 (10% → 50% → 100%)
+- [ ] 출시 국가 순서: 한국 → 일본 → 영어권 → 나머지
+
+---
+
+## 첫 수익 달성을 위한 마케팅 체크리스트
+
 - [ ] 한국 유튜버/틱토커 10명에게 DM ("회식 탈출 앱" 콘텐츠 협업 요청)
 - [ ] 일본 앱 리뷰 사이트 제출 (AppBank, iphonemode)
 - [ ] 블라인드/직장인 커뮤니티에 앱 소개 게시
 - [ ] 리뷰 50개 달성 목표 (인앱 리뷰 API 자동 요청 설정 완료)
+- [ ] Reddit r/apps, r/Android에 소개 포스트

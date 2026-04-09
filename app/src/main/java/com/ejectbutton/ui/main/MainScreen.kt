@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +36,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.ejectbutton.BuildConfig
 import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
@@ -43,6 +46,9 @@ import com.ejectbutton.data.TriggerMode
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
 import com.ejectbutton.ui.theme.*
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -54,7 +60,11 @@ private enum class AppScreen { COMMAND, HISTORY, SYSTEMS }
 @Composable
 fun MainScreen(
     currentLanguage: AppLanguage,
+    isPremium: Boolean,
     onLanguageChange: (AppLanguage) -> Unit,
+    onPurchasePremium: () -> Unit,
+    onRestorePurchase: () -> Unit,
+    premiumPrice: String?,
     onEject: (scenario: Scenario, delayMs: Long) -> Unit,
 ) {
     val ctx     = LocalContext.current
@@ -63,6 +73,7 @@ fun MainScreen(
 
     var currentScreen    by remember { mutableStateOf(AppScreen.COMMAND) }
     var showSettings     by remember { mutableStateOf(false) }
+    var showPremiumSheet by remember { mutableStateOf(false) }
 
     // 언어에 따라 기본 발신자 이름 로컬화
     val localizedDefaults = remember(strings) {
@@ -105,24 +116,58 @@ fun MainScreen(
     }
 
     if (showAddCaller) {
-        AddCallerDialog(
-            onDismiss = { showAddCaller = false },
-            onConfirm = { caller ->
-                val updated = customCallers + caller
-                customCallers = updated
-                EjectPrefs.saveScenarios(ctx, updated)
-                selectedScenario = caller
-                showAddCaller = false
-            }
+        if (!isPremium && customCallers.size >= 1) {
+            // 무료 사용자는 커스텀 발신자 1명까지만
+            AlertDialog(
+                onDismissRequest = { showAddCaller = false },
+                title = { Text(strings.premiumTitle) },
+                text = { Text(strings.premiumMaxCallersMsg, color = EjectSecondary) },
+                confirmButton = {
+                    TextButton(onClick = { showAddCaller = false; showPremiumSheet = true }) {
+                        Text(strings.premiumBadge, color = EjectCoral, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddCaller = false }) {
+                        Text(strings.dialogCancel)
+                    }
+                },
+                containerColor = EjectSurface,
+            )
+        } else {
+            AddCallerDialog(
+                onDismiss = { showAddCaller = false },
+                onConfirm = { caller ->
+                    val updated = customCallers + caller
+                    customCallers = updated
+                    EjectPrefs.saveScenarios(ctx, updated)
+                    selectedScenario = caller
+                    showAddCaller = false
+                }
+            )
+        }
+    }
+
+    // 프리미엄 업그레이드 다이얼로그
+    if (showPremiumSheet) {
+        PremiumUpgradeDialog(
+            price     = premiumPrice,
+            onBuy     = { onPurchasePremium(); showPremiumSheet = false },
+            onRestore = { onRestorePurchase(); showPremiumSheet = false },
+            onDismiss = { showPremiumSheet = false },
         )
     }
 
     // 설정 화면
     if (showSettings) {
         SettingsScreen(
-            currentLanguage  = currentLanguage,
-            onLanguageChange = onLanguageChange,
-            onDismiss        = { showSettings = false },
+            currentLanguage   = currentLanguage,
+            isPremium         = isPremium,
+            onLanguageChange  = onLanguageChange,
+            onPurchasePremium = onPurchasePremium,
+            onRestorePurchase = onRestorePurchase,
+            premiumPrice      = premiumPrice,
+            onDismiss         = { showSettings = false },
         )
         return
     }
@@ -195,7 +240,19 @@ fun MainScreen(
         }
 
         Spacer(Modifier.weight(1f))
-        BottomBar(current = currentScreen, onSelect = { currentScreen = it })
+
+        // 배너 광고 (무료 사용자만)
+        if (!isPremium) {
+            BannerAd(modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+        }
+
+        BottomBar(
+            current = currentScreen,
+            isPremium = isPremium,
+            onSelect = { currentScreen = it },
+            onPremiumTap = { showPremiumSheet = true },
+        )
         Spacer(Modifier.height(12.dp))
     }
 }
@@ -559,7 +616,12 @@ private fun SectionHeader(korean: String, english: String) {
 }
 
 @Composable
-private fun BottomBar(current: AppScreen, onSelect: (AppScreen) -> Unit) {
+private fun BottomBar(
+    current: AppScreen,
+    isPremium: Boolean,
+    onSelect: (AppScreen) -> Unit,
+    onPremiumTap: () -> Unit,
+) {
     val strings = LocalAppStrings.current
     Row(
         modifier = Modifier
@@ -590,6 +652,26 @@ private fun BottomBar(current: AppScreen, onSelect: (AppScreen) -> Unit) {
                     fontSize   = 11.sp,
                     color      = if (isActive) EjectCoral else EjectSecondary,
                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                    letterSpacing = 1.sp,
+                )
+            }
+        }
+
+        // 프리미엄 버튼 (무료 사용자만)
+        if (!isPremium) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(EjectCoral)
+                    .clickable(onClick = onPremiumTap)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text       = strings.premiumBadge,
+                    fontSize   = 11.sp,
+                    color      = Color.White,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                 )
             }
@@ -726,4 +808,89 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
         dismissButton = { TextButton(onClick = onDismiss) { Text(strings.dialogCancel) } },
         containerColor = EjectSurface,
     )
+}
+
+// ─── 배너 광고 ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun BannerAd(modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier.padding(horizontal = 24.dp),
+        factory = { context ->
+            AdView(context).apply {
+                setAdSize(AdSize.BANNER)
+                adUnitId = BuildConfig.ADMOB_BANNER_ID
+                loadAd(AdRequest.Builder().build())
+            }
+        },
+    )
+}
+
+// ─── 프리미엄 업그레이드 다이얼로그 ─────────────────────────────────────────
+
+@Composable
+private fun PremiumUpgradeDialog(
+    price: String?,
+    onBuy: () -> Unit,
+    onRestore: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint = EjectCoral,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(strings.premiumTitle, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(strings.premiumSubtitle, color = EjectSecondary, fontSize = 14.sp)
+                Spacer(Modifier.height(4.dp))
+                PremiumFeatureRow(strings.premiumFeature1)
+                PremiumFeatureRow(strings.premiumFeature2)
+                PremiumFeatureRow(strings.premiumFeature3)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onBuy,
+                colors = ButtonDefaults.buttonColors(containerColor = EjectCoral),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    String.format(strings.premiumBuyBtn, price ?: "$2.99"),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onRestore) {
+                Text(strings.premiumRestoreBtn, color = EjectSecondary, fontSize = 13.sp)
+            }
+        },
+        containerColor = EjectSurface,
+    )
+}
+
+@Composable
+private fun PremiumFeatureRow(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(EjectCoral, CircleShape),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(text, fontSize = 15.sp, color = EjectOnSurface)
+    }
 }

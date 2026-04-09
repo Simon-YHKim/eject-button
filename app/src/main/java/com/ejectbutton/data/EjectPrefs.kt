@@ -11,6 +11,7 @@ object EjectPrefs {
     private const val KEY_VIBRATION   = "setting_vibration"
     private const val KEY_HAPTIC      = "setting_haptic"
     private const val KEY_EJECT_COUNT = "eject_count"
+    private const val KEY_PREMIUM     = "is_premium"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -119,4 +120,19 @@ object EjectPrefs {
         prefs.edit().putInt(KEY_EJECT_COUNT, next).apply()
         return next
     }
+
+    fun getEjectCount(ctx: Context): Int =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getInt(KEY_EJECT_COUNT, 0)
+
+    // ── Premium ──────────────────────────────────────────────────────────────
+
+    fun savePremium(ctx: Context, premium: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_PREMIUM, premium).apply()
+    }
+
+    fun loadPremium(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_PREMIUM, false)
 }

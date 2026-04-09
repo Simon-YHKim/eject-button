@@ -25,6 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.collectAsState
+import com.ejectbutton.ads.AdManager
+import com.ejectbutton.billing.BillingManager
 import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
@@ -41,6 +44,9 @@ import com.google.android.play.core.review.ReviewManagerFactory
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
+
+    lateinit var billingManager: BillingManager
+        private set
 
     private val multiPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -84,6 +90,13 @@ class MainActivity : ComponentActivity() {
         // MS Clarity 초기화 (프로젝트 ID가 설정된 경우에만)
         initClarity()
 
+        // AdMob 초기화
+        AdManager.initialize(this)
+
+        // 인앱 결제 초기화
+        billingManager = BillingManager(this)
+        billingManager.connect()
+
         // 최초 실행 시 권한 일괄 요청
         val prefs = getSharedPreferences("eject_prefs", MODE_PRIVATE)
         if (!prefs.getBoolean("perms_requested", false)) {
@@ -113,6 +126,7 @@ class MainActivity : ComponentActivity() {
 
                 CompositionLocalProvider(LocalAppStrings provides strings) {
                     var splashDone by remember { mutableStateOf(false) }
+                    val isPremium by billingManager.isPremium.collectAsState()
 
                     LaunchedEffect(Unit) {
                         delay(2_000L)   // 2초 스플래시
@@ -127,9 +141,17 @@ class MainActivity : ComponentActivity() {
                         ) {
                             MainScreen(
                                 currentLanguage  = currentLanguage,
+                                isPremium        = isPremium,
                                 onLanguageChange = { lang ->
                                     currentLanguage = lang
                                 },
+                                onPurchasePremium = {
+                                    billingManager.launchPurchase(this@MainActivity)
+                                },
+                                onRestorePurchase = {
+                                    billingManager.restorePurchases()
+                                },
+                                premiumPrice = billingManager.getPriceText(),
                                 onEject = { scenario: Scenario, delayMs: Long ->
                                     if (!Settings.canDrawOverlays(this@MainActivity)) {
                                         overlayPermLauncher.launch(
@@ -156,6 +178,11 @@ class MainActivity : ComponentActivity() {
                                     }
                                     val count = EjectPrefs.incrementEjectCount(this@MainActivity)
                                     maybeRequestReview(count)
+
+                                    // 무료 사용자: 3회 사용마다 전면 광고
+                                    if (!isPremium && count % 3 == 0) {
+                                        AdManager.showInterstitialIfReady(this@MainActivity)
+                                    }
                                 }
                             )
                         }
@@ -171,6 +198,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        billingManager.destroy()
     }
 }
 

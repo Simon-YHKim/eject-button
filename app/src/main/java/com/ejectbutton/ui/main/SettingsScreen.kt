@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,7 +31,11 @@ import com.ejectbutton.ui.theme.*
 @Composable
 fun SettingsScreen(
     currentLanguage: AppLanguage,
+    isPremium: Boolean,
     onLanguageChange: (AppLanguage) -> Unit,
+    onPurchasePremium: () -> Unit,
+    onRestorePurchase: () -> Unit,
+    premiumPrice: String?,
     onDismiss: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
@@ -105,6 +110,48 @@ fun SettingsScreen(
                 }
             }
             Spacer(Modifier.height(24.dp))
+        }
+
+        // ── 프리미엄 ────────────────────────────────────────────────────────────
+        if (!isPremium) {
+            item {
+                SettingsSectionHeader(strings.premiumTitle)
+                Spacer(Modifier.height(8.dp))
+                SettingsCard {
+                    Column {
+                        Text(
+                            strings.premiumSubtitle,
+                            fontSize = 14.sp,
+                            color = EjectSecondary,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = onPurchasePremium,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = EjectCoral),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(
+                                String.format(strings.premiumBuyBtn, premiumPrice ?: "$2.99"),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(
+                            onClick = onRestorePurchase,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                strings.premiumRestoreBtn,
+                                color = EjectSecondary,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
         }
 
         // ── 알림 & 소리 ────────────────────────────────────────────────────────

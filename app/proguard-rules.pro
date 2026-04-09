@@ -26,3 +26,14 @@
 
 # Crash reporter
 -keep class com.ejectbutton.crash.** { *; }
+
+# Google Play Billing
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+
+# Google AdMob
+-keep class com.google.android.gms.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+
+# Billing Manager
+-keep class com.ejectbutton.billing.** { *; }
