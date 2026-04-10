@@ -3,7 +3,6 @@ package com.ejectbutton.ui.main
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,7 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +65,7 @@ fun SettingsScreen(
             .navigationBarsPadding(),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
     ) {
+        // ── Header ──────────────────────────────────────────────────────────
         item {
             Spacer(Modifier.height(52.dp))
             Row(
@@ -75,7 +75,7 @@ fun SettingsScreen(
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(EjectSurfaceMid)
                         .clickable(onClick = onDismiss),
                     contentAlignment = Alignment.Center,
@@ -83,111 +83,94 @@ fun SettingsScreen(
                     Text("←", fontSize = 18.sp, color = EjectOnSurface)
                 }
                 Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(strings.settingsTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EjectRed, letterSpacing = 1.sp)
-                    Text("SYSTEMS", fontSize = 11.sp, color = EjectSecondary, letterSpacing = 2.sp)
-                }
+                Text(
+                    "SYSTEMS",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EjectOnSurface,
+                    letterSpacing = 3.sp,
+                )
             }
             Spacer(Modifier.height(28.dp))
         }
 
-        // ── 언어 ─────────────────────────────────────────────────────────────
-        item {
-            SettingsSectionHeader(strings.settingsLanguage)
-            Spacer(Modifier.height(8.dp))
-            SettingsCard(
-                onClick = { showLangPicker = true }
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(strings.settingsLanguage, fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.Medium)
-                        Text(currentLanguage.nativeName, fontSize = 13.sp, color = EjectSecondary)
-                    }
-                    Text("›", fontSize = 20.sp, color = EjectSecondary)
-                }
-            }
-            Spacer(Modifier.height(24.dp))
-        }
-
-        // ── 알림 & 소리 ────────────────────────────────────────────────────────
-        item {
-            SettingsSectionHeader(strings.settingsNotifications)
-            Spacer(Modifier.height(8.dp))
-            SettingsCard {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    ToggleRow(
-                        label = strings.settingsRingtone,
-                        desc  = strings.settingsRingtoneDesc,
-                        checked = ringtone,
-                        onCheckedChange = {
-                            ringtone = it
-                            EjectPrefs.saveRingtone(ctx, it)
-                        },
-                    )
-                    HorizontalDivider(color = EjectSurfaceMid, thickness = 1.dp)
-                    ToggleRow(
-                        label = strings.settingsVibration,
-                        desc  = strings.settingsVibrationDesc,
-                        checked = vibration,
-                        onCheckedChange = {
-                            vibration = it
-                            EjectPrefs.saveVibration(ctx, it)
-                        },
-                    )
-                    HorizontalDivider(color = EjectSurfaceMid, thickness = 1.dp)
-                    ToggleRow(
-                        label = strings.settingsHaptic,
-                        desc  = strings.settingsHapticDesc,
-                        checked = haptic,
-                        onCheckedChange = {
-                            haptic = it
-                            EjectPrefs.saveHaptic(ctx, it)
-                        },
-                    )
-                }
-            }
-            Spacer(Modifier.height(24.dp))
-        }
-
-        // ── 프리미엄 ────────────────────────────────────────────────────────────
+        // ── Premium Card ────────────────────────────────────────────────────
         if (!isPremium) {
             item {
                 val displayPrice = premiumPrice ?: localizedFallbackPrice()
-                SettingsSectionHeader(strings.premiumTitle)
-                Spacer(Modifier.height(8.dp))
-                SettingsCard {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    EjectPrimaryContainer,
+                                    EjectPrimaryContainer.copy(alpha = 0.92f),
+                                )
+                            )
+                        )
+                        .padding(24.dp),
+                ) {
                     Column {
+                        // ELITE TIER badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(EjectCoral)
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                "ELITE TIER",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                letterSpacing = 2.sp,
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        // Headline
+                        Text(
+                            "Sovereign Premium",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        // Description
                         Text(
                             strings.premiumSubtitle,
                             fontSize = 14.sp,
-                            color = EjectSecondary,
+                            color = EjectOnPrimaryContainer,
                         )
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(20.dp))
+                        // Upgrade button
                         Button(
                             onClick = onPurchasePremium,
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = EjectCoral),
-                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = EjectOnSurface,
+                            ),
+                            shape = RoundedCornerShape(50),
                         ) {
                             Text(
-                                String.format(strings.premiumBuyBtn, displayPrice),
+                                "Upgrade Now →",
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                fontSize = 15.sp,
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
-                        TextButton(
-                            onClick = onRestorePurchase,
+                        Spacer(Modifier.height(8.dp))
+                        // Restore purchase
+                        Box(
                             modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 strings.premiumRestoreBtn,
-                                color = EjectSecondary,
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
+                                color = EjectOnPrimaryContainer,
+                                modifier = Modifier.clickable(onClick = onRestorePurchase),
                             )
                         }
                     }
@@ -196,70 +179,175 @@ fun SettingsScreen(
             }
         }
 
-        // ── 앱 정보 ────────────────────────────────────────────────────────────
-        item {
-            SettingsSectionHeader(strings.settingsAbout)
-            Spacer(Modifier.height(8.dp))
-            SettingsCard {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    SettingsLinkRow(
-                        label = strings.settingsShare,
-                        onClick = {
-                            val i = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Eject Button — ${strings.catchphrase}\nhttps://play.google.com/store/apps/details?id=com.ejectbutton")
-                            }
-                            ctx.startActivity(Intent.createChooser(i, strings.settingsShare))
-                        }
-                    )
-                    HorizontalDivider(color = EjectSurfaceMid, thickness = 1.dp)
-                    SettingsLinkRow(
-                        label = strings.settingsRate,
-                        onClick = {
-                            runCatching {
-                                ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                                    Uri.parse("market://details?id=com.ejectbutton")))
-                            }.onFailure {
-                                ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                                    Uri.parse("https://play.google.com/store/apps/details?id=com.ejectbutton")))
-                            }
-                        }
-                    )
-                    HorizontalDivider(color = EjectSurfaceMid, thickness = 1.dp)
-                    SettingsLinkRow(
-                        label = strings.settingsPrivacy,
-                        onClick = {
-                            ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://ejectbutton.app/privacy")))
-                        }
-                    )
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-        }
-
-        // ── 버전 정보 ─────────────────────────────────────────────────────────
+        // ── Language ────────────────────────────────────────────────────────
         item {
             Box(
-                Modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(1.dp, RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp))
                     .background(EjectSurface)
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .clickable { showLangPicker = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
-                Column {
-                    Text("⏏  Eject Button", fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(4.dp))
-                    Text(strings.settingsVersion, fontSize = 12.sp, color = EjectSecondary)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Globe icon circle
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(EjectSurfaceMid),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("🌐", fontSize = 18.sp)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            strings.settingsLanguage,
+                            fontSize = 15.sp,
+                            color = EjectOnSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            currentLanguage.nativeName,
+                            fontSize = 14.sp,
+                            color = EjectSecondary,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("›", fontSize = 20.sp, color = EjectSecondary)
+                    }
                 }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ── Notifications & Sound ───────────────────────────────────────────
+        item {
+            SovereignSectionHeader(strings.settingsNotifications)
+            Spacer(Modifier.height(8.dp))
+            // Grouped container
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(EjectSurfaceLow)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Ringtone
+                SovereignToggleCard(
+                    icon = "🔔",
+                    label = strings.settingsRingtone,
+                    desc = strings.settingsRingtoneDesc,
+                    checked = ringtone,
+                    onCheckedChange = {
+                        ringtone = it
+                        EjectPrefs.saveRingtone(ctx, it)
+                    },
+                )
+                // Vibration
+                SovereignToggleCard(
+                    icon = "📳",
+                    label = strings.settingsVibration,
+                    desc = null,
+                    checked = vibration,
+                    onCheckedChange = {
+                        vibration = it
+                        EjectPrefs.saveVibration(ctx, it)
+                    },
+                )
+                // Haptic Feedback
+                SovereignToggleCard(
+                    icon = "✋",
+                    label = strings.settingsHaptic,
+                    desc = null,
+                    checked = haptic,
+                    onCheckedChange = {
+                        haptic = it
+                        EjectPrefs.saveHaptic(ctx, it)
+                    },
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ── About ───────────────────────────────────────────────────────────
+        item {
+            SovereignSectionHeader(strings.settingsAbout)
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(EjectSurfaceLow)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Share App
+                SovereignLinkCard(
+                    icon = "📤",
+                    label = strings.settingsShare,
+                    onClick = {
+                        val i = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Eject Button — ${strings.catchphrase}\nhttps://play.google.com/store/apps/details?id=com.ejectbutton")
+                        }
+                        ctx.startActivity(Intent.createChooser(i, strings.settingsShare))
+                    }
+                )
+                // Rate on Store
+                SovereignLinkCard(
+                    icon = "⭐",
+                    label = strings.settingsRate,
+                    onClick = {
+                        runCatching {
+                            ctx.startActivity(Intent(Intent.ACTION_VIEW,
+                                Uri.parse("market://details?id=com.ejectbutton")))
+                        }.onFailure {
+                            ctx.startActivity(Intent(Intent.ACTION_VIEW,
+                                Uri.parse("https://play.google.com/store/apps/details?id=com.ejectbutton")))
+                        }
+                    }
+                )
+                // Privacy Policy
+                SovereignLinkCard(
+                    icon = "🔒",
+                    label = strings.settingsPrivacy,
+                    onClick = {
+                        ctx.startActivity(Intent(Intent.ACTION_VIEW,
+                            Uri.parse("https://ejectbutton.app/privacy")))
+                    }
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ── Version ─────────────────────────────────────────────────────────
+        item {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    strings.settingsVersion.uppercase(),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EjectSecondary.copy(alpha = 0.35f),
+                    letterSpacing = 3.sp,
+                )
             }
             Spacer(Modifier.height(32.dp))
         }
     }
 }
 
-// ── 언어 선택 다이얼로그 ─────────────────────────────────────────────────────
+// ── Language picker dialog ──────────────────────────────────────────────────
 
 @Composable
 private fun LanguagePickerDialog(
@@ -303,78 +391,124 @@ private fun LanguagePickerDialog(
     )
 }
 
-// ── 공통 컴포넌트 ─────────────────────────────────────────────────────────────
+// ── Sovereign design system components ──────────────────────────────────────
 
 @Composable
-private fun SettingsSectionHeader(title: String) {
+private fun SovereignSectionHeader(title: String) {
     Text(
         text = title.uppercase(),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.ExtraBold,
         color = EjectSecondary,
-        letterSpacing = 1.5.sp,
+        letterSpacing = 3.sp,
     )
 }
 
 @Composable
-private fun SettingsCard(
-    onClick: (() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val mod = Modifier
-        .fillMaxWidth()
-        .shadow(1.dp, RoundedCornerShape(16.dp))
-        .clip(RoundedCornerShape(16.dp))
-        .background(EjectSurface)
-        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-        .padding(horizontal = 20.dp, vertical = 16.dp)
-
-    Column(modifier = mod, content = content)
-}
-
-@Composable
-private fun ToggleRow(
+private fun SovereignToggleCard(
+    icon: String,
     label: String,
-    desc: String,
+    desc: String?,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-            Text(label, fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.Medium)
-            Text(desc, fontSize = 12.sp, color = EjectSecondary)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor    = Color.White,
-                checkedTrackColor    = EjectCoral,
-                uncheckedThumbColor  = Color.White,
-                uncheckedTrackColor  = EjectSurfaceMid,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Icon circle
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EjectSurfaceMid),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(icon, fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        label,
+                        fontSize = 15.sp,
+                        color = EjectOnSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (desc != null) {
+                        Text(
+                            desc,
+                            fontSize = 12.sp,
+                            color = EjectSecondary,
+                        )
+                    }
+                }
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor    = Color.White,
+                    checkedTrackColor    = EjectOnSurface,
+                    uncheckedThumbColor  = Color.White,
+                    uncheckedTrackColor  = EjectSurfaceMid,
+                )
             )
-        )
+        }
     }
 }
 
 @Composable
-private fun SettingsLinkRow(label: String, onClick: () -> Unit) {
-    Row(
+private fun SovereignLinkCard(
+    icon: String,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
             .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Text(label, fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.Medium)
-        Text("›", fontSize = 20.sp, color = EjectSecondary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Icon circle
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EjectSurfaceMid),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(icon, fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    label,
+                    fontSize = 15.sp,
+                    color = EjectOnSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text("›", fontSize = 20.sp, color = EjectSecondary)
+        }
     }
 }
 

@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -83,8 +82,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // 상태표시줄: 어두운 배경 + 흰 아이콘, 네비게이션바: 어두운 배경
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#2E2F2E")),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#2E2F2E")),
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#191C1E")),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#191C1E")),
         )
 
         // 이전 크래시 로그가 있으면 자동으로 이메일 전송 화면 열기
@@ -219,44 +218,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SplashScreen(initLabel: String, catchphrase: String) {
-    val infiniteTransition = rememberInfiniteTransition(label = "bounce")
-    val offsetY by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = -18f,
-        animationSpec = infiniteRepeatable(
-            tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse
-        ),
-        label = "bounce",
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(EjectSurface),
+            .background(EjectBg),
         contentAlignment = Alignment.Center,
     ) {
-        // 배경 장식 — 소프트 블러 서클
-        Box(
-            Modifier
-                .size(280.dp)
-                .offset(x = (-60).dp, y = (-120).dp)
-                .background(EjectCoral.copy(alpha = 0.07f), androidx.compose.foundation.shape.CircleShape)
-        )
-        Box(
-            Modifier
-                .size(240.dp)
-                .offset(x = 80.dp, y = 100.dp)
-                .background(EjectSurfaceMid.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
-        )
-
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.offset(y = offsetY.dp),
         ) {
-            // ⏏ 아이콘 카드 (Stitch: 코랄 배경 rounded square)
+            // ⏏ icon card — crimson square
             Box(
                 modifier = Modifier
                     .size(120.dp)
-                    .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = EjectCoral.copy(0.3f))
                     .clip(RoundedCornerShape(28.dp))
                     .background(EjectCoral),
                 contentAlignment = Alignment.Center,
@@ -267,10 +241,10 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
             Spacer(Modifier.height(32.dp))
 
             Text(
-                text       = "EJECT BUTTON",
+                text       = "SENTRY EXIT",
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color      = EjectCoral,
+                color      = Color(0xFF000000),
                 letterSpacing = 2.sp,
             )
             Spacer(Modifier.height(8.dp))
@@ -278,18 +252,14 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
                 text      = catchphrase,
                 fontSize  = 14.sp,
                 color     = EjectSecondary,
-                letterSpacing = 0.5.sp,
             )
         }
 
-        // 하단 초기화 인디케이터
+        // Bottom initializing indicator
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 60.dp)
-                .clip(RoundedCornerShape(50))
-                .background(EjectSurfaceLow)
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(bottom = 60.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PulsingDot()
