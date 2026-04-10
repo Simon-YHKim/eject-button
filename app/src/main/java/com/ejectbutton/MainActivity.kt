@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,7 +81,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // 상태표시줄: 어두운 배경 + 흰 아이콘, 네비게이션바: 어두운 배경
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#2E2F2E")),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#2E2F2E")),
+        )
 
         // 이전 크래시 로그가 있으면 자동으로 이메일 전송 화면 열기
         if (CrashReportManager.hasPendingReport(this)) {

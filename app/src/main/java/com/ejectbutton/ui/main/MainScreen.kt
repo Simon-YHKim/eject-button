@@ -175,91 +175,104 @@ fun MainScreen(
         return
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(EjectBg)
+            .statusBarsPadding()
             .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        when (currentScreen) {
-            AppScreen.COMMAND -> CommandContent(
-                selectedScenario = selectedScenario,
-                selectedTrigger  = selectedTrigger,
-                customDelaySec   = customDelaySec,
-                allCallers       = localizedDefaults + customCallers,
-                customCallerIds  = customCallers.map { it.id }.toSet(),
-                countdown        = countdown,
-                onSelectCaller   = { selectedScenario = it },
-                onDeleteCaller   = { toDelete ->
-                    val updated = customCallers.filter { it.id != toDelete.id }
-                    customCallers = updated
-                    EjectPrefs.saveScenarios(ctx, updated)
-                    if (selectedScenario.id == toDelete.id) selectedScenario = localizedDefaults[0]
-                },
-                onSelectTrigger  = { trigger ->
-                    selectedTrigger = trigger
-                    if (trigger == TriggerMode.CUSTOM) showCustomDialog = true
-                },
-                onAddCaller      = { showAddCaller = true },
-                onSettingsTap    = { showSettings = true },
-                onEject          = {
-                    val delayMs = when (selectedTrigger) {
-                        TriggerMode.IMMEDIATE -> 0L
-                        TriggerMode.AFTER_10S -> 10_000L
-                        TriggerMode.AFTER_30S -> 30_000L
-                        TriggerMode.AFTER_1MIN -> 60_000L
-                        TriggerMode.SHAKE     -> -1L
-                        TriggerMode.CUSTOM    -> customDelaySec * 1000L
-                    }
-                    if (delayMs > 0L) countdownEnd = System.currentTimeMillis() + delayMs
+        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 120.dp),
+        ) {
+            when (currentScreen) {
+                AppScreen.COMMAND -> CommandContent(
+                    selectedScenario = selectedScenario,
+                    selectedTrigger  = selectedTrigger,
+                    customDelaySec   = customDelaySec,
+                    allCallers       = localizedDefaults + customCallers,
+                    customCallerIds  = customCallers.map { it.id }.toSet(),
+                    countdown        = countdown,
+                    onSelectCaller   = { selectedScenario = it },
+                    onDeleteCaller   = { toDelete ->
+                        val updated = customCallers.filter { it.id != toDelete.id }
+                        customCallers = updated
+                        EjectPrefs.saveScenarios(ctx, updated)
+                        if (selectedScenario.id == toDelete.id) selectedScenario = localizedDefaults[0]
+                    },
+                    onSelectTrigger  = { trigger ->
+                        selectedTrigger = trigger
+                        if (trigger == TriggerMode.CUSTOM) showCustomDialog = true
+                    },
+                    onAddCaller      = { showAddCaller = true },
+                    onSettingsTap    = { showSettings = true },
+                    onEject          = {
+                        val delayMs = when (selectedTrigger) {
+                            TriggerMode.IMMEDIATE -> 0L
+                            TriggerMode.AFTER_10S -> 10_000L
+                            TriggerMode.AFTER_30S -> 30_000L
+                            TriggerMode.AFTER_1MIN -> 60_000L
+                            TriggerMode.SHAKE     -> -1L
+                            TriggerMode.CUSTOM    -> customDelaySec * 1000L
+                        }
+                        if (delayMs > 0L) countdownEnd = System.currentTimeMillis() + delayMs
 
-                    if (EjectPrefs.loadHaptic(ctx)) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
+                        if (EjectPrefs.loadHaptic(ctx)) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
 
-                    val triggerLabel = when (selectedTrigger) {
-                        TriggerMode.IMMEDIATE -> strings.triggerNow
-                        TriggerMode.AFTER_10S -> strings.trigger10s
-                        TriggerMode.AFTER_30S -> strings.trigger30s
-                        TriggerMode.AFTER_1MIN -> strings.trigger1min
-                        TriggerMode.SHAKE     -> strings.triggerShake
-                        TriggerMode.CUSTOM    -> "${customDelaySec}s"
-                    }
-                    val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
-                    EjectPrefs.addHistory(ctx, entry)
-                    history = EjectPrefs.loadHistory(ctx)
-                    onEject(selectedScenario, delayMs)
-                },
-            )
-            AppScreen.HISTORY -> HistoryContent(history = history)
-            AppScreen.SYSTEMS -> SystemsContent(
-                onClearHistory = {
-                    EjectPrefs.clearHistory(ctx)
-                    history = emptyList()
-                },
-                onSettingsTap = { showSettings = true },
-            )
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        // 네이티브 광고 (무료 사용자만)
-        if (!isPremium) {
-            val nativeAd by AdManager.nativeAd.collectAsState()
-            nativeAd?.let { ad ->
-                NativeAdCard(ad = ad, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp))
+                        val triggerLabel = when (selectedTrigger) {
+                            TriggerMode.IMMEDIATE -> strings.triggerNow
+                            TriggerMode.AFTER_10S -> strings.trigger10s
+                            TriggerMode.AFTER_30S -> strings.trigger30s
+                            TriggerMode.AFTER_1MIN -> strings.trigger1min
+                            TriggerMode.SHAKE     -> strings.triggerShake
+                            TriggerMode.CUSTOM    -> "${customDelaySec}s"
+                        }
+                        val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
+                        EjectPrefs.addHistory(ctx, entry)
+                        history = EjectPrefs.loadHistory(ctx)
+                        onEject(selectedScenario, delayMs)
+                    },
+                )
+                AppScreen.HISTORY -> HistoryContent(history = history)
+                AppScreen.SYSTEMS -> SystemsContent(
+                    onClearHistory = {
+                        EjectPrefs.clearHistory(ctx)
+                        history = emptyList()
+                    },
+                    onSettingsTap = { showSettings = true },
+                )
             }
-            Spacer(Modifier.height(8.dp))
         }
 
-        BottomBar(
-            current = currentScreen,
-            isPremium = isPremium,
-            onSelect = { currentScreen = it },
-            onPremiumTap = { showPremiumSheet = true },
-        )
-        Spacer(Modifier.height(12.dp))
+        // 하단 고정 영역: 광고 + 탭바
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // 네이티브 광고 (무료 사용자만)
+            if (!isPremium) {
+                val nativeAd by AdManager.nativeAd.collectAsState()
+                nativeAd?.let { ad ->
+                    NativeAdCard(ad = ad, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            BottomBar(
+                current = currentScreen,
+                isPremium = isPremium,
+                onSelect = { currentScreen = it },
+                onPremiumTap = { showPremiumSheet = true },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
 
@@ -284,11 +297,11 @@ private fun CommandContent(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(56.dp))
+        Spacer(Modifier.height(16.dp))
 
         // 헤더 (좌: 앱명, 우: 설정 아이콘)
         Row(
@@ -376,7 +389,7 @@ private fun HistoryContent(history: List<String>) {
     val strings = LocalAppStrings.current
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(16.dp))
         Text(strings.historyTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EjectRed, letterSpacing = 1.sp)
         Text(strings.historySubtitle, fontSize = 13.sp, color = EjectSecondary)
         Spacer(Modifier.height(24.dp))
@@ -414,7 +427,7 @@ private fun SystemsContent(
     val strings = LocalAppStrings.current
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(16.dp))
         Text(strings.systemsTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EjectRed, letterSpacing = 1.sp)
         Text(strings.systemsSubtitle, fontSize = 13.sp, color = EjectSecondary)
         Spacer(Modifier.height(28.dp))
