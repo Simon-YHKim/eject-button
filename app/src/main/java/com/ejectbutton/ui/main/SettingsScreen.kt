@@ -27,6 +27,7 @@ import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.ui.theme.*
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -112,48 +113,6 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
         }
 
-        // ── 프리미엄 ────────────────────────────────────────────────────────────
-        if (!isPremium) {
-            item {
-                SettingsSectionHeader(strings.premiumTitle)
-                Spacer(Modifier.height(8.dp))
-                SettingsCard {
-                    Column {
-                        Text(
-                            strings.premiumSubtitle,
-                            fontSize = 14.sp,
-                            color = EjectSecondary,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = onPurchasePremium,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = EjectCoral),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text(
-                                String.format(strings.premiumBuyBtn, premiumPrice ?: "$2.99"),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        TextButton(
-                            onClick = onRestorePurchase,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                strings.premiumRestoreBtn,
-                                color = EjectSecondary,
-                                fontSize = 13.sp,
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-        }
-
         // ── 알림 & 소리 ────────────────────────────────────────────────────────
         item {
             SettingsSectionHeader(strings.settingsNotifications)
@@ -192,6 +151,49 @@ fun SettingsScreen(
                 }
             }
             Spacer(Modifier.height(24.dp))
+        }
+
+        // ── 프리미엄 ────────────────────────────────────────────────────────────
+        if (!isPremium) {
+            item {
+                val displayPrice = premiumPrice ?: localizedFallbackPrice()
+                SettingsSectionHeader(strings.premiumTitle)
+                Spacer(Modifier.height(8.dp))
+                SettingsCard {
+                    Column {
+                        Text(
+                            strings.premiumSubtitle,
+                            fontSize = 14.sp,
+                            color = EjectSecondary,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = onPurchasePremium,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = EjectCoral),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(
+                                String.format(strings.premiumBuyBtn, displayPrice),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(
+                            onClick = onRestorePurchase,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                strings.premiumRestoreBtn,
+                                color = EjectSecondary,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
         }
 
         // ── 앱 정보 ────────────────────────────────────────────────────────────
@@ -373,5 +375,28 @@ private fun SettingsLinkRow(label: String, onClick: () -> Unit) {
     ) {
         Text(label, fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.Medium)
         Text("›", fontSize = 20.sp, color = EjectSecondary)
+    }
+}
+
+/**
+ * Google Play Billing에서 가격을 못 가져왔을 때
+ * 기기 로케일 기반으로 근사치 가격 표시
+ */
+@Composable
+private fun localizedFallbackPrice(): String {
+    val country = Locale.getDefault().country  // ISO 3166-1 alpha-2
+    return when (country) {
+        "KR" -> "₩4,500"
+        "JP" -> "¥500"
+        "CN", "TW", "HK" -> "¥19.9"
+        "IN" -> "₹249"
+        "MX" -> "MX\$59"
+        "ES" -> "2,99 €"
+        "GB" -> "£2.49"
+        "DE", "FR", "IT", "NL" -> "2,99 €"
+        "BR" -> "R\$14.90"
+        "AU" -> "A\$4.49"
+        "CA" -> "CA\$3.99"
+        else -> "$2.99"
     }
 }

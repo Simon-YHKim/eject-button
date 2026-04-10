@@ -578,7 +578,7 @@ private fun TriggerGrid(
     val row2 = listOf(
         TriggerMode.AFTER_1MIN to strings.trigger1min,
         TriggerMode.SHAKE      to "📳 ${strings.triggerShake}",
-        TriggerMode.CUSTOM     to "✏ ${customDelaySec}s",
+        TriggerMode.CUSTOM     to "${strings.triggerCustom} ${customDelaySec}s",
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -932,7 +932,7 @@ private fun PremiumUpgradeDialog(
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Text(
-                    String.format(strings.premiumBuyBtn, price ?: "$2.99"),
+                    String.format(strings.premiumBuyBtn, price ?: localizedFallbackPrice()),
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
@@ -957,5 +957,24 @@ private fun PremiumFeatureRow(text: String) {
         )
         Spacer(Modifier.width(12.dp))
         Text(text, fontSize = 15.sp, color = EjectOnSurface)
+    }
+}
+
+@Composable
+private fun localizedFallbackPrice(): String {
+    val country = Locale.getDefault().country
+    return when (country) {
+        "KR" -> "₩4,500"
+        "JP" -> "¥500"
+        "CN", "TW", "HK" -> "¥19.9"
+        "IN" -> "₹249"
+        "MX" -> "MX\$59"
+        "ES" -> "2,99 €"
+        "GB" -> "£2.49"
+        "DE", "FR", "IT", "NL" -> "2,99 €"
+        "BR" -> "R\$14.90"
+        "AU" -> "A\$4.49"
+        "CA" -> "CA\$3.99"
+        else -> "$2.99"
     }
 }
