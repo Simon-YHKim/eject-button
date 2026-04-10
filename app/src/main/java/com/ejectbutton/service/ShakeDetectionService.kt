@@ -9,6 +9,8 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.IBinder
 import android.os.SystemClock
+import com.ejectbutton.data.EjectPrefs
+import com.ejectbutton.data.strings
 import kotlin.math.sqrt
 
 class ShakeDetectionService : Service(), SensorEventListener {
@@ -91,14 +93,20 @@ class ShakeDetectionService : Service(), SensorEventListener {
     }
 
     private fun createChannel() {
-        val ch = NotificationChannel(NOTIF_CHANNEL, "흔들기 대기 중", NotificationManager.IMPORTANCE_LOW)
+        val lang = EjectPrefs.loadLanguage(this)
+        val strings = lang.strings()
+        val ch = NotificationChannel(NOTIF_CHANNEL, strings.shakeChannelName, NotificationManager.IMPORTANCE_LOW)
             .apply { setSound(null, null) }
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
     }
 
-    private fun buildNotif() = Notification.Builder(this, NOTIF_CHANNEL)
-        .setContentTitle("📳 흔들면 발신...")
-        .setContentText("폰을 흔들면 전화가 걸립니다")
-        .setSmallIcon(android.R.drawable.ic_menu_call)
-        .build()
+    private fun buildNotif(): Notification {
+        val lang = EjectPrefs.loadLanguage(this)
+        val strings = lang.strings()
+        return Notification.Builder(this, NOTIF_CHANNEL)
+            .setContentTitle(strings.shakeNotifTitle)
+            .setContentText(strings.shakeNotifText)
+            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .build()
+    }
 }

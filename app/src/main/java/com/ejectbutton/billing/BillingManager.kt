@@ -31,7 +31,10 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                     restorePurchases()
                 }
             }
-            override fun onBillingServiceDisconnected() {}
+            override fun onBillingServiceDisconnected() {
+                // 연결 끊기면 자동 재연결 시도
+                try { billingClient.startConnection(this) } catch (_: Exception) {}
+            }
         })
     }
 
