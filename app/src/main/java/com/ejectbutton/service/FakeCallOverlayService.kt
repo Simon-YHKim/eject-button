@@ -4,6 +4,7 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -68,6 +69,10 @@ class FakeCallOverlayService : Service() {
     private val callState = mutableStateOf(false)
     private var pendingHandler: Handler? = null
     private var isDismissing = false
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var flashHandler: Handler? = null
+    private var flashCameraId: String? = null
+    private var flashOn = false
 
     @Suppress("DEPRECATION")
     private var phoneListener: PhoneStateListener? = null
@@ -89,6 +94,8 @@ class FakeCallOverlayService : Service() {
         isDismissing = false
         callState.value = false
         stopRing()
+        stopFlashBlink()
+        releaseWake()
 
         val callerName  = intent?.getStringExtra(EXTRA_CALLER_NAME)  ?: "Mom"
         val callerLabel = intent?.getStringExtra(EXTRA_CALLER_LABEL) ?: "Mobile"
@@ -103,14 +110,90 @@ class FakeCallOverlayService : Service() {
             pendingHandler = h
             h.postDelayed({
                 pendingHandler = null
+                try { acquireWake() } catch (_: Exception) {}
                 try { ring() } catch (_: Exception) {}
+                try { startFlashBlink() } catch (_: Exception) {}
                 try { showOverlay(callerName, callerLabel, prompter) } catch (_: Exception) { stopSelf() }
             }, delayMs)
         } else {
+            try { acquireWake() } catch (_: Exception) {}
             try { ring() } catch (_: Exception) {}
+            try { startFlashBlink() } catch (_: Exception) {}
             try { showOverlay(callerName, callerLabel, prompter) } catch (_: Exception) { stopSelf() }
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * 화면 OFF 상태에서도 화면을 즉시 켜기 위한 WakeLock.
+     * FLAG_SHOW_WHEN_LOCKED + FLAG_TURN_SCREEN_ON 만으로는
+     * 일부 기기에서 화면이 켜지지 않는 경우가 있어 보조용으로 함께 사용.
+     */
+    @Suppress("DEPRECATION")
+    private fun acquireWake() {
+        if (wakeLock?.isHeld == true) return
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        val lock = pm.newWakeLock(
+            PowerManager.FULL_WAKE_LOCK
+                or PowerManager.ACQUIRE_CAUSES_WAKEUP
+                or PowerManager.ON_AFTER_RELEASE,
+            "EjectButton:FakeCallWake"
+        )
+        // 최대 60초 — 사용자가 아무 조작도 안 해도 자동 해제
+        lock.acquire(60_000L)
+        wakeLock = lock
+    }
+
+    private fun releaseWake() {
+        try { wakeLock?.takeIf { it.isHeld }?.release() } catch (_: Exception) {}
+        wakeLock = null
+    }
+
+    /**
+     * 카메라 LED 플래시를 500ms 간격으로 깜박임.
+     * 사용자가 설정에서 활성화한 경우에만 동작.
+     * Android 6.0+ (API 23) 의 CameraManager.setTorchMode 사용.
+     */
+    private fun startFlashBlink() {
+        if (!EjectPrefs.loadFlash(this)) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val cm = getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
+        val cameraId = try {
+            cm.cameraIdList.firstOrNull { id ->
+                cm.getCameraCharacteristics(id)
+                    .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            }
+        } catch (_: Exception) { null } ?: return
+
+        flashCameraId = cameraId
+        flashOn = false
+        val handler = Handler(Looper.getMainLooper())
+        flashHandler = handler
+
+        val tick = object : Runnable {
+            override fun run() {
+                try {
+                    flashOn = !flashOn
+                    cm.setTorchMode(cameraId, flashOn)
+                } catch (_: Exception) {}
+                handler.postDelayed(this, 500L)
+            }
+        }
+        handler.post(tick)
+    }
+
+    private fun stopFlashBlink() {
+        flashHandler?.removeCallbacksAndMessages(null)
+        flashHandler = null
+        val cameraId = flashCameraId ?: return
+        flashCameraId = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val cm = getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+                cm?.setTorchMode(cameraId, false)
+            } catch (_: Exception) {}
+        }
+        flashOn = false
     }
 
     @Suppress("DEPRECATION")
@@ -157,7 +240,11 @@ class FakeCallOverlayService : Service() {
                                 callerLabel  = callerLabel,
                                 prompterHint = prompter,
                                 onDecline    = { dismiss() },
-                                onAccept     = { stopRing(); callState.value = true },
+                                onAccept     = {
+                                    stopRing()
+                                    stopFlashBlink()
+                                    callState.value = true
+                                },
                             )
                         } else {
                             FakeInCallScreen(
@@ -208,6 +295,8 @@ class FakeCallOverlayService : Service() {
         val view = overlay
         overlay = null
         stopRing()
+        stopFlashBlink()
+        releaseWake()
         Handler(Looper.getMainLooper()).post {
             try { wm?.removeView(view) } catch (_: Exception) {}
             stopSelf()
@@ -220,6 +309,9 @@ class FakeCallOverlayService : Service() {
 
         val am   = getSystemService(AUDIO_SERVICE) as AudioManager
         val mode = am.ringerMode  // SILENT / VIBRATE / NORMAL
+
+        // 시스템 무음 모드 → 소리/진동 모두 생략. 화면 + 플래시만 동작.
+        if (mode == AudioManager.RINGER_MODE_SILENT) return
 
         val ringtoneAttrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
@@ -236,6 +328,7 @@ class FakeCallOverlayService : Service() {
         } catch (_: Exception) {}
 
         // 벨소리 (NORMAL 모드 + 설정 허용 시) — 독립 try-catch
+        // VIBRATE 모드에서는 시스템 정책상 소리를 내지 않음.
         if (ringtoneEnabled && mode == AudioManager.RINGER_MODE_NORMAL) {
             try {
                 val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE)
@@ -314,6 +407,8 @@ class FakeCallOverlayService : Service() {
             overlay?.let { try { wm?.removeView(it) } catch (_: Exception) {} }
         }
         stopRing()
+        stopFlashBlink()
+        releaseWake()
         serviceLifecycle?.stop()
         @Suppress("DEPRECATION")
         try {

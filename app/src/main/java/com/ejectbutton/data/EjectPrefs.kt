@@ -10,6 +10,7 @@ object EjectPrefs {
     private const val KEY_RINGTONE    = "setting_ringtone"
     private const val KEY_VIBRATION   = "setting_vibration"
     private const val KEY_HAPTIC      = "setting_haptic"
+    private const val KEY_FLASH       = "setting_flash"
     private const val KEY_EJECT_COUNT = "eject_count"
     private const val KEY_PREMIUM     = "is_premium"
     private const val F = "\u001F"
@@ -111,6 +112,15 @@ object EjectPrefs {
     fun loadHaptic(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_HAPTIC, true)
+
+    fun saveFlash(ctx: Context, enabled: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_FLASH, enabled).apply()
+    }
+
+    fun loadFlash(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_FLASH, false)
 
     // ── Eject count (인앱 리뷰 트리거용) ─────────────────────────────────────
 

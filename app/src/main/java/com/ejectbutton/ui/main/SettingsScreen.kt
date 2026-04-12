@@ -44,6 +44,7 @@ fun SettingsScreen(
     var ringtone   by remember { mutableStateOf(EjectPrefs.loadRingtone(ctx)) }
     var vibration  by remember { mutableStateOf(EjectPrefs.loadVibration(ctx)) }
     var haptic     by remember { mutableStateOf(EjectPrefs.loadHaptic(ctx)) }
+    var flash      by remember { mutableStateOf(EjectPrefs.loadFlash(ctx)) }
     var showLangPicker by remember { mutableStateOf(false) }
 
     if (showLangPicker) {
@@ -271,6 +272,17 @@ fun SettingsScreen(
                     onCheckedChange = {
                         haptic = it
                         EjectPrefs.saveHaptic(ctx, it)
+                    },
+                )
+                // Flash Alert
+                SovereignToggleCard(
+                    icon = "💡",
+                    label = strings.settingsFlash,
+                    desc = strings.settingsFlashDesc,
+                    checked = flash,
+                    onCheckedChange = {
+                        flash = it
+                        EjectPrefs.saveFlash(ctx, it)
                     },
                 )
             }
