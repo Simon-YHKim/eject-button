@@ -32,7 +32,7 @@ import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.strings
 import com.ejectbutton.ui.call.FakeInCallScreen
 import com.ejectbutton.ui.call.FakeIncomingCallScreen
-import com.ejectbutton.ui.theme.EjectButtonTheme
+import com.ejectbutton.ui.theme.LegacyCallTheme
 
 class FakeCallOverlayService : Service() {
 
@@ -232,7 +232,9 @@ class FakeCallOverlayService : Service() {
             setViewTreeViewModelStoreOwner(lifecycle)
             ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ -> WindowInsetsCompat.CONSUMED }
             setContent {
-                EjectButtonTheme {
+                // 가짜 전화 화면은 Tactical Cockpit 테마 영향을 받지 않도록
+                // 전용 LegacyCallTheme 로 격리해서 래핑한다.
+                LegacyCallTheme {
                     androidx.compose.runtime.CompositionLocalProvider(LocalAppStrings provides strings) {
                         if (!callState.value) {
                             FakeIncomingCallScreen(
