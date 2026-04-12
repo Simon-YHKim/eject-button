@@ -301,29 +301,86 @@ private fun CommandContent(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
-        // 헤더 (좌: 앱명, 우: 설정 아이콘)
+        // 헤더 (좌: SENTRY EXIT, 우: PRO 배지 + 설정 아이콘)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    "⏏ EJECT BUTTON",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold,
-                    color = EjectCoral, letterSpacing = 0.5.sp,
-                )
-                Text(strings.catchphrase, fontSize = 12.sp, color = EjectSecondary)
-            }
-            IconButton(onClick = onSettingsTap) {
-                Icon(Icons.Default.Settings, contentDescription = strings.settingsTitle,
-                    tint = EjectSecondary, modifier = Modifier.size(22.dp))
+            Text(
+                text          = "SENTRY EXIT",
+                fontSize      = 22.sp,
+                fontWeight    = FontWeight.ExtraBold,
+                color         = EjectOnSurface,
+                letterSpacing = 1.5.sp,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(EjectPrimaryContainer)
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text          = "PRO",
+                        fontSize      = 10.sp,
+                        color         = EjectOnPrimaryContainer,
+                        fontWeight    = FontWeight.ExtraBold,
+                        letterSpacing = 1.5.sp,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = strings.settingsTitle,
+                        tint               = EjectOnSurface,
+                        modifier           = Modifier.size(22.dp),
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(14.dp))
+
+        // ── Status HUD: ● SYSTEM ACTIVE        ENCRYPTED LINE ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .background(EjectSurfaceLow)
+                .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(Color(0xFF22C55E), CircleShape)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "SYSTEM ACTIVE",
+                    fontSize      = 10.sp,
+                    color         = EjectOnSurface,
+                    fontWeight    = FontWeight.ExtraBold,
+                    letterSpacing = 1.5.sp,
+                )
+            }
+            Text(
+                "ENCRYPTED LINE",
+                fontSize      = 10.sp,
+                color         = EjectSecondary,
+                fontWeight    = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         // 카운트다운 배너
         AnimatedVisibility(
@@ -341,17 +398,24 @@ private fun CommandContent(
             ) {
                 Text(
                     String.format(strings.countdownFmt, countdown),
-                    fontSize = 15.sp, color = EjectRed, fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp, color = EjectCoral, fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
                 )
             }
         }
 
         Spacer(Modifier.weight(1f))
 
-        // EJECT 버튼 (Stitch: 256dp, 8dp 코랄 테두리, soft-glow)
+        // EJECT 버튼 (Sovereign: 256dp 진홍 채움 + bezel)
         EjectButton(onClick = onEject)
-        Spacer(Modifier.height(12.dp))
-        Text(strings.noEscapeLabel, fontSize = 14.sp, color = EjectSecondary, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text          = strings.noEscapeLabel.uppercase(),
+            fontSize      = 11.sp,
+            color         = EjectSecondary,
+            fontWeight    = FontWeight.Bold,
+            letterSpacing = 2.sp,
+        )
 
         Spacer(Modifier.weight(1f))
 
@@ -389,30 +453,108 @@ private fun HistoryContent(history: List<String>) {
     val strings = LocalAppStrings.current
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        Spacer(Modifier.height(16.dp))
-        Text(strings.historyTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EjectRed, letterSpacing = 1.sp)
-        Text(strings.historySubtitle, fontSize = 13.sp, color = EjectSecondary)
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text          = strings.historyTitle.uppercase(),
+            fontSize      = 22.sp,
+            fontWeight    = FontWeight.ExtraBold,
+            color         = EjectOnSurface,
+            letterSpacing = 1.5.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text       = strings.historySubtitle,
+            fontSize   = 12.sp,
+            color      = EjectSecondary,
+            fontWeight = FontWeight.Medium,
+        )
         Spacer(Modifier.height(24.dp))
 
         if (history.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(top = 80.dp), contentAlignment = Alignment.Center) {
-                Text(strings.historyEmpty, fontSize = 14.sp, color = EjectOutlineVar)
-            }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(history) { entry ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(1.dp, RoundedCornerShape(16.dp))
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(EjectSurface)
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                    ) {
-                        Text(entry, fontSize = 13.sp, color = EjectOnSurface)
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("⏳", fontSize = 36.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        strings.historyEmpty,
+                        fontSize      = 12.sp,
+                        color         = EjectSecondary,
+                        fontWeight    = FontWeight.SemiBold,
+                        letterSpacing = 1.sp,
+                    )
                 }
             }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(history) { entry ->
+                    HistoryEntryCard(entry)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryEntryCard(entry: String) {
+    // 엔트리 형식: "MM/dd HH:mm · 👤Name · trigger"
+    val parts = entry.split(" · ")
+    val timestamp  = parts.getOrNull(0) ?: ""
+    val callerPart = parts.getOrNull(1) ?: ""
+    val trigger    = parts.getOrNull(2) ?: ""
+
+    // 이모지와 이름 분리
+    val emoji = callerPart.firstOrNull()?.toString() ?: "👤"
+    val name  = if (callerPart.length > 1) callerPart.substring(1).trim() else ""
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(EjectSurface)
+            .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // 이모지 아바타 원
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(EjectSurfaceMid),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(emoji, fontSize = 22.sp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text       = name.ifEmpty { callerPart },
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color      = EjectOnSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text       = timestamp,
+                fontSize   = 11.sp,
+                color      = EjectSecondary,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        // 트리거 배지
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(EjectSurfaceMid)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text          = trigger.uppercase(),
+                fontSize      = 9.sp,
+                color         = EjectOnSurface,
+                fontWeight    = FontWeight.ExtraBold,
+                letterSpacing = 1.sp,
+            )
         }
     }
 }
@@ -427,51 +569,107 @@ private fun SystemsContent(
     val strings = LocalAppStrings.current
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        Spacer(Modifier.height(16.dp))
-        Text(strings.systemsTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EjectRed, letterSpacing = 1.sp)
-        Text(strings.systemsSubtitle, fontSize = 13.sp, color = EjectSecondary)
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text          = strings.systemsTitle.uppercase(),
+            fontSize      = 22.sp,
+            fontWeight    = FontWeight.ExtraBold,
+            color         = EjectOnSurface,
+            letterSpacing = 1.5.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text       = strings.systemsSubtitle,
+            fontSize   = 12.sp,
+            color      = EjectSecondary,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.height(24.dp))
 
-        // 설정 바로가기
-        SettingsRowCard(label = strings.settingsTitle, onClick = onSettingsTap)
-        Spacer(Modifier.height(10.dp))
-        SettingsRowCard(label = "🗑  ${strings.settingsClearHistory}", onClick = onClearHistory)
-
-        Spacer(Modifier.height(16.dp))
-
-        // 앱 정보
-        Box(
+        // 그룹 1: 빠른 작업
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(1.dp, RoundedCornerShape(16.dp))
-                .clip(RoundedCornerShape(16.dp))
-                .background(EjectSurface)
-                .padding(horizontal = 20.dp, vertical = 18.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(EjectSurfaceLow)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            SystemsRow(icon = "⚙", label = strings.settingsTitle, onClick = onSettingsTap)
+            SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // 앱 정보 카드
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(EjectSurface)
+                .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(EjectCoral),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("⏏", fontSize = 22.sp, color = Color.White)
+            }
+            Spacer(Modifier.width(14.dp))
             Column {
-                Text("⏏  Eject Button", fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(strings.settingsVersion, fontSize = 12.sp, color = EjectSecondary)
+                Text(
+                    text       = "SENTRY EXIT",
+                    fontSize   = 14.sp,
+                    color      = EjectOnSurface,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text       = strings.settingsVersion,
+                    fontSize   = 11.sp,
+                    color      = EjectSecondary,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SettingsRowCard(label: String, onClick: () -> Unit) {
-    Box(
+private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(1.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(EjectSurface)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(label, fontSize = 15.sp, color = EjectOnSurface, fontWeight = FontWeight.Medium)
-            Text("›", fontSize = 20.sp, color = EjectSecondary)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(EjectSurfaceMid),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(icon, fontSize = 18.sp)
         }
+        Spacer(Modifier.width(14.dp))
+        Text(
+            text       = label,
+            fontSize   = 14.sp,
+            color      = EjectOnSurface,
+            fontWeight = FontWeight.SemiBold,
+            modifier   = Modifier.weight(1f),
+        )
+        Text("›", fontSize = 22.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -481,31 +679,47 @@ private fun SettingsRowCard(label: String, onClick: () -> Unit) {
 private fun EjectButton(onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(tween(1000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        initialValue = 1f, targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "s",
     )
 
+    // Outer halo (subtle crimson glow)
     Box(
         modifier = Modifier
-            .size(210.dp)
-            .scale(scale)
-            .shadow(
-                elevation    = 20.dp,
-                shape        = CircleShape,
-                ambientColor = EjectCoral.copy(alpha = 0.3f),
-                spotColor    = EjectCoral.copy(alpha = 0.3f),
-            )
-            .clip(CircleShape)
-            .background(EjectSurface)
-            .border(8.dp, EjectCoral, CircleShape)
-            .clickable(onClick = onClick),
+            .size(280.dp)
+            .scale(scale),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("⏏", fontSize = 72.sp)
-            Spacer(Modifier.height(2.dp))
-            Text("EJECT", fontSize = 12.sp, color = EjectCoral, fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp)
+        Box(
+            modifier = Modifier
+                .size(272.dp)
+                .clip(CircleShape)
+                .background(EjectCoral.copy(alpha = 0.08f))
+        )
+        // Bezel ring
+        Box(
+            modifier = Modifier
+                .size(256.dp)
+                .shadow(
+                    elevation    = 24.dp,
+                    shape        = CircleShape,
+                    ambientColor = EjectCoral.copy(alpha = 0.45f),
+                    spotColor    = EjectCoral.copy(alpha = 0.45f),
+                )
+                .clip(CircleShape)
+                .background(EjectCoral)
+                .border(8.dp, Color(0x1A000000), CircleShape)
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "EJECT",
+                fontSize      = 38.sp,
+                color         = Color.White,
+                fontWeight    = FontWeight.ExtraBold,
+                letterSpacing = 4.sp,
+            )
         }
     }
 }
@@ -522,7 +736,7 @@ private fun CallerChips(
     val strings = LocalAppStrings.current
 
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         items(callers) { caller ->
@@ -532,26 +746,30 @@ private fun CallerChips(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    // 선택: 흰색 bg + 2dp 코랄 테두리 / 비선택: #e2e2e2 bg (Stitch HTML 참고)
-                    .background(if (isSelected) EjectSurface else EjectSecContainer)
-                    .then(if (isSelected) Modifier.border(2.dp, EjectCoral, RoundedCornerShape(50)) else Modifier)
+                    // 선택: 검정 bg + 흰 텍스트 / 비선택: 흰 bg + 회색 테두리
+                    .background(if (isSelected) EjectOnSurface else EjectSurface)
+                    .then(
+                        if (!isSelected)
+                            Modifier.border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
+                        else Modifier
+                    )
                     .clickable { onSelect(caller) }
-                    .padding(start = 16.dp, end = if (isCustom) 8.dp else 16.dp, top = 10.dp, bottom = 10.dp),
+                    .padding(start = 16.dp, end = if (isCustom) 8.dp else 16.dp, top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text     = "${caller.emoji} ${caller.name}",
-                    fontSize = 14.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color    = if (isSelected) EjectCoral else EjectSecondary,
+                    text       = "${caller.emoji}  ${caller.name}",
+                    fontSize   = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                    color      = if (isSelected) Color.White else EjectOnSurface,
                 )
                 if (isCustom) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Icon(
-                        imageVector     = Icons.Default.Close,
+                        imageVector        = Icons.Default.Close,
                         contentDescription = "Delete",
-                        tint            = EjectOutlineVar,
-                        modifier        = Modifier.size(16.dp).clickable { onDelete(caller) },
+                        tint               = if (isSelected) Color.White.copy(alpha = 0.6f) else EjectOutlineVar,
+                        modifier           = Modifier.size(15.dp).clickable { onDelete(caller) },
                     )
                 }
             }
@@ -562,15 +780,15 @@ private fun CallerChips(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(EjectSurfaceLow)
-                    .border(1.5.dp, EjectOutlineVar, RoundedCornerShape(50))
+                    .background(EjectSurface)
+                    .border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
                     .clickable(onClick = onAdd)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Add, "Add", tint = EjectSecondary, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(strings.addCallerBtn, fontSize = 13.sp, color = EjectSecondary)
+                Icon(Icons.Default.Add, "Add", tint = EjectOnSurface, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(strings.addCallerBtn, fontSize = 13.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -583,40 +801,53 @@ private fun TriggerGrid(
     onSelect: (TriggerMode) -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    val row1 = listOf(
-        TriggerMode.IMMEDIATE to strings.triggerNow,
-        TriggerMode.AFTER_10S to strings.trigger10s,
-        TriggerMode.AFTER_30S to strings.trigger30s,
-    )
-    val row2 = listOf(
-        TriggerMode.AFTER_1MIN to strings.trigger1min,
-        TriggerMode.SHAKE      to "📳 ${strings.triggerShake}",
-        TriggerMode.CUSTOM     to "${strings.triggerCustom} ${customDelaySec}s",
+    // 각 트리거: (상단 캡션, 하단 큰 값)
+    val items = listOf(
+        Triple(TriggerMode.IMMEDIATE, "INSTANT",  strings.triggerNow),
+        Triple(TriggerMode.AFTER_10S, "DELAY",    strings.trigger10s),
+        Triple(TriggerMode.AFTER_30S, "DELAY",    strings.trigger30s),
+        Triple(TriggerMode.AFTER_1MIN,"DELAY",    strings.trigger1min),
+        Triple(TriggerMode.SHAKE,     "SENSOR",   "📳 ${strings.triggerShake}"),
+        Triple(TriggerMode.CUSTOM,    "CUSTOM",   "${customDelaySec}s"),
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(row1, row2).forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { (mode, label) ->
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.chunked(2).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (mode, caption, value) ->
                     val isSel = mode == selected
-                    Box(
+                    Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            // 선택: 코랄 채우기 + 흰 텍스트 / 비선택: 회색 bg (발신자 칩과 동일)
-                            .background(if (isSel) EjectCoral else EjectSecContainer)
+                            .clip(RoundedCornerShape(18.dp))
+                            // 선택: 검정 / 비선택: 흰 카드 + 1dp 테두리
+                            .background(if (isSel) EjectOnSurface else EjectSurface)
+                            .then(
+                                if (!isSel)
+                                    Modifier.border(1.dp, EjectOutlineVar, RoundedCornerShape(18.dp))
+                                else Modifier
+                            )
                             .clickable { onSelect(mode) }
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center,
+                            .padding(horizontal = 16.dp, vertical = 18.dp),
+                        horizontalAlignment = Alignment.Start,
                     ) {
                         Text(
-                            text       = label,
-                            fontSize   = 13.sp,
-                            color      = if (isSel) Color.White else EjectSecondary,
-                            fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                            text          = caption,
+                            fontSize      = 10.sp,
+                            color         = if (isSel) Color.White.copy(alpha = 0.55f) else EjectSecondary,
+                            fontWeight    = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text       = value,
+                            fontSize   = 18.sp,
+                            color      = if (isSel) Color.White else EjectOnSurface,
+                            fontWeight = FontWeight.ExtraBold,
                         )
                     }
                 }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -629,8 +860,13 @@ private fun SectionHeader(korean: String, english: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(korean, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = EjectSecondary,
-            letterSpacing = 1.sp)
+        Text(
+            text          = korean,
+            fontSize      = 11.sp,
+            fontWeight    = FontWeight.ExtraBold,
+            color         = EjectSecondary,
+            letterSpacing = 2.sp,
+        )
     }
 }
 
@@ -645,12 +881,14 @@ private fun BottomBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .shadow(4.dp, RoundedCornerShape(50))
+            .padding(horizontal = 20.dp)
+            .shadow(8.dp, RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
-            .background(EjectSurface)
-            .padding(vertical = 8.dp, horizontal = 8.dp),
+            .background(EjectSurface.copy(alpha = 0.96f))
+            .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(50))
+            .padding(vertical = 6.dp, horizontal = 6.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         listOf(
             AppScreen.COMMAND to strings.tabCommand,
@@ -660,38 +898,19 @@ private fun BottomBar(
             val isActive = screen == current
             Box(
                 modifier = Modifier
+                    .weight(1f)
                     .clip(RoundedCornerShape(50))
-                    .background(if (isActive) EjectCoral.copy(0.1f) else Color.Transparent)
+                    .background(if (isActive) EjectSurfaceMid else Color.Transparent)
                     .clickable { onSelect(screen) }
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text       = label,
-                    fontSize   = 11.sp,
-                    color      = if (isActive) EjectCoral else EjectSecondary,
-                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                    letterSpacing = 1.sp,
-                )
-            }
-        }
-
-        // 프리미엄 버튼 (무료 사용자만)
-        if (!isPremium) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(EjectCoral)
-                    .clickable(onClick = onPremiumTap)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text       = strings.premiumBadge,
-                    fontSize   = 11.sp,
-                    color      = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    text          = label,
+                    fontSize      = 11.sp,
+                    color         = if (isActive) EjectOnSurface else EjectSecondary,
+                    fontWeight    = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp,
                 )
             }
         }
