@@ -76,6 +76,7 @@ class ButtonWatchService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // pref 변경에 즉시 반응
         detector.command = EjectPrefs.loadSideButtonCommand(this)
+        detector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
         try { startForeground(NOTIF_ID, buildNotif()) } catch (_: Exception) {}
         // pref 가 비활성화 상태로 들어왔다면 자기 자신을 종료
         if (!detector.command.isEnabled) {

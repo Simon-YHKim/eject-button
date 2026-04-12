@@ -57,6 +57,7 @@ object SideButtonTrigger {
             TriggerMode.AFTER_30S -> 30_000L
             TriggerMode.AFTER_1MIN -> 60_000L
             TriggerMode.SHAKE     -> -1L
+            TriggerMode.SIDE_BUTTON -> 0L
             TriggerMode.CUSTOM    -> EjectPrefs.loadCustomDelaySec(ctx) * 1000L
         }
     }
