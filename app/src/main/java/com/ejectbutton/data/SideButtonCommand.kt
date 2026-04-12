@@ -15,11 +15,20 @@ enum class SideButtonCommand {
     VOL_UP_DOUBLE,
     VOL_UP_TRIPLE,
     VOL_DOWN_DOUBLE,
-    VOL_DOWN_TRIPLE;
+    VOL_DOWN_TRIPLE,
+    CUSTOM;          // 사용자 정의 시퀀스 (EjectPrefs 에서 동적 로드)
 
     val isEnabled: Boolean get() = this != DISABLED
-    val isVolumeUp: Boolean get() = this == VOL_UP_DOUBLE || this == VOL_UP_TRIPLE
-    val isVolumeDown: Boolean get() = this == VOL_DOWN_DOUBLE || this == VOL_DOWN_TRIPLE
+
+    /** 프리셋이 볼륨 UP 만 사용하는지 여부. CUSTOM 은 동적 판정이므로 true. */
+    val isVolumeUp: Boolean
+        get() = this == VOL_UP_DOUBLE || this == VOL_UP_TRIPLE || this == CUSTOM
+
+    /** 프리셋이 볼륨 DOWN 만 사용하는지 여부. CUSTOM 은 동적 판정이므로 true. */
+    val isVolumeDown: Boolean
+        get() = this == VOL_DOWN_DOUBLE || this == VOL_DOWN_TRIPLE || this == CUSTOM
+
+    /** 2회/3회 등 고정 탭 수. CUSTOM 은 동적이므로 0. */
     val tapCount: Int
         get() = when (this) {
             VOL_UP_DOUBLE, VOL_DOWN_DOUBLE -> 2
@@ -30,5 +39,27 @@ enum class SideButtonCommand {
     companion object {
         fun fromName(name: String?): SideButtonCommand =
             entries.firstOrNull { it.name == name } ?: DISABLED
+    }
+}
+
+/** 커스텀 시퀀스의 한 스텝 — 볼륨 UP 또는 DOWN. */
+enum class SideButtonStep {
+    UP, DOWN;
+
+    companion object {
+        /** "UP,DOWN,UP" 형식의 문자열을 파싱. 빈 문자열이면 빈 리스트. */
+        fun parse(raw: String?): List<SideButtonStep> {
+            if (raw.isNullOrBlank()) return emptyList()
+            return raw.split(",").mapNotNull { token ->
+                when (token.trim().uppercase()) {
+                    "UP"   -> UP
+                    "DOWN" -> DOWN
+                    else   -> null
+                }
+            }
+        }
+
+        fun serialize(sequence: List<SideButtonStep>): String =
+            sequence.joinToString(",") { it.name }
     }
 }

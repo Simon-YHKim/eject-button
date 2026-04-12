@@ -19,7 +19,8 @@ enum class TriggerMode {
     AFTER_30S,   // 30초 후
     AFTER_1MIN,  // 1분 후
     SHAKE,       // 흔들기
-    CUSTOM,      // 사용자 지정
+    SIDE_BUTTON, // 사이드 버튼 (볼륨 키)
+    CUSTOM,      // 사용자 지정 지연
 }
 
 // 기본 발신자 프리셋
