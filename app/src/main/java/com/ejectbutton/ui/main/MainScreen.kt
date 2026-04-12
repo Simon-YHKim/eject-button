@@ -89,9 +89,36 @@ fun MainScreen(
         }
     }
 
-    var selectedScenario by remember(strings) { mutableStateOf(localizedDefaults[0]) }
-    var selectedTrigger  by remember { mutableStateOf(TriggerMode.IMMEDIATE) }
-    var customDelaySec   by remember { mutableIntStateOf(60) }
+    // 사이드 버튼 트리거가 백그라운드에서 발동될 때도 같은 선택을 사용하기 위해
+    // selectedScenario / selectedTrigger / customDelaySec 를 EjectPrefs 와 동기화한다.
+    val initialScenario = remember(strings) {
+        val savedId = EjectPrefs.loadSelectedScenarioId(ctx)
+        val all = localizedDefaults + EjectPrefs.loadScenarios(ctx)
+        savedId?.let { id -> all.firstOrNull { it.id == id } } ?: localizedDefaults[0]
+    }
+    val initialTrigger = remember {
+        runCatching {
+            TriggerMode.valueOf(EjectPrefs.loadSelectedTrigger(ctx) ?: TriggerMode.IMMEDIATE.name)
+        }.getOrDefault(TriggerMode.IMMEDIATE)
+    }
+    var selectedScenario by remember(strings) { mutableStateOf(initialScenario) }
+    var selectedTrigger  by remember { mutableStateOf(initialTrigger) }
+    var customDelaySec   by remember { mutableIntStateOf(EjectPrefs.loadCustomDelaySec(ctx)) }
+
+    LaunchedEffect(selectedScenario.id) {
+        EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
+    }
+    LaunchedEffect(selectedTrigger) {
+        EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
+    }
+    LaunchedEffect(customDelaySec) {
+        EjectPrefs.saveCustomDelaySec(ctx, customDelaySec)
+    }
+
+    // 사이드 버튼 트리거 활성 상태 — StatusHUD 에 ARMED 인디케이터 표시용
+    var sideButtonArmed by remember {
+        mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx).isEnabled)
+    }
     var showCustomDialog by remember { mutableStateOf(false) }
     var showAddCaller    by remember { mutableStateOf(false) }
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
@@ -170,7 +197,11 @@ fun MainScreen(
             onPurchasePremium = onPurchasePremium,
             onRestorePurchase = onRestorePurchase,
             premiumPrice      = premiumPrice,
-            onDismiss         = { showSettings = false },
+            onDismiss         = {
+                showSettings = false
+                // 설정에서 사이드 버튼 트리거를 켜고/끈 결과 반영
+                sideButtonArmed = EjectPrefs.loadSideButtonCommand(ctx).isEnabled
+            },
         )
         return
     }
@@ -196,6 +227,7 @@ fun MainScreen(
                     allCallers       = localizedDefaults + customCallers,
                     customCallerIds  = customCallers.map { it.id }.toSet(),
                     countdown        = countdown,
+                    sideButtonArmed  = sideButtonArmed,
                     onSelectCaller   = { selectedScenario = it },
                     onDeleteCaller   = { toDelete ->
                         val updated = customCallers.filter { it.id != toDelete.id }
@@ -286,6 +318,7 @@ private fun CommandContent(
     allCallers: List<Scenario>,
     customCallerIds: Set<String>,
     countdown: Int,
+    sideButtonArmed: Boolean,
     onSelectCaller: (Scenario) -> Unit,
     onDeleteCaller: (Scenario) -> Unit,
     onSelectTrigger: (TriggerMode) -> Unit,
@@ -371,13 +404,23 @@ private fun CommandContent(
                     letterSpacing = 1.5.sp,
                 )
             }
-            Text(
-                "ENCRYPTED LINE",
-                fontSize      = 10.sp,
-                color         = EjectSecondary,
-                fontWeight    = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
-            )
+            if (sideButtonArmed) {
+                Text(
+                    strings.settingSideButtonArmed,
+                    fontSize      = 10.sp,
+                    color         = EjectCoral,
+                    fontWeight    = FontWeight.ExtraBold,
+                    letterSpacing = 1.5.sp,
+                )
+            } else {
+                Text(
+                    "ENCRYPTED LINE",
+                    fontSize      = 10.sp,
+                    color         = EjectSecondary,
+                    fontWeight    = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))

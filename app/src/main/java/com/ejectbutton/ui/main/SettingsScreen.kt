@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
+import com.ejectbutton.data.SideButtonCommand
+import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.ui.theme.*
 import java.util.Locale
 
@@ -45,7 +47,29 @@ fun SettingsScreen(
     var vibration  by remember { mutableStateOf(EjectPrefs.loadVibration(ctx)) }
     var haptic     by remember { mutableStateOf(EjectPrefs.loadHaptic(ctx)) }
     var flash      by remember { mutableStateOf(EjectPrefs.loadFlash(ctx)) }
+    var sideButtonCommand by remember {
+        mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
+    }
+    var showSideButtonPicker by remember { mutableStateOf(false) }
+    var showHowToUse by remember { mutableStateOf(false) }
     var showLangPicker by remember { mutableStateOf(false) }
+
+    if (showSideButtonPicker) {
+        SideButtonCommandPickerDialog(
+            current   = sideButtonCommand,
+            onSelect  = { cmd ->
+                sideButtonCommand = cmd
+                EjectPrefs.saveSideButtonCommand(ctx, cmd)
+                ButtonWatchService.reconcile(ctx)
+                showSideButtonPicker = false
+            },
+            onDismiss = { showSideButtonPicker = false },
+        )
+    }
+
+    if (showHowToUse) {
+        HowToUseDialog(onDismiss = { showHowToUse = false })
+    }
 
     if (showLangPicker) {
         LanguagePickerDialog(
@@ -289,6 +313,99 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
         }
 
+        // ── Side Button Trigger ─────────────────────────────────────────────
+        item {
+            SovereignSectionHeader(strings.settingSideButton)
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(EjectSurfaceLow)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Command picker row
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(EjectSurface)
+                        .clickable { showSideButtonPicker = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(EjectSurfaceMid),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("🎚️", fontSize = 18.sp)
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    strings.settingSideButton,
+                                    fontSize = 15.sp,
+                                    color = EjectOnSurface,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    strings.settingSideButtonDesc,
+                                    fontSize = 12.sp,
+                                    color = EjectSecondary,
+                                )
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                sideButtonCommand.label(strings),
+                                fontSize = 13.sp,
+                                color = if (sideButtonCommand.isEnabled) EjectCoral else EjectSecondary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("›", fontSize = 20.sp, color = EjectSecondary)
+                        }
+                    }
+                }
+                if (sideButtonCommand.isEnabled) {
+                    // Warning banner
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(EjectCoral.copy(alpha = 0.10f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            strings.settingSideButtonWarning,
+                            fontSize = 11.sp,
+                            color = EjectCoral,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                // How-to-use link
+                SovereignLinkCard(
+                    icon = "📘",
+                    label = strings.howToUseTitle,
+                    onClick = { showHowToUse = true },
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
         // ── About ───────────────────────────────────────────────────────────
         item {
             SovereignSectionHeader(strings.settingsAbout)
@@ -521,6 +638,156 @@ private fun SovereignLinkCard(
             }
             Text("›", fontSize = 20.sp, color = EjectSecondary)
         }
+    }
+}
+
+// ── Side button command picker ──────────────────────────────────────────────
+
+private fun SideButtonCommand.label(strings: com.ejectbutton.data.AppStrings): String =
+    when (this) {
+        SideButtonCommand.DISABLED        -> strings.cmdDisabled
+        SideButtonCommand.VOL_UP_DOUBLE   -> strings.cmdVolUp2
+        SideButtonCommand.VOL_UP_TRIPLE   -> strings.cmdVolUp3
+        SideButtonCommand.VOL_DOWN_DOUBLE -> strings.cmdVolDown2
+        SideButtonCommand.VOL_DOWN_TRIPLE -> strings.cmdVolDown3
+    }
+
+@Composable
+private fun SideButtonCommandPickerDialog(
+    current: SideButtonCommand,
+    onSelect: (SideButtonCommand) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.settingSideButton) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SideButtonCommand.entries.forEach { cmd ->
+                    val isSelected = cmd == current
+                    val isRecommended = cmd == SideButtonCommand.VOL_UP_DOUBLE
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) EjectCoral.copy(0.08f) else Color.Transparent)
+                            .clickable { onSelect(cmd) }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                cmd.label(strings),
+                                fontSize = 15.sp,
+                                color = if (isSelected) EjectRed else EjectOnSurface,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                            if (isRecommended) {
+                                Spacer(Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(EjectCoral)
+                                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                                ) {
+                                    Text(
+                                        strings.cmdRecommended,
+                                        fontSize = 9.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 1.sp,
+                                    )
+                                }
+                            }
+                        }
+                        if (isSelected) {
+                            Icon(Icons.Default.Check, null, tint = EjectCoral, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(strings.dialogCancel) }
+        },
+        containerColor = EjectSurface,
+    )
+}
+
+// ── How-to-use manual dialog ────────────────────────────────────────────────
+
+@Composable
+private fun HowToUseDialog(onDismiss: () -> Unit) {
+    val strings = LocalAppStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                strings.howToUseTitle,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.sp,
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                HowToUseStep("1", strings.howToUseStep1)
+                HowToUseStep("2", strings.howToUseStep2)
+                HowToUseStep("3", strings.howToUseStep3)
+                HowToUseStep("4", strings.howToUseStep4)
+                HowToUseStep("5", strings.howToUseStep5)
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EjectCoral.copy(alpha = 0.10f))
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        strings.howToUseCaution,
+                        fontSize = 12.sp,
+                        color = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.dialogConfirm, color = EjectCoral, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = EjectSurface,
+    )
+}
+
+@Composable
+private fun HowToUseStep(num: String, text: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(EjectCoral),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                num,
+                fontSize = 12.sp,
+                color = Color.White,
+                fontWeight = FontWeight.ExtraBold,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text,
+            fontSize = 14.sp,
+            color = EjectOnSurface,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
