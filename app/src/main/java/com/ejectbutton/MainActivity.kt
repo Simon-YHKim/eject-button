@@ -46,6 +46,7 @@ import com.microsoft.clarity.ClarityConfig
 import com.ejectbutton.service.ShakeDetectionService
 import com.ejectbutton.ui.main.MainScreen
 import com.ejectbutton.ui.theme.*
+import androidx.compose.foundation.border
 import com.google.android.play.core.review.ReviewManagerFactory
 import kotlinx.coroutines.delay
 
@@ -296,21 +297,22 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(EjectBg),
+            .background(TacticalBase)
+            .microGridBackground(),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // ⏏ icon card — crimson square
+            // ⏏ icon panel — machined crimson square (0dp corners, ghost border)
             Box(
                 modifier = Modifier
                     .size(120.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(EjectCoral),
+                    .background(TacticalRedDeep)
+                    .border(1.dp, TacticalOutlineVar.copy(alpha = 0.6f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⏏", fontSize = 64.sp)
+                Text("⏏", fontSize = 64.sp, color = TacticalOnSurface)
             }
 
             Spacer(Modifier.height(32.dp))
@@ -319,14 +321,16 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
                 text       = "EJECT BUTTON",
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color      = Color(0xFF000000),
-                letterSpacing = 2.sp,
+                color      = TacticalOnSurface,
+                letterSpacing = 3.sp,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text      = catchphrase,
-                fontSize  = 14.sp,
-                color     = EjectSecondary,
+                fontSize  = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.5.sp,
+                color     = TacticalOnVariant,
             )
         }
 
@@ -340,7 +344,7 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
                 PulsingDot()
                 Spacer(Modifier.width(10.dp))
                 Text(initLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                    color = EjectSecondary, letterSpacing = 2.sp)
+                    color = TacticalCyan, letterSpacing = 2.sp)
             }
         }
     }
@@ -357,6 +361,6 @@ private fun PulsingDot() {
     Box(
         Modifier
             .size(8.dp)
-            .background(EjectCoral.copy(alpha = alpha), androidx.compose.foundation.shape.CircleShape)
+            .background(TacticalCyan.copy(alpha = alpha), androidx.compose.foundation.shape.CircleShape)
     )
 }
