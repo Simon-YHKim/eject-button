@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -34,7 +35,11 @@ import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.Scenario
 import com.ejectbutton.data.strings
 import com.ejectbutton.crash.CrashReportManager
+import com.ejectbutton.data.SideButtonCommand
+import com.ejectbutton.service.ButtonPatternDetector
+import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.FakeCallOverlayService
+import com.ejectbutton.service.SideButtonTrigger
 import com.microsoft.clarity.Clarity
 import com.microsoft.clarity.ClarityConfig
 import com.ejectbutton.service.ShakeDetectionService
@@ -47,6 +52,14 @@ class MainActivity : ComponentActivity() {
 
     lateinit var billingManager: BillingManager
         private set
+
+    /**
+     * Foreground 상태에서 볼륨 키 패턴을 감지.
+     * Background 진입 시 [ButtonWatchService] 의 ContentObserver 가 이어받음.
+     */
+    private val foregroundDetector = ButtonPatternDetector(SideButtonCommand.DISABLED) {
+        SideButtonTrigger.fire(this)
+    }
 
     private val multiPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -205,6 +218,48 @@ class MainActivity : ComponentActivity() {
             FakeCallOverlayService.showInterstitialOnNextResume = false
             AdManager.showInterstitialIfReady(this)
         }
+        // 사이드 버튼 트리거 설정에 맞춰 detector 와 watch service 동기화
+        foregroundDetector.command = EjectPrefs.loadSideButtonCommand(this)
+        ButtonWatchService.reconcile(this)
+    }
+
+    /**
+     * Foreground 상태에서 볼륨 키 입력을 가로채 패턴 감지.
+     * 패턴이 일치하지 않으면 super 를 호출해 일반 볼륨 조절이 동작하도록 한다.
+     * 일치하면 true 를 반환해 시스템 볼륨 변화를 차단한다.
+     */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (!foregroundDetector.command.isEnabled || event.repeatCount != 0) {
+            return super.onKeyDown(keyCode, event)
+        }
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (foregroundDetector.command.isVolumeUp) {
+                    foregroundDetector.onVolumeUp()
+                    true
+                } else super.onKeyDown(keyCode, event)
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                if (foregroundDetector.command.isVolumeDown) {
+                    foregroundDetector.onVolumeDown()
+                    true
+                } else super.onKeyDown(keyCode, event)
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+    /**
+     * onKeyDown 에서 true 를 반환했을 때 KEYCODE_VOLUME_*  의 KeyUp 도 같이
+     * consume 해야 시스템이 볼륨 패널을 띄우지 않는다.
+     */
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (!foregroundDetector.command.isEnabled) {
+            return super.onKeyUp(keyCode, event)
+        }
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && foregroundDetector.command.isVolumeUp) return true
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && foregroundDetector.command.isVolumeDown) return true
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onDestroy() {
