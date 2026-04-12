@@ -26,6 +26,7 @@ import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.SideButtonCommand
+import com.ejectbutton.data.SideButtonStep
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.ui.theme.*
 import java.util.Locale
@@ -156,7 +157,7 @@ fun SettingsScreen(
                         Spacer(Modifier.height(16.dp))
                         // Headline
                         Text(
-                            "Sovereign Premium",
+                            "Eject Premium",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
@@ -254,7 +255,7 @@ fun SettingsScreen(
 
         // ── Notifications & Sound ───────────────────────────────────────────
         item {
-            SovereignSectionHeader(strings.settingsNotifications)
+            EjectSectionHeader(strings.settingsNotifications)
             Spacer(Modifier.height(8.dp))
             // Grouped container
             Column(
@@ -266,7 +267,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // Ringtone
-                SovereignToggleCard(
+                EjectToggleCard(
                     icon = "🔔",
                     label = strings.settingsRingtone,
                     desc = strings.settingsRingtoneDesc,
@@ -277,7 +278,7 @@ fun SettingsScreen(
                     },
                 )
                 // Vibration
-                SovereignToggleCard(
+                EjectToggleCard(
                     icon = "📳",
                     label = strings.settingsVibration,
                     desc = null,
@@ -288,7 +289,7 @@ fun SettingsScreen(
                     },
                 )
                 // Haptic Feedback
-                SovereignToggleCard(
+                EjectToggleCard(
                     icon = "✋",
                     label = strings.settingsHaptic,
                     desc = null,
@@ -299,7 +300,7 @@ fun SettingsScreen(
                     },
                 )
                 // Flash Alert
-                SovereignToggleCard(
+                EjectToggleCard(
                     icon = "💡",
                     label = strings.settingsFlash,
                     desc = strings.settingsFlashDesc,
@@ -315,7 +316,7 @@ fun SettingsScreen(
 
         // ── Side Button Trigger ─────────────────────────────────────────────
         item {
-            SovereignSectionHeader(strings.settingSideButton)
+            EjectSectionHeader(strings.settingSideButton)
             Spacer(Modifier.height(8.dp))
             Column(
                 modifier = Modifier
@@ -397,7 +398,7 @@ fun SettingsScreen(
                     }
                 }
                 // How-to-use link
-                SovereignLinkCard(
+                EjectLinkCard(
                     icon = "📘",
                     label = strings.howToUseTitle,
                     onClick = { showHowToUse = true },
@@ -408,7 +409,7 @@ fun SettingsScreen(
 
         // ── About ───────────────────────────────────────────────────────────
         item {
-            SovereignSectionHeader(strings.settingsAbout)
+            EjectSectionHeader(strings.settingsAbout)
             Spacer(Modifier.height(8.dp))
             Column(
                 modifier = Modifier
@@ -419,7 +420,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // Share App
-                SovereignLinkCard(
+                EjectLinkCard(
                     icon = "📤",
                     label = strings.settingsShare,
                     onClick = {
@@ -431,7 +432,7 @@ fun SettingsScreen(
                     }
                 )
                 // Rate on Store
-                SovereignLinkCard(
+                EjectLinkCard(
                     icon = "⭐",
                     label = strings.settingsRate,
                     onClick = {
@@ -445,7 +446,7 @@ fun SettingsScreen(
                     }
                 )
                 // Privacy Policy
-                SovereignLinkCard(
+                EjectLinkCard(
                     icon = "🔒",
                     label = strings.settingsPrivacy,
                     onClick = {
@@ -520,10 +521,10 @@ private fun LanguagePickerDialog(
     )
 }
 
-// ── Sovereign design system components ──────────────────────────────────────
+// ── Eject design system components ──────────────────────────────────────────
 
 @Composable
-private fun SovereignSectionHeader(title: String) {
+private fun EjectSectionHeader(title: String) {
     Text(
         text = title.uppercase(),
         fontSize = 10.sp,
@@ -534,7 +535,7 @@ private fun SovereignSectionHeader(title: String) {
 }
 
 @Composable
-private fun SovereignToggleCard(
+private fun EjectToggleCard(
     icon: String,
     label: String,
     desc: String?,
@@ -599,7 +600,7 @@ private fun SovereignToggleCard(
 }
 
 @Composable
-private fun SovereignLinkCard(
+private fun EjectLinkCard(
     icon: String,
     label: String,
     onClick: () -> Unit,
@@ -650,6 +651,7 @@ internal fun SideButtonCommand.label(strings: com.ejectbutton.data.AppStrings): 
         SideButtonCommand.VOL_UP_TRIPLE   -> strings.cmdVolUp3
         SideButtonCommand.VOL_DOWN_DOUBLE -> strings.cmdVolDown2
         SideButtonCommand.VOL_DOWN_TRIPLE -> strings.cmdVolDown3
+        SideButtonCommand.CUSTOM          -> strings.cmdCustom
     }
 
 @Composable
@@ -658,7 +660,22 @@ internal fun SideButtonCommandPickerDialog(
     onSelect: (SideButtonCommand) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val ctx = LocalContext.current
     val strings = LocalAppStrings.current
+    var showCustomRecorder by remember { mutableStateOf(false) }
+
+    if (showCustomRecorder) {
+        CustomCommandRecordingDialog(
+            initial = EjectPrefs.loadSideButtonCustomSequence(ctx),
+            onDismiss = { showCustomRecorder = false },
+            onSave = { seq ->
+                EjectPrefs.saveSideButtonCustomSequence(ctx, seq)
+                showCustomRecorder = false
+                onSelect(SideButtonCommand.CUSTOM)
+            },
+        )
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(strings.settingSideButton) },
@@ -672,7 +689,10 @@ internal fun SideButtonCommandPickerDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) EjectCoral.copy(0.08f) else Color.Transparent)
-                            .clickable { onSelect(cmd) }
+                            .clickable {
+                                if (cmd == SideButtonCommand.CUSTOM) showCustomRecorder = true
+                                else onSelect(cmd)
+                            }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -789,6 +809,117 @@ private fun HowToUseStep(num: String, text: String) {
             modifier = Modifier.weight(1f),
         )
     }
+}
+
+// ── 커스텀 커맨드 녹화 다이얼로그 ─────────────────────────────────────────────
+
+@Composable
+internal fun CustomCommandRecordingDialog(
+    initial: List<SideButtonStep>,
+    onDismiss: () -> Unit,
+    onSave: (List<SideButtonStep>) -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    val ctx = LocalContext.current
+    val activity = ctx as? com.ejectbutton.MainActivity
+
+    var sequence by remember { mutableStateOf(initial) }
+
+    // MainActivity.recordingCallback 을 설치/해제
+    DisposableEffect(Unit) {
+        activity?.recordingCallback = { step ->
+            if (sequence.size < 5) sequence = sequence + step
+        }
+        onDispose { activity?.recordingCallback = null }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.customCommandTitle, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(strings.customCommandHint, fontSize = 13.sp, color = EjectSecondary)
+
+                // 녹화 상태 카드
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(EjectSurfaceMid)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                ) {
+                    Column {
+                        Text(
+                            strings.customCommandRecording,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = EjectCoral,
+                            letterSpacing = 2.sp,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        if (sequence.isEmpty()) {
+                            Text(strings.customCommandEmpty, fontSize = 14.sp, color = EjectSecondary)
+                        } else {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                sequence.forEach { step ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(EjectSurface)
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    ) {
+                                        Text(
+                                            if (step == SideButtonStep.UP) "▲ UP" else "▼ DOWN",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = EjectOnSurface,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 현재 저장값 표시
+                if (initial.isNotEmpty()) {
+                    Text(
+                        "${strings.customCommandCurrent} " + initial.joinToString(" ") {
+                            if (it == SideButtonStep.UP) "▲" else "▼"
+                        },
+                        fontSize = 11.sp,
+                        color = EjectSecondary,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(sequence) },
+                enabled = sequence.isNotEmpty(),
+            ) {
+                Text(
+                    strings.customCommandSave,
+                    color = if (sequence.isNotEmpty()) EjectCoral else EjectSecondary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { sequence = emptyList() }) {
+                    Text(strings.customCommandClear, color = EjectSecondary)
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(strings.dialogCancel)
+                }
+            }
+        },
+        containerColor = EjectSurface,
+    )
 }
 
 /**

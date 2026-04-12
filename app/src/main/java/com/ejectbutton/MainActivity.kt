@@ -36,6 +36,7 @@ import com.ejectbutton.data.Scenario
 import com.ejectbutton.data.strings
 import com.ejectbutton.crash.CrashReportManager
 import com.ejectbutton.data.SideButtonCommand
+import com.ejectbutton.data.SideButtonStep
 import com.ejectbutton.service.ButtonPatternDetector
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.FakeCallOverlayService
@@ -60,6 +61,12 @@ class MainActivity : ComponentActivity() {
     private val foregroundDetector = ButtonPatternDetector(SideButtonCommand.DISABLED) {
         SideButtonTrigger.fire(this)
     }
+
+    /**
+     * 커스텀 커맨드 녹화 다이얼로그가 활성일 때 설정하는 콜백.
+     * null 이 아니면 onKeyDown 이 볼륨 키 이벤트를 패턴 감지기 대신 이쪽으로 전달한다.
+     */
+    @Volatile var recordingCallback: ((SideButtonStep) -> Unit)? = null
 
     private val multiPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -220,6 +227,7 @@ class MainActivity : ComponentActivity() {
         }
         // 사이드 버튼 트리거 설정에 맞춰 detector 와 watch service 동기화
         foregroundDetector.command = EjectPrefs.loadSideButtonCommand(this)
+        foregroundDetector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
         ButtonWatchService.reconcile(this)
     }
 
@@ -229,6 +237,14 @@ class MainActivity : ComponentActivity() {
      * 일치하면 true 를 반환해 시스템 볼륨 변화를 차단한다.
      */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        // 녹화 모드가 활성이면 볼륨 키는 녹화 콜백으로만 전달
+        val rec = recordingCallback
+        if (rec != null && event.repeatCount == 0) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_UP   -> { rec(SideButtonStep.UP);   return true }
+                KeyEvent.KEYCODE_VOLUME_DOWN -> { rec(SideButtonStep.DOWN); return true }
+            }
+        }
         if (!foregroundDetector.command.isEnabled || event.repeatCount != 0) {
             return super.onKeyDown(keyCode, event)
         }
@@ -254,6 +270,10 @@ class MainActivity : ComponentActivity() {
      * consume 해야 시스템이 볼륨 패널을 띄우지 않는다.
      */
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (recordingCallback != null &&
+            (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            return true
+        }
         if (!foregroundDetector.command.isEnabled) {
             return super.onKeyUp(keyCode, event)
         }
@@ -296,7 +316,7 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
             Spacer(Modifier.height(32.dp))
 
             Text(
-                text       = "SENTRY EXIT",
+                text       = "EJECT BUTTON",
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = Color(0xFF000000),

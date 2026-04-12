@@ -5,7 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// ── Sovereign Utility 디자인 시스템 토큰 ────────────────────────────────────────
+// ── Eject Utility 디자인 시스템 토큰 ────────────────────────────────────────────
 
 // Primary
 val EjectRed          = Color(0xFF000000)  // primary — structural black

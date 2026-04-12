@@ -126,6 +126,9 @@ fun MainScreen(
     var showSideButtonPicker by remember { mutableStateOf(false) }
     var showCustomDialog by remember { mutableStateOf(false) }
     var showAddCaller    by remember { mutableStateOf(false) }
+    // SIDE_BUTTON 트리거 상태: 대기 중 배지 + 미설정 경고 배너
+    var sideButtonStandby by remember { mutableStateOf(false) }
+    var sideButtonNotice  by remember { mutableStateOf(false) }
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
     var history          by remember { mutableStateOf(EjectPrefs.loadHistory(ctx)) }
 
@@ -246,6 +249,13 @@ fun MainScreen(
                     customCallerIds  = customCallers.map { it.id }.toSet(),
                     countdown        = countdown,
                     sideButtonCommand = sideButtonCommand,
+                    sideButtonStandby = sideButtonStandby,
+                    sideButtonNotice  = sideButtonNotice,
+                    onDismissNotice   = { sideButtonNotice = false },
+                    onOpenSettingsForSideButton = {
+                        sideButtonNotice = false
+                        showSettings = true
+                    },
                     onOpenSideButtonPicker = { showSideButtonPicker = true },
                     onSelectCaller   = { selectedScenario = it },
                     onDeleteCaller   = { toDelete ->
@@ -260,13 +270,31 @@ fun MainScreen(
                     },
                     onAddCaller      = { showAddCaller = true },
                     onSettingsTap    = { showSettings = true },
-                    onEject          = {
+                    onEject          = handleEject@{
+                        // SIDE_BUTTON 선택 시: 사이드 버튼 명령이 설정돼 있어야 발동 가능
+                        if (selectedTrigger == TriggerMode.SIDE_BUTTON) {
+                            val cmd = EjectPrefs.loadSideButtonCommand(ctx)
+                            if (!cmd.isEnabled) {
+                                sideButtonNotice = true
+                                return@handleEject
+                            }
+                            EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
+                            EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
+                            ButtonWatchService.reconcile(ctx)
+                            sideButtonStandby = true
+                            if (EjectPrefs.loadHaptic(ctx)) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            return@handleEject
+                        }
+
                         val delayMs = when (selectedTrigger) {
                             TriggerMode.IMMEDIATE -> 0L
                             TriggerMode.AFTER_10S -> 10_000L
                             TriggerMode.AFTER_30S -> 30_000L
                             TriggerMode.AFTER_1MIN -> 60_000L
                             TriggerMode.SHAKE     -> -1L
+                            TriggerMode.SIDE_BUTTON -> 0L // handled above
                             TriggerMode.CUSTOM    -> customDelaySec * 1000L
                         }
                         if (delayMs > 0L) countdownEnd = System.currentTimeMillis() + delayMs
@@ -281,6 +309,7 @@ fun MainScreen(
                             TriggerMode.AFTER_30S -> strings.trigger30s
                             TriggerMode.AFTER_1MIN -> strings.trigger1min
                             TriggerMode.SHAKE     -> strings.triggerShake
+                            TriggerMode.SIDE_BUTTON -> strings.triggerSideButton
                             TriggerMode.CUSTOM    -> "${customDelaySec}s"
                         }
                         val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
@@ -341,6 +370,10 @@ private fun CommandContent(
     customCallerIds: Set<String>,
     countdown: Int,
     sideButtonCommand: SideButtonCommand,
+    sideButtonStandby: Boolean,
+    sideButtonNotice: Boolean,
+    onDismissNotice: () -> Unit,
+    onOpenSettingsForSideButton: () -> Unit,
     onOpenSideButtonPicker: () -> Unit,
     onSelectCaller: (Scenario) -> Unit,
     onDeleteCaller: (Scenario) -> Unit,
@@ -383,6 +416,46 @@ private fun CommandContent(
                     letterSpacing = 1.sp,
                 )
             }
+        }
+
+        // 사이드 버튼 대기 중 배너
+        AnimatedVisibility(
+            visible = sideButtonStandby && countdown == 0,
+            enter   = fadeIn() + slideInVertically(),
+            exit    = fadeOut() + slideOutVertically(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(EjectCoral.copy(alpha = 0.1f))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    strings.sideButtonStandby,
+                    fontSize = 14.sp, color = EjectCoral, fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                )
+            }
+        }
+
+        // 사이드 버튼 미설정 경고 다이얼로그
+        if (sideButtonNotice) {
+            AlertDialog(
+                onDismissRequest = onDismissNotice,
+                title = { Text(strings.settingSideButton, fontWeight = FontWeight.Bold) },
+                text  = { Text(strings.sideButtonNotConfigured) },
+                confirmButton = {
+                    TextButton(onClick = onOpenSettingsForSideButton) {
+                        Text(strings.settingsTitle, color = EjectCoral, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismissNotice) { Text(strings.dialogCancel) }
+                },
+                containerColor = EjectSurface,
+            )
         }
 
         // EJECT 버튼 (흰 채움 + 크림슨 테두리 + 글로우)
@@ -695,7 +768,7 @@ private fun SystemsContent(
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(
-                    text       = "SENTRY EXIT",
+                    text       = "EJECT BUTTON",
                     fontSize   = 14.sp,
                     color      = EjectOnSurface,
                     fontWeight = FontWeight.ExtraBold,
@@ -883,34 +956,46 @@ private fun TriggerRow(
     onSelect: (TriggerMode) -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    // 6개 프리셋 — 즉시/10초/30초/1분/흔들기/사이드 버튼
+    // (커스텀 지연은 long-press 나 별도 진입점으로 — 6개 슬롯 한도 준수)
     val items = listOf(
-        TriggerMode.IMMEDIATE to strings.triggerNow,
-        TriggerMode.AFTER_10S to strings.trigger10s,
-        TriggerMode.AFTER_30S to strings.trigger30s,
-        TriggerMode.CUSTOM    to if (selected == TriggerMode.CUSTOM) "${customDelaySec}s" else strings.triggerCustom,
+        TriggerMode.IMMEDIATE   to strings.triggerNow,
+        TriggerMode.AFTER_10S   to strings.trigger10s,
+        TriggerMode.AFTER_30S   to strings.trigger30s,
+        TriggerMode.AFTER_1MIN  to strings.trigger1min,
+        TriggerMode.SHAKE       to strings.triggerShake,
+        TriggerMode.SIDE_BUTTON to strings.triggerSideButton,
     )
 
-    Row(
+    // 3열 × 2행 그리드
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items.forEach { (mode, label) ->
-            val isSel = mode == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (isSel) EjectCoral else EjectSurfaceMid)
-                    .clickable { onSelect(mode) }
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center,
+        items.chunked(3).forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text       = label,
-                    fontSize   = 13.sp,
-                    color      = if (isSel) Color.White else EjectOnSurface,
-                    fontWeight = FontWeight.Bold,
-                )
+                rowItems.forEach { (mode, label) ->
+                    val isSel = mode == selected
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isSel) EjectCoral else EjectSurfaceMid)
+                            .clickable { onSelect(mode) }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text       = label,
+                            fontSize   = 12.sp,
+                            color      = if (isSel) Color.White else EjectOnSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
         }
     }
