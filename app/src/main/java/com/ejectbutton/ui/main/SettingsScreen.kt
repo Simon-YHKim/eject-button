@@ -643,7 +643,7 @@ private fun SovereignLinkCard(
 
 // ── Side button command picker ──────────────────────────────────────────────
 
-private fun SideButtonCommand.label(strings: com.ejectbutton.data.AppStrings): String =
+internal fun SideButtonCommand.label(strings: com.ejectbutton.data.AppStrings): String =
     when (this) {
         SideButtonCommand.DISABLED        -> strings.cmdDisabled
         SideButtonCommand.VOL_UP_DOUBLE   -> strings.cmdVolUp2
@@ -653,7 +653,7 @@ private fun SideButtonCommand.label(strings: com.ejectbutton.data.AppStrings): S
     }
 
 @Composable
-private fun SideButtonCommandPickerDialog(
+internal fun SideButtonCommandPickerDialog(
     current: SideButtonCommand,
     onSelect: (SideButtonCommand) -> Unit,
     onDismiss: () -> Unit,

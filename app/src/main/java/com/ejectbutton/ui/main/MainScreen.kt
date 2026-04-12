@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,8 +46,10 @@ import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.Scenario
 import com.ejectbutton.data.TriggerMode
+import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
+import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.ui.theme.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
@@ -115,10 +119,11 @@ fun MainScreen(
         EjectPrefs.saveCustomDelaySec(ctx, customDelaySec)
     }
 
-    // 사이드 버튼 트리거 활성 상태 — StatusHUD 에 ARMED 인디케이터 표시용
-    var sideButtonArmed by remember {
-        mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx).isEnabled)
+    // 사이드 버튼 트리거 명령 — 메인 화면 카드에서도 변경 가능
+    var sideButtonCommand by remember {
+        mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
     }
+    var showSideButtonPicker by remember { mutableStateOf(false) }
     var showCustomDialog by remember { mutableStateOf(false) }
     var showAddCaller    by remember { mutableStateOf(false) }
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
@@ -135,6 +140,19 @@ fun MainScreen(
             if (countdown == 0) break
             delay(300L)
         }
+    }
+
+    if (showSideButtonPicker) {
+        SideButtonCommandPickerDialog(
+            current   = sideButtonCommand,
+            onSelect  = { cmd ->
+                sideButtonCommand = cmd
+                EjectPrefs.saveSideButtonCommand(ctx, cmd)
+                ButtonWatchService.reconcile(ctx)
+                showSideButtonPicker = false
+            },
+            onDismiss = { showSideButtonPicker = false },
+        )
     }
 
     if (showCustomDialog) {
@@ -200,7 +218,7 @@ fun MainScreen(
             onDismiss         = {
                 showSettings = false
                 // 설정에서 사이드 버튼 트리거를 켜고/끈 결과 반영
-                sideButtonArmed = EjectPrefs.loadSideButtonCommand(ctx).isEnabled
+                sideButtonCommand = EjectPrefs.loadSideButtonCommand(ctx)
             },
         )
         return
@@ -227,7 +245,8 @@ fun MainScreen(
                     allCallers       = localizedDefaults + customCallers,
                     customCallerIds  = customCallers.map { it.id }.toSet(),
                     countdown        = countdown,
-                    sideButtonArmed  = sideButtonArmed,
+                    sideButtonCommand = sideButtonCommand,
+                    onOpenSideButtonPicker = { showSideButtonPicker = true },
                     onSelectCaller   = { selectedScenario = it },
                     onDeleteCaller   = { toDelete ->
                         val updated = customCallers.filter { it.id != toDelete.id }
@@ -270,7 +289,10 @@ fun MainScreen(
                         onEject(selectedScenario, delayMs)
                     },
                 )
-                AppScreen.HISTORY -> HistoryContent(history = history)
+                AppScreen.HISTORY -> HistoryContent(
+                    history = history,
+                    onSettingsTap = { showSettings = true },
+                )
                 AppScreen.SYSTEMS -> SystemsContent(
                     onClearHistory = {
                         EjectPrefs.clearHistory(ctx)
@@ -318,7 +340,8 @@ private fun CommandContent(
     allCallers: List<Scenario>,
     customCallerIds: Set<String>,
     countdown: Int,
-    sideButtonArmed: Boolean,
+    sideButtonCommand: SideButtonCommand,
+    onOpenSideButtonPicker: () -> Unit,
     onSelectCaller: (Scenario) -> Unit,
     onDeleteCaller: (Scenario) -> Unit,
     onSelectTrigger: (TriggerMode) -> Unit,
@@ -331,99 +354,14 @@ private fun CommandContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(20.dp))
-
-        // 헤더 (좌: SENTRY EXIT, 우: PRO 배지 + 설정 아이콘)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text          = "SENTRY EXIT",
-                fontSize      = 22.sp,
-                fontWeight    = FontWeight.ExtraBold,
-                color         = EjectOnSurface,
-                letterSpacing = 1.5.sp,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(EjectPrimaryContainer)
-                        .padding(horizontal = 9.dp, vertical = 4.dp),
-                ) {
-                    Text(
-                        text          = "PRO",
-                        fontSize      = 10.sp,
-                        color         = EjectOnPrimaryContainer,
-                        fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 1.5.sp,
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = strings.settingsTitle,
-                        tint               = EjectOnSurface,
-                        modifier           = Modifier.size(22.dp),
-                    )
-                }
-            }
-        }
-
         Spacer(Modifier.height(14.dp))
+        StitchTopBar(onSettingsTap = onSettingsTap)
 
-        // ── Status HUD: ● SYSTEM ACTIVE        ENCRYPTED LINE ──
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(EjectSurfaceLow)
-                .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(50))
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .background(Color(0xFF22C55E), CircleShape)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "SYSTEM ACTIVE",
-                    fontSize      = 10.sp,
-                    color         = EjectOnSurface,
-                    fontWeight    = FontWeight.ExtraBold,
-                    letterSpacing = 1.5.sp,
-                )
-            }
-            if (sideButtonArmed) {
-                Text(
-                    strings.settingSideButtonArmed,
-                    fontSize      = 10.sp,
-                    color         = EjectCoral,
-                    fontWeight    = FontWeight.ExtraBold,
-                    letterSpacing = 1.5.sp,
-                )
-            } else {
-                Text(
-                    "ENCRYPTED LINE",
-                    fontSize      = 10.sp,
-                    color         = EjectSecondary,
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(24.dp))
 
         // 카운트다운 배너
         AnimatedVisibility(
@@ -447,23 +385,20 @@ private fun CommandContent(
             }
         }
 
-        Spacer(Modifier.weight(1f))
-
-        // EJECT 버튼 (Sovereign: 256dp 진홍 채움 + bezel)
+        // EJECT 버튼 (흰 채움 + 크림슨 테두리 + 글로우)
         EjectButton(onClick = onEject)
         Spacer(Modifier.height(14.dp))
         Text(
-            text          = strings.noEscapeLabel.uppercase(),
-            fontSize      = 11.sp,
+            text          = strings.noEscapeLabel,
+            fontSize      = 13.sp,
             color         = EjectSecondary,
-            fontWeight    = FontWeight.Bold,
-            letterSpacing = 2.sp,
+            fontWeight    = FontWeight.Medium,
         )
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(24.dp))
 
         // 발신자 섹션
-        SectionHeader(strings.callerPresets, strings.sectionCaller)
+        SectionHeader(strings.sectionCaller)
         Spacer(Modifier.height(12.dp))
         CallerChips(
             callers   = allCallers,
@@ -476,27 +411,119 @@ private fun CommandContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // 트리거 섹션
-        SectionHeader(strings.triggerTimer, strings.sectionDelay)
+        // 트리거 섹션 (즉시/10초/30초/커스텀)
+        SectionHeader(strings.sectionDelay)
         Spacer(Modifier.height(12.dp))
-        TriggerGrid(
+        TriggerRow(
             selected       = selectedTrigger,
             customDelaySec = customDelaySec,
             onSelect       = onSelectTrigger,
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        // 사이드 버튼 트리거 섹션
+        SectionHeader(strings.settingSideButton)
+        Spacer(Modifier.height(12.dp))
+        SideButtonModeCard(
+            current = sideButtonCommand,
+            onClick = onOpenSideButtonPicker,
         )
 
         Spacer(Modifier.height(28.dp))
     }
 }
 
+@Composable
+private fun StitchTopBar(onSettingsTap: () -> Unit) {
+    val strings = LocalAppStrings.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text          = "⏏ EJECT BUTTON",
+                fontSize      = 20.sp,
+                fontWeight    = FontWeight.ExtraBold,
+                color         = EjectCoral,
+                letterSpacing = 0.5.sp,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text     = strings.catchphrase,
+                fontSize = 12.sp,
+                color    = EjectSecondary,
+            )
+        }
+        IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Default.Settings,
+                contentDescription = strings.settingsTitle,
+                tint               = EjectOnSurface,
+                modifier           = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SideButtonModeCard(
+    current: SideButtonCommand,
+    onClick: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(EjectSurface)
+            .border(1.dp, EjectOutlineVar, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(EjectSurfaceMid),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("🎚", fontSize = 18.sp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                current.label(strings),
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color      = if (current.isEnabled) EjectCoral else EjectOnSurface,
+            )
+            Text(
+                strings.settingSideButtonDesc,
+                fontSize = 11.sp,
+                color    = EjectSecondary,
+            )
+        }
+        Text("›", fontSize = 22.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
+    }
+}
+
 // ─── HISTORY 탭 ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun HistoryContent(history: List<String>) {
+private fun HistoryContent(
+    history: List<String>,
+    onSettingsTap: () -> Unit,
+) {
     val strings = LocalAppStrings.current
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
+        StitchTopBar(onSettingsTap = onSettingsTap)
+        Spacer(Modifier.height(24.dp))
         Text(
             text          = strings.historyTitle.uppercase(),
             fontSize      = 22.sp,
@@ -612,7 +639,9 @@ private fun SystemsContent(
     val strings = LocalAppStrings.current
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
+        StitchTopBar(onSettingsTap = onSettingsTap)
+        Spacer(Modifier.height(24.dp))
         Text(
             text          = strings.systemsTitle.uppercase(),
             fontSize      = 22.sp,
@@ -722,47 +751,57 @@ private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
 private fun EjectButton(onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 1.04f,
+        initialValue = 1f, targetValue = 1.03f,
         animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "s",
     )
 
-    // Outer halo (subtle crimson glow)
+    // 흰 원 + 코랄 테두리 + 은은한 글로우 halo
     Box(
         modifier = Modifier
-            .size(280.dp)
+            .size(260.dp)
             .scale(scale),
         contentAlignment = Alignment.Center,
     ) {
+        // Outer halo
         Box(
             modifier = Modifier
-                .size(272.dp)
+                .size(252.dp)
                 .clip(CircleShape)
-                .background(EjectCoral.copy(alpha = 0.08f))
+                .background(EjectCoral.copy(alpha = 0.10f))
         )
-        // Bezel ring
+        // Main circle
         Box(
             modifier = Modifier
-                .size(256.dp)
+                .size(232.dp)
                 .shadow(
-                    elevation    = 24.dp,
+                    elevation    = 18.dp,
                     shape        = CircleShape,
-                    ambientColor = EjectCoral.copy(alpha = 0.45f),
-                    spotColor    = EjectCoral.copy(alpha = 0.45f),
+                    ambientColor = EjectCoral.copy(alpha = 0.35f),
+                    spotColor    = EjectCoral.copy(alpha = 0.35f),
                 )
                 .clip(CircleShape)
-                .background(EjectCoral)
-                .border(8.dp, Color(0x1A000000), CircleShape)
+                .background(EjectSurface)
+                .border(4.dp, EjectCoral, CircleShape)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                "EJECT",
-                fontSize      = 38.sp,
-                color         = Color.White,
-                fontWeight    = FontWeight.ExtraBold,
-                letterSpacing = 4.sp,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "⏏",
+                    fontSize   = 72.sp,
+                    color      = EjectOnSurface,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "EJECT",
+                    fontSize      = 13.sp,
+                    color         = EjectCoral,
+                    fontWeight    = FontWeight.ExtraBold,
+                    letterSpacing = 4.sp,
+                )
+            }
         }
     }
 }
@@ -838,77 +877,57 @@ private fun CallerChips(
 }
 
 @Composable
-private fun TriggerGrid(
+private fun TriggerRow(
     selected: TriggerMode,
     customDelaySec: Int,
     onSelect: (TriggerMode) -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    // 각 트리거: (상단 캡션, 하단 큰 값)
     val items = listOf(
-        Triple(TriggerMode.IMMEDIATE, "INSTANT",  strings.triggerNow),
-        Triple(TriggerMode.AFTER_10S, "DELAY",    strings.trigger10s),
-        Triple(TriggerMode.AFTER_30S, "DELAY",    strings.trigger30s),
-        Triple(TriggerMode.AFTER_1MIN,"DELAY",    strings.trigger1min),
-        Triple(TriggerMode.SHAKE,     "SENSOR",   "📳 ${strings.triggerShake}"),
-        Triple(TriggerMode.CUSTOM,    "CUSTOM",   "${customDelaySec}s"),
+        TriggerMode.IMMEDIATE to strings.triggerNow,
+        TriggerMode.AFTER_10S to strings.trigger10s,
+        TriggerMode.AFTER_30S to strings.trigger30s,
+        TriggerMode.CUSTOM    to if (selected == TriggerMode.CUSTOM) "${customDelaySec}s" else strings.triggerCustom,
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        items.chunked(2).forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { (mode, caption, value) ->
-                    val isSel = mode == selected
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(18.dp))
-                            // 선택: 검정 / 비선택: 흰 카드 + 1dp 테두리
-                            .background(if (isSel) EjectOnSurface else EjectSurface)
-                            .then(
-                                if (!isSel)
-                                    Modifier.border(1.dp, EjectOutlineVar, RoundedCornerShape(18.dp))
-                                else Modifier
-                            )
-                            .clickable { onSelect(mode) }
-                            .padding(horizontal = 16.dp, vertical = 18.dp),
-                        horizontalAlignment = Alignment.Start,
-                    ) {
-                        Text(
-                            text          = caption,
-                            fontSize      = 10.sp,
-                            color         = if (isSel) Color.White.copy(alpha = 0.55f) else EjectSecondary,
-                            fontWeight    = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text       = value,
-                            fontSize   = 18.sp,
-                            color      = if (isSel) Color.White else EjectOnSurface,
-                            fontWeight = FontWeight.ExtraBold,
-                        )
-                    }
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items.forEach { (mode, label) ->
+            val isSel = mode == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isSel) EjectCoral else EjectSurfaceMid)
+                    .clickable { onSelect(mode) }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text       = label,
+                    fontSize   = 13.sp,
+                    color      = if (isSel) Color.White else EjectOnSurface,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SectionHeader(korean: String, english: String) {
+private fun SectionHeader(title: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text          = korean,
-            fontSize      = 11.sp,
-            fontWeight    = FontWeight.ExtraBold,
-            color         = EjectSecondary,
-            letterSpacing = 2.sp,
+            text       = title,
+            fontSize   = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color      = EjectSecondary,
         )
     }
 }
@@ -992,7 +1011,6 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
     val strings = LocalAppStrings.current
     val ctx = LocalContext.current
     var callerName    by remember { mutableStateOf("") }
-    var showSearch    by remember { mutableStateOf(false) }
     var searchQuery   by remember { mutableStateOf("") }
     var contacts      by remember { mutableStateOf(listOf<String>()) }
     var searchGranted by remember {
@@ -1000,11 +1018,17 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
     }
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        searchGranted = granted; if (granted) showSearch = true
+        searchGranted = granted
     }
 
-    LaunchedEffect(showSearch, searchQuery) {
-        if (!showSearch || !searchGranted) return@LaunchedEffect
+    // 다이얼로그 열릴 때 권한이 없으면 즉시 요청
+    LaunchedEffect(Unit) {
+        if (!searchGranted) permLauncher.launch(Manifest.permission.READ_CONTACTS)
+    }
+
+    // 권한이 허용되면 즉시 연락처 로드 & 쿼리 변경에 반응
+    LaunchedEffect(searchGranted, searchQuery) {
+        if (!searchGranted) return@LaunchedEffect
         contacts = withContext(Dispatchers.IO) {
             val result = mutableListOf<String>()
             val cursor = ctx.contentResolver.query(
@@ -1017,7 +1041,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
             cursor?.use {
                 val idx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val seen = mutableSetOf<String>()
-                while (it.moveToNext() && result.size < 30) {
+                while (it.moveToNext() && result.size < 50) {
                     val name = it.getString(idx) ?: continue
                     if (seen.add(name)) result.add(name)
                 }
@@ -1028,24 +1052,19 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(strings.dialogAddCaller) },
+        title = { Text(strings.dialogAddCaller, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 발신자 이름 — 돋보기 없음
                 OutlinedTextField(
                     value = callerName,
                     onValueChange = { callerName = it },
                     label = { Text(strings.dialogCallerName) },
                     singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            if (searchGranted) showSearch = !showSearch
-                            else permLauncher.launch(Manifest.permission.READ_CONTACTS)
-                        }) {
-                            Icon(Icons.Default.Search, strings.dialogSearch)
-                        }
-                    }
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                if (showSearch) {
+                if (searchGranted) {
+                    // 연락처 검색
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -1053,14 +1072,15 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    LazyColumn(modifier = Modifier.heightIn(max = 180.dp)) {
+                    // 연락처 리스트 — 처음부터 표시
+                    LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
                         items(contacts) { name ->
                             Text(
                                 text = name,
                                 fontSize = 14.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { callerName = name; showSearch = false }
+                                    .clickable { callerName = name }
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
                                 color = EjectOnSurface,
                             )
@@ -1084,7 +1104,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                         urgency      = Urgency.NORMAL,
                     ))
                 }
-            }) { Text(strings.dialogAdd) }
+            }) { Text(strings.dialogAdd, color = EjectCoral, fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(strings.dialogCancel) } },
         containerColor = EjectSurface,
