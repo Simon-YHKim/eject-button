@@ -11,6 +11,10 @@ object EjectPrefs {
     private const val KEY_VIBRATION   = "setting_vibration"
     private const val KEY_HAPTIC      = "setting_haptic"
     private const val KEY_FLASH       = "setting_flash"
+    private const val KEY_SIDE_BUTTON = "setting_side_button_command"
+    private const val KEY_SELECTED_SCENARIO = "selected_scenario_id"
+    private const val KEY_SELECTED_TRIGGER  = "selected_trigger_mode"
+    private const val KEY_CUSTOM_DELAY_SEC  = "custom_delay_sec"
     private const val KEY_EJECT_COUNT = "eject_count"
     private const val KEY_PREMIUM     = "is_premium"
     private const val F = "\u001F"
@@ -121,6 +125,48 @@ object EjectPrefs {
     fun loadFlash(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_FLASH, false)
+
+    // ── Side button trigger ──────────────────────────────────────────────────
+
+    fun saveSideButtonCommand(ctx: Context, command: SideButtonCommand) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_SIDE_BUTTON, command.name).apply()
+    }
+
+    fun loadSideButtonCommand(ctx: Context): SideButtonCommand =
+        SideButtonCommand.fromName(
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString(KEY_SIDE_BUTTON, SideButtonCommand.DISABLED.name)
+        )
+
+    // ── Selected scenario / trigger (사이드 버튼 트리거 발동 시 사용) ──────────
+
+    fun saveSelectedScenarioId(ctx: Context, id: String) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_SELECTED_SCENARIO, id).apply()
+    }
+
+    fun loadSelectedScenarioId(ctx: Context): String? =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_SELECTED_SCENARIO, null)
+
+    fun saveSelectedTrigger(ctx: Context, name: String) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_SELECTED_TRIGGER, name).apply()
+    }
+
+    fun loadSelectedTrigger(ctx: Context): String? =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_SELECTED_TRIGGER, null)
+
+    fun saveCustomDelaySec(ctx: Context, sec: Int) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_CUSTOM_DELAY_SEC, sec).apply()
+    }
+
+    fun loadCustomDelaySec(ctx: Context): Int =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getInt(KEY_CUSTOM_DELAY_SEC, 60)
 
     // ── Eject count (인앱 리뷰 트리거용) ─────────────────────────────────────
 
