@@ -21,11 +21,22 @@ object AdManager {
     val nativeAd: StateFlow<NativeAd?> = _nativeAd
 
     fun initialize(context: Context) {
-        if (isInitialized) return
-        MobileAds.initialize(context) {}
-        isInitialized = true
-        loadInterstitial(context)
-        loadNativeAd(context)
+        if (!isInitialized) {
+            MobileAds.initialize(context) {}
+            isInitialized = true
+            loadInterstitial(context)
+            loadNativeAd(context)
+            return
+        }
+        // SDK 는 이미 초기화돼 있지만, 웜 스타트로 Activity 가 재생성돼
+        // 이전 세션의 onDestroy() 에서 네이티브 광고가 파기된 상태일 수 있다.
+        // 이 경우 광고 슬롯이 비어 있다면 다시 로드해서 메인 화면에 노출되도록 한다.
+        if (_nativeAd.value == null) {
+            loadNativeAd(context)
+        }
+        if (interstitialAd == null) {
+            loadInterstitial(context)
+        }
     }
 
     // ── 네이티브 광고 ────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -16,8 +17,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,6 +33,7 @@ import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.SideButtonStep
+import com.ejectbutton.data.ThemeMode
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.ui.theme.*
 import java.util.Locale
@@ -35,6 +42,8 @@ import java.util.Locale
 fun SettingsScreen(
     currentLanguage: AppLanguage,
     isPremium: Boolean,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onLanguageChange: (AppLanguage) -> Unit,
     onPurchasePremium: () -> Unit,
     onRestorePurchase: () -> Unit,
@@ -54,6 +63,18 @@ fun SettingsScreen(
     var showSideButtonPicker by remember { mutableStateOf(false) }
     var showHowToUse by remember { mutableStateOf(false) }
     var showLangPicker by remember { mutableStateOf(false) }
+    var showThemePicker by remember { mutableStateOf(false) }
+
+    if (showThemePicker) {
+        ThemeModePickerDialog(
+            current   = themeMode,
+            onSelect  = { mode ->
+                onThemeModeChange(mode)
+                showThemePicker = false
+            },
+            onDismiss = { showThemePicker = false },
+        )
+    }
 
     if (showSideButtonPicker) {
         SideButtonCommandPickerDialog(
@@ -120,90 +141,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(28.dp))
         }
 
-        // ── Premium Card ────────────────────────────────────────────────────
-        if (!isPremium) {
-            item {
-                val displayPrice = premiumPrice ?: localizedFallbackPrice()
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    EjectPrimaryContainer,
-                                    EjectPrimaryContainer.copy(alpha = 0.92f),
-                                )
-                            )
-                        )
-                        .padding(24.dp),
-                ) {
-                    Column {
-                        // ELITE TIER badge
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(EjectCoral)
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                "ELITE TIER",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White,
-                                letterSpacing = 2.sp,
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        // Headline
-                        Text(
-                            "Eject Premium",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        // Description
-                        Text(
-                            strings.premiumSubtitle,
-                            fontSize = 14.sp,
-                            color = EjectOnPrimaryContainer,
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        // Upgrade button
-                        Button(
-                            onClick = onPurchasePremium,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White,
-                                contentColor = EjectOnSurface,
-                            ),
-                            shape = RoundedCornerShape(50),
-                        ) {
-                            Text(
-                                "Upgrade Now →",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        // Restore purchase
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                strings.premiumRestoreBtn,
-                                fontSize = 12.sp,
-                                color = EjectOnPrimaryContainer,
-                                modifier = Modifier.clickable(onClick = onRestorePurchase),
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-        }
+        // Premium Card 는 SYSTEMS 탭으로 이동됐다.
 
         // ── Language ────────────────────────────────────────────────────────
         item {
@@ -244,6 +182,57 @@ fun SettingsScreen(
                             currentLanguage.nativeName,
                             fontSize = 14.sp,
                             color = EjectSecondary,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("›", fontSize = 20.sp, color = EjectSecondary)
+                    }
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ── Theme mode ──────────────────────────────────────────────────────
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(EjectSurface)
+                    .clickable { showThemePicker = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(EjectSurfaceMid),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("🎨", fontSize = 18.sp)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            strings.settingsTheme,
+                            fontSize = 15.sp,
+                            color = EjectOnSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = when (themeMode) {
+                                ThemeMode.LIGHT  -> strings.themeLight
+                                ThemeMode.DARK   -> strings.themeDark
+                                ThemeMode.SYSTEM -> strings.themeSystem
+                            },
+                            fontSize = 14.sp,
+                            color    = EjectSecondary,
                         )
                         Spacer(Modifier.width(6.dp))
                         Text("›", fontSize = 20.sp, color = EjectSecondary)
@@ -506,6 +495,56 @@ private fun LanguagePickerDialog(
                         Text(lang.nativeName, fontSize = 15.sp,
                             color = if (isSelected) EjectRed else EjectOnSurface,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+                        if (isSelected) {
+                            Icon(Icons.Default.Check, null, tint = EjectCoral, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(strings.dialogCancel) }
+        },
+        containerColor = EjectSurface,
+    )
+}
+
+@Composable
+private fun ThemeModePickerDialog(
+    current: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    val options = listOf(
+        ThemeMode.LIGHT  to strings.themeLight,
+        ThemeMode.DARK   to strings.themeDark,
+        ThemeMode.SYSTEM to strings.themeSystem,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.settingsTheme) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                options.forEach { (mode, label) ->
+                    val isSelected = mode == current
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) EjectCoral.copy(0.08f) else Color.Transparent)
+                            .clickable { onSelect(mode) }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            label,
+                            fontSize   = 15.sp,
+                            color      = if (isSelected) EjectRed else EjectOnSurface,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
                         if (isSelected) {
                             Icon(Icons.Default.Check, null, tint = EjectCoral, modifier = Modifier.size(18.dp))
                         }
@@ -825,7 +864,16 @@ internal fun CustomCommandRecordingDialog(
 
     var sequence by remember { mutableStateOf(initial) }
 
-    // MainActivity.recordingCallback 을 설치/해제
+    // 다이얼로그 Window 안에서 볼륨키를 직접 가로채기 위한 포커스 요청자.
+    // AlertDialog 는 별도 Window 를 사용하므로 MainActivity.onKeyDown 이
+    // 호출되지 않는다. 대신 포커스된 Composable 의 onPreviewKeyEvent 를
+    // 활용하면 다이얼로그 안에서 볼륨키 이벤트를 받을 수 있다.
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+    }
+
+    // 레거시 경로도 함께 설치해두어 다이얼로그 밖 포커스가 튀어도 이벤트가 유실되지 않도록.
     DisposableEffect(Unit) {
         activity?.recordingCallback = { step ->
             if (sequence.size < 5) sequence = sequence + step
@@ -837,7 +885,38 @@ internal fun CustomCommandRecordingDialog(
         onDismissRequest = onDismiss,
         title = { Text(strings.customCommandTitle, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown &&
+                            event.nativeKeyEvent.repeatCount == 0
+                        ) {
+                            when (event.nativeKeyEvent.keyCode) {
+                                android.view.KeyEvent.KEYCODE_VOLUME_UP -> {
+                                    if (sequence.size < 5) {
+                                        sequence = sequence + SideButtonStep.UP
+                                    }
+                                    true
+                                }
+                                android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                                    if (sequence.size < 5) {
+                                        sequence = sequence + SideButtonStep.DOWN
+                                    }
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else {
+                            // KeyUp 도 소비해 시스템 볼륨 UI 가 뜨지 않도록.
+                            val kc = event.nativeKeyEvent.keyCode
+                            kc == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+                                kc == android.view.KeyEvent.KEYCODE_VOLUME_DOWN
+                        }
+                    },
+            ) {
                 Text(strings.customCommandHint, fontSize = 13.sp, color = EjectSecondary)
 
                 // 녹화 상태 카드

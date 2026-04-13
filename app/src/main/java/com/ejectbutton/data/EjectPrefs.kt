@@ -2,8 +2,11 @@ package com.ejectbutton.data
 
 import android.content.Context
 
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
+
 object EjectPrefs {
     private const val PREF = "eject_prefs"
+    private const val KEY_THEME_MODE  = "theme_mode"
     private const val KEY_SCENARIOS   = "custom_scenarios"
     private const val KEY_HISTORY     = "eject_history"
     private const val KEY_LANGUAGE    = "app_language"
@@ -203,4 +206,17 @@ object EjectPrefs {
     fun loadPremium(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_PREMIUM, false)
+
+    // ── Theme mode ───────────────────────────────────────────────────────────
+
+    fun saveThemeMode(ctx: Context, mode: ThemeMode) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_THEME_MODE, mode.name).apply()
+    }
+
+    fun loadThemeMode(ctx: Context): ThemeMode {
+        val raw = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+        return runCatching { ThemeMode.valueOf(raw) }.getOrDefault(ThemeMode.SYSTEM)
+    }
 }

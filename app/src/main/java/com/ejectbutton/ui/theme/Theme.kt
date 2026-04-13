@@ -1,10 +1,13 @@
 package com.ejectbutton.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import com.ejectbutton.data.ThemeMode
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -123,10 +126,31 @@ private val TacticalShapes = Shapes(
     extraLarge = Square,
 )
 
+// Light mode 용 ColorScheme — Tactical Cockpit 은 기본 다크 디자인이므로
+// 라이트 모드는 Material3 기본 lightColorScheme 기반으로 최소한의 대비만 제공.
+// (앱 내부 팔레트는 여전히 하드코딩된 다크 토큰을 사용 — 이는 의도된 디자인이며
+// 라이트 모드는 Material3 컴포넌트 기본값에만 영향을 준다.)
+private val TacticalLightColors = lightColorScheme(
+    primary        = TacticalRedInv,
+    onPrimary      = Color.White,
+    background     = Color(0xFFF7F7F8),
+    onBackground   = Color(0xFF1A1C1E),
+    surface        = Color(0xFFFFFFFF),
+    onSurface      = Color(0xFF1A1C1E),
+)
+
 @Composable
-fun EjectButtonTheme(content: @Composable () -> Unit) {
+fun EjectButtonTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit,
+) {
+    val useDark = when (themeMode) {
+        ThemeMode.LIGHT  -> false
+        ThemeMode.DARK   -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
     MaterialTheme(
-        colorScheme = TacticalDarkColors,
+        colorScheme = if (useDark) TacticalDarkColors else TacticalLightColors,
         typography  = TacticalTypography,
         shapes      = TacticalShapes,
         content     = content,

@@ -142,7 +142,11 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            EjectButtonTheme {
+            // 테마 모드 상태 — Settings 에서 변경 가능
+            var themeMode by remember {
+                mutableStateOf(EjectPrefs.loadThemeMode(this@MainActivity))
+            }
+            EjectButtonTheme(themeMode = themeMode) {
                 // 앱 언어 상태 — 최상위에서 관리하여 전체 Composition 재구성
                 var currentLanguage by remember {
                     mutableStateOf(EjectPrefs.loadLanguage(this@MainActivity))
@@ -167,6 +171,11 @@ class MainActivity : ComponentActivity() {
                             MainScreen(
                                 currentLanguage  = currentLanguage,
                                 isPremium        = isPremium,
+                                themeMode        = themeMode,
+                                onThemeModeChange = { mode ->
+                                    themeMode = mode
+                                    EjectPrefs.saveThemeMode(this@MainActivity, mode)
+                                },
                                 onLanguageChange = { lang ->
                                     currentLanguage = lang
                                 },

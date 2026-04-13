@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Eject Button App Icon — Pilot Ejection Seat (side profile)
-    Black silhouette: seat + pilot facing right, coral rocket flame below.
-
-    Group transform: scale 0.55 around content center (54,60),
-    then translate Y -6 to shift center to viewport center (54,54).
-    Result: full icon fits comfortably within the 72dp adaptive safe zone.
+    Eject Button 런처 아이콘 전경 — 흰색 ⏏ 글리프
+    빨간 원형 배경 위에 놓이는 화이트 이젝트 기호 (상단 삼각형 + 하단 바).
+    108×108 뷰포트 중 안전 영역 (중앙 72dp) 안에 수렴하도록 중앙 배치.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -13,90 +10,14 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <group
-        android:pivotX="54"
-        android:pivotY="60"
-        android:scaleX="0.55"
-        android:scaleY="0.55"
-        android:translateX="0"
-        android:translateY="-6">
+    <!-- 상단 삼각형 (꼭짓점 위쪽) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,34 L78,62 L30,62 Z" />
 
-        <!-- ── CORAL: Rocket exhaust flame ──────────────────────── -->
-
-        <!-- Left fin -->
-        <path
-            android:fillColor="#FF766E"
-            android:pathData="M44,74 L26,82 L34,88 L44,80 Z" />
-
-        <!-- Right fin -->
-        <path
-            android:fillColor="#FF766E"
-            android:pathData="M64,74 L82,82 L74,88 L64,80 Z" />
-
-        <!-- Center flame (large downward triangle) -->
-        <path
-            android:fillColor="#FF766E"
-            android:pathData="M44,74 L64,74 L57,106 L51,106 Z" />
-
-        <!-- ── BLACK: Seat rail / rocket tube ────────────────────── -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M44,64 L64,64 L64,74 L44,74 Z" />
-
-        <!-- ── BLACK: Ejection seat structure ───────────────────── -->
-
-        <!-- Seat back (large vertical slab) -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M28,24 L28,64 L50,64 L50,24 Z" />
-
-        <!-- Seat bottom platform -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M28,56 L72,56 L72,64 L28,64 Z" />
-
-        <!-- Seat handle grip (horizontal T-bar) -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M30,14 L50,14 L50,19 L30,19 Z" />
-
-        <!-- Seat handle bar (vertical rod) -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M38,14 L42,14 L42,30 L38,30 Z" />
-
-        <!-- ── BLACK: Pilot silhouette ───────────────────────────── -->
-
-        <!-- Upper body / torso -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M50,30 L50,56 L70,56 L70,38 L64,30 Z" />
-
-        <!-- Left arm (gripping seat handle) -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M50,36 L44,40 L44,46 L50,44 Z" />
-
-        <!-- Lower legs (bent at seat edge) -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M60,56 L60,66 L74,66 L74,60 L66,56 Z" />
-
-        <!-- Boot / foot -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M62,64 L76,64 L78,70 L62,70 Z" />
-
-        <!-- Helmet (circle) -->
-        <path
-            android:fillColor="#000000"
-            android:pathData="M61,14 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
-
-        <!-- Visor highlight (white) -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M57,16 Q61,12 67,15 L66,18 Q61,15 58,19 Z" />
-
-    </group>
+    <!-- 하단 가로 바 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,68 L78,68 L78,76 L30,76 Z" />
 
 </vector>

@@ -3,6 +3,7 @@ package com.ejectbutton.ui.main
 import android.Manifest
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -64,10 +65,44 @@ import java.util.*
 
 private enum class AppScreen { COMMAND, HISTORY, SYSTEMS }
 
+// 트리거 UI를 시간 × 모드 두 축으로 분리.
+// 시간: IMMEDIATE / AFTER_10S / CUSTOM
+// 모드: BUTTON(기본 EJECT 버튼 탭) / SHAKE / SIDE_BUTTON
+private enum class TimeChoice { IMMEDIATE, AFTER_10S, CUSTOM }
+private enum class ModeChoice { BUTTON, SHAKE, SIDE_BUTTON }
+
+private fun TriggerMode.toTimeChoice(): TimeChoice = when (this) {
+    TriggerMode.IMMEDIATE   -> TimeChoice.IMMEDIATE
+    TriggerMode.AFTER_10S   -> TimeChoice.AFTER_10S
+    TriggerMode.AFTER_30S   -> TimeChoice.AFTER_10S   // 레거시 값은 가장 가까운 새 옵션으로 폴백
+    TriggerMode.AFTER_1MIN  -> TimeChoice.CUSTOM
+    TriggerMode.CUSTOM      -> TimeChoice.CUSTOM
+    TriggerMode.SHAKE       -> TimeChoice.IMMEDIATE
+    TriggerMode.SIDE_BUTTON -> TimeChoice.IMMEDIATE
+}
+
+private fun TriggerMode.toModeChoice(): ModeChoice = when (this) {
+    TriggerMode.SHAKE       -> ModeChoice.SHAKE
+    TriggerMode.SIDE_BUTTON -> ModeChoice.SIDE_BUTTON
+    else                    -> ModeChoice.BUTTON
+}
+
+private fun composeTrigger(time: TimeChoice, mode: ModeChoice): TriggerMode = when (mode) {
+    ModeChoice.SHAKE       -> TriggerMode.SHAKE
+    ModeChoice.SIDE_BUTTON -> TriggerMode.SIDE_BUTTON
+    ModeChoice.BUTTON      -> when (time) {
+        TimeChoice.IMMEDIATE -> TriggerMode.IMMEDIATE
+        TimeChoice.AFTER_10S -> TriggerMode.AFTER_10S
+        TimeChoice.CUSTOM    -> TriggerMode.CUSTOM
+    }
+}
+
 @Composable
 fun MainScreen(
     currentLanguage: AppLanguage,
     isPremium: Boolean,
+    themeMode: com.ejectbutton.data.ThemeMode,
+    onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
     onLanguageChange: (AppLanguage) -> Unit,
     onPurchasePremium: () -> Unit,
     onRestorePurchase: () -> Unit,
@@ -106,7 +141,9 @@ fun MainScreen(
         }.getOrDefault(TriggerMode.IMMEDIATE)
     }
     var selectedScenario by remember(strings) { mutableStateOf(initialScenario) }
-    var selectedTrigger  by remember { mutableStateOf(initialTrigger) }
+    var selectedTime     by remember { mutableStateOf(initialTrigger.toTimeChoice()) }
+    var selectedMode     by remember { mutableStateOf(initialTrigger.toModeChoice()) }
+    val selectedTrigger  = composeTrigger(selectedTime, selectedMode)
     var customDelaySec   by remember { mutableIntStateOf(EjectPrefs.loadCustomDelaySec(ctx)) }
 
     LaunchedEffect(selectedScenario.id) {
@@ -131,6 +168,10 @@ fun MainScreen(
     var sideButtonNotice  by remember { mutableStateOf(false) }
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
     var history          by remember { mutableStateOf(EjectPrefs.loadHistory(ctx)) }
+    // 탈출 기록 초기화 후 확인 팝업
+    var showHistoryClearedDialog by remember { mutableStateOf(false) }
+    // 뒤로가기(Command 탭) 종료 확인 팝업
+    var showExitConfirmDialog    by remember { mutableStateOf(false) }
 
     // 딜레이 카운트다운
     var countdownEnd by remember { mutableLongStateOf(0L) }
@@ -199,6 +240,69 @@ fun MainScreen(
         }
     }
 
+    // 기록 초기화 확인 팝업
+    if (showHistoryClearedDialog) {
+        AlertDialog(
+            onDismissRequest = { showHistoryClearedDialog = false },
+            title            = { Text(strings.settingsClearHistory, fontWeight = FontWeight.Bold) },
+            text             = { Text(strings.historyClearedMsg) },
+            confirmButton    = {
+                TextButton(onClick = { showHistoryClearedDialog = false }) {
+                    Text(
+                        strings.dialogConfirm,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
+    // 종료 확인 팝업 (Command 탭에서 뒤로가기 시)
+    if (showExitConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmDialog = false },
+            title            = { Text(strings.exitConfirmTitle, fontWeight = FontWeight.Bold) },
+            text             = { Text(strings.exitConfirmMsg) },
+            confirmButton    = {
+                TextButton(onClick = {
+                    showExitConfirmDialog = false
+                    (ctx as? android.app.Activity)?.finish()
+                }) {
+                    Text(
+                        strings.dialogYes,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmDialog = false }) {
+                    Text(strings.dialogNo)
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
+    // 뒤로가기 처리 (최우선)
+    // 우선순위: 종료 다이얼로그 열림 → 닫기 / 설정 화면 열림 → 닫기 /
+    //          Command 이외 탭 → Command 로 이동 / Command 탭 → 종료 확인 팝업
+    BackHandler(enabled = true) {
+        when {
+            showExitConfirmDialog    -> showExitConfirmDialog = false
+            showHistoryClearedDialog -> showHistoryClearedDialog = false
+            showPremiumSheet         -> showPremiumSheet = false
+            showAddCaller            -> showAddCaller = false
+            showCustomDialog         -> showCustomDialog = false
+            showSideButtonPicker     -> showSideButtonPicker = false
+            showSettings             -> showSettings = false
+            currentScreen != AppScreen.COMMAND -> currentScreen = AppScreen.COMMAND
+            else                     -> showExitConfirmDialog = true
+        }
+    }
+
     // 프리미엄 업그레이드 다이얼로그
     if (showPremiumSheet) {
         PremiumUpgradeDialog(
@@ -214,6 +318,8 @@ fun MainScreen(
         SettingsScreen(
             currentLanguage   = currentLanguage,
             isPremium         = isPremium,
+            themeMode         = themeMode,
+            onThemeModeChange = onThemeModeChange,
             onLanguageChange  = onLanguageChange,
             onPurchasePremium = onPurchasePremium,
             onRestorePurchase = onRestorePurchase,
@@ -234,16 +340,17 @@ fun MainScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩)
+        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩 — 광고가 사이드 버튼 트리거를 가리지 않도록 여유 확보)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 120.dp),
+                .padding(bottom = 220.dp),
         ) {
             when (currentScreen) {
                 AppScreen.COMMAND -> CommandContent(
                     selectedScenario = selectedScenario,
-                    selectedTrigger  = selectedTrigger,
+                    selectedTime     = selectedTime,
+                    selectedMode     = selectedMode,
                     customDelaySec   = customDelaySec,
                     allCallers       = localizedDefaults + customCallers,
                     customCallerIds  = customCallers.map { it.id }.toSet(),
@@ -264,9 +371,12 @@ fun MainScreen(
                         EjectPrefs.saveScenarios(ctx, updated)
                         if (selectedScenario.id == toDelete.id) selectedScenario = localizedDefaults[0]
                     },
-                    onSelectTrigger  = { trigger ->
-                        selectedTrigger = trigger
-                        if (trigger == TriggerMode.CUSTOM) showCustomDialog = true
+                    onSelectTime     = { time ->
+                        selectedTime = time
+                        if (time == TimeChoice.CUSTOM) showCustomDialog = true
+                    },
+                    onSelectMode     = { mode ->
+                        selectedMode = mode
                     },
                     onAddCaller      = { showAddCaller = true },
                     onSettingsTap    = { showSettings = true },
@@ -323,11 +433,15 @@ fun MainScreen(
                     onSettingsTap = { showSettings = true },
                 )
                 AppScreen.SYSTEMS -> SystemsContent(
-                    onClearHistory = {
+                    isPremium         = isPremium,
+                    premiumPrice      = premiumPrice,
+                    onUpgradePremium  = { showPremiumSheet = true },
+                    onClearHistory    = {
                         EjectPrefs.clearHistory(ctx)
                         history = emptyList()
+                        showHistoryClearedDialog = true
                     },
-                    onSettingsTap = { showSettings = true },
+                    onSettingsTap     = { showSettings = true },
                 )
             }
         }
@@ -364,7 +478,8 @@ fun MainScreen(
 @Composable
 private fun CommandContent(
     selectedScenario: Scenario,
-    selectedTrigger: TriggerMode,
+    selectedTime: TimeChoice,
+    selectedMode: ModeChoice,
     customDelaySec: Int,
     allCallers: List<Scenario>,
     customCallerIds: Set<String>,
@@ -377,7 +492,8 @@ private fun CommandContent(
     onOpenSideButtonPicker: () -> Unit,
     onSelectCaller: (Scenario) -> Unit,
     onDeleteCaller: (Scenario) -> Unit,
-    onSelectTrigger: (TriggerMode) -> Unit,
+    onSelectTime: (TimeChoice) -> Unit,
+    onSelectMode: (ModeChoice) -> Unit,
     onAddCaller: () -> Unit,
     onSettingsTap: () -> Unit,
     onEject: () -> Unit,
@@ -484,24 +600,33 @@ private fun CommandContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // 트리거 섹션 (즉시/10초/30초/커스텀)
+        // 트리거 시간 행 (즉시/10초/커스텀)
         SectionHeader(strings.sectionDelay)
         Spacer(Modifier.height(12.dp))
-        TriggerRow(
-            selected       = selectedTrigger,
+        TriggerTimeRow(
+            selected       = selectedTime,
             customDelaySec = customDelaySec,
-            onSelect       = onSelectTrigger,
+            onSelect       = onSelectTime,
         )
 
         Spacer(Modifier.height(24.dp))
 
-        // 사이드 버튼 트리거 섹션
-        SectionHeader(strings.settingSideButton)
+        // 트리거 모드 행 (버튼/흔들기/사이드)
+        SectionHeader(strings.sectionTriggerMode)
         Spacer(Modifier.height(12.dp))
-        SideButtonModeCard(
-            current = sideButtonCommand,
-            onClick = onOpenSideButtonPicker,
+        TriggerModeRow(
+            selected = selectedMode,
+            onSelect = onSelectMode,
         )
+
+        // 사이드 모드 선택 시에만 사이드 버튼 설정 카드 노출
+        if (selectedMode == ModeChoice.SIDE_BUTTON) {
+            Spacer(Modifier.height(16.dp))
+            SideButtonModeCard(
+                current = sideButtonCommand,
+                onClick = onOpenSideButtonPicker,
+            )
+        }
 
         Spacer(Modifier.height(28.dp))
     }
@@ -706,12 +831,20 @@ private fun HistoryEntryCard(entry: String) {
 
 @Composable
 private fun SystemsContent(
+    isPremium: Boolean,
+    premiumPrice: String?,
+    onUpgradePremium: () -> Unit,
     onClearHistory: () -> Unit,
     onSettingsTap: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
+    ) {
         Spacer(Modifier.height(14.dp))
         StitchTopBar(onSettingsTap = onSettingsTap)
         Spacer(Modifier.height(24.dp))
@@ -730,6 +863,98 @@ private fun SystemsContent(
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(24.dp))
+
+        // ── Premium Card (무료 사용자만) ────────────────────────────────────
+        if (!isPremium) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                EjectPrimaryContainer,
+                                EjectPrimaryContainer.copy(alpha = 0.92f),
+                            )
+                        )
+                    )
+                    .padding(24.dp),
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EjectCoral)
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            "ELITE TIER",
+                            fontSize      = 10.sp,
+                            fontWeight    = FontWeight.ExtraBold,
+                            color         = Color.White,
+                            letterSpacing = 2.sp,
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Eject Premium",
+                        fontSize   = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = Color.White,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        strings.premiumSubtitle,
+                        fontSize = 14.sp,
+                        color    = EjectOnPrimaryContainer,
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Button(
+                        onClick  = onUpgradePremium,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor   = EjectOnSurface,
+                        ),
+                        shape    = RoundedCornerShape(50),
+                    ) {
+                        val displayPrice = premiumPrice ?: localizedFallbackPrice()
+                        Text(
+                            "${strings.premiumBuyBtn}  ·  $displayPrice",
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 15.sp,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+        } else {
+            // 프리미엄 사용자 배지
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(EjectPrimaryContainer)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint               = EjectCoral,
+                    modifier           = Modifier.size(22.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    strings.premiumBadge,
+                    fontSize      = 13.sp,
+                    fontWeight    = FontWeight.ExtraBold,
+                    color         = Color.White,
+                    letterSpacing = 2.sp,
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+        }
 
         // 그룹 1: 빠른 작업
         Column(
@@ -901,8 +1126,8 @@ private fun CallerChips(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    // 선택: 검정 bg + 흰 텍스트 / 비선택: 흰 bg + 회색 테두리
-                    .background(if (isSelected) EjectOnSurface else EjectSurface)
+                    // 선택: 크림슨 bg + 흰 텍스트 / 비선택: 서피스 bg + 외곽선
+                    .background(if (isSelected) EjectCoral else EjectSurface)
                     .then(
                         if (!isSelected)
                             Modifier.border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
@@ -950,52 +1175,62 @@ private fun CallerChips(
 }
 
 @Composable
-private fun TriggerRow(
-    selected: TriggerMode,
+private fun TriggerTimeRow(
+    selected: TimeChoice,
     customDelaySec: Int,
-    onSelect: (TriggerMode) -> Unit,
+    onSelect: (TimeChoice) -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    // 6개 프리셋 — 즉시/10초/30초/1분/흔들기/사이드 버튼
-    // (커스텀 지연은 long-press 나 별도 진입점으로 — 6개 슬롯 한도 준수)
     val items = listOf(
-        TriggerMode.IMMEDIATE   to strings.triggerNow,
-        TriggerMode.AFTER_10S   to strings.trigger10s,
-        TriggerMode.AFTER_30S   to strings.trigger30s,
-        TriggerMode.AFTER_1MIN  to strings.trigger1min,
-        TriggerMode.SHAKE       to strings.triggerShake,
-        TriggerMode.SIDE_BUTTON to strings.triggerSideButton,
+        TimeChoice.IMMEDIATE to strings.triggerNow,
+        TimeChoice.AFTER_10S to strings.trigger10s,
+        TimeChoice.CUSTOM    to if (selected == TimeChoice.CUSTOM && customDelaySec > 0)
+            "${customDelaySec}s" else strings.triggerCustom,
     )
+    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
+}
 
-    // 3열 × 2행 그리드
-    Column(
+@Composable
+private fun TriggerModeRow(
+    selected: ModeChoice,
+    onSelect: (ModeChoice) -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    val items = listOf(
+        ModeChoice.BUTTON      to strings.triggerModeButton,
+        ModeChoice.SHAKE       to strings.triggerShake,
+        ModeChoice.SIDE_BUTTON to strings.triggerSideButton,
+    )
+    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
+}
+
+@Composable
+private fun <T> TriggerChoiceRow(
+    items: List<Pair<T, String>>,
+    selectedKey: T,
+    onSelect: (T) -> Unit,
+) {
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items.chunked(3).forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        items.forEach { (key, label) ->
+            val isSel = key == selectedKey
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isSel) EjectCoral else EjectSurfaceMid)
+                    .clickable { onSelect(key) }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                rowItems.forEach { (mode, label) ->
-                    val isSel = mode == selected
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isSel) EjectCoral else EjectSurfaceMid)
-                            .clickable { onSelect(mode) }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text       = label,
-                            fontSize   = 12.sp,
-                            color      = if (isSel) Color.White else EjectOnSurface,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
+                Text(
+                    text       = label,
+                    fontSize   = 12.sp,
+                    color      = if (isSel) Color.White else EjectOnSurface,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }

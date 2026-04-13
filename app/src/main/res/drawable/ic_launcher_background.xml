@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 앱 아이콘 배경: 딥 레드-->
+<!-- 앱 아이콘 배경: EJECT 크림슨 레드 (in-app EJECT 버튼과 동일) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FFFFFF"/>
+    <solid android:color="#B6191A"/>
 </shape>

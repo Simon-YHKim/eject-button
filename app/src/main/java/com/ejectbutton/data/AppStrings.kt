@@ -137,6 +137,21 @@ data class AppStrings(
     val callerPresets: String,
     val triggerTimer: String,
     val noEscapeLabel: String,
+    // New — trigger redesign (time × mode)
+    val sectionTriggerMode: String,
+    val triggerModeButton: String,
+    // New — reset history confirmation
+    val historyClearedMsg: String,
+    // New — exit confirm dialog
+    val exitConfirmTitle: String,
+    val exitConfirmMsg: String,
+    val dialogYes: String,
+    val dialogNo: String,
+    // New — theme mode selector
+    val settingsTheme: String,
+    val themeLight: String,
+    val themeDark: String,
+    val themeSystem: String,
 )
 
 private val en = AppStrings(
@@ -244,6 +259,17 @@ private val en = AppStrings(
     callerPresets        = "Caller Presets",
     triggerTimer         = "Trigger Timer",
     noEscapeLabel        = "Fake call, real freedom.",
+    sectionTriggerMode   = "Mode",
+    triggerModeButton    = "Button",
+    historyClearedMsg    = "History cleared.",
+    exitConfirmTitle     = "Exit app?",
+    exitConfirmMsg       = "Do you want to exit?",
+    dialogYes            = "Yes",
+    dialogNo             = "No",
+    settingsTheme        = "Theme",
+    themeLight           = "Light",
+    themeDark            = "Dark",
+    themeSystem          = "System",
 )
 
 private val ko = AppStrings(
@@ -351,6 +377,17 @@ private val ko = AppStrings(
     callerPresets        = "발신자",
     triggerTimer         = "트리거",
     noEscapeLabel        = "가짜 전화, 진짜 자유",
+    sectionTriggerMode   = "모드",
+    triggerModeButton    = "버튼",
+    historyClearedMsg    = "기록이 초기화 됐습니다!",
+    exitConfirmTitle     = "앱 종료",
+    exitConfirmMsg       = "종료 하시겠습니까?",
+    dialogYes            = "예",
+    dialogNo             = "아니오",
+    settingsTheme        = "테마",
+    themeLight           = "라이트",
+    themeDark            = "다크",
+    themeSystem          = "시스템",
 )
 
 private val zhCN = AppStrings(
@@ -458,6 +495,17 @@ private val zhCN = AppStrings(
     callerPresets        = "来电者",
     triggerTimer         = "触发器",
     noEscapeLabel        = "假电话，真自由",
+    sectionTriggerMode   = "模式",
+    triggerModeButton    = "按钮",
+    historyClearedMsg    = "记录已清除！",
+    exitConfirmTitle     = "退出应用",
+    exitConfirmMsg       = "要退出吗？",
+    dialogYes            = "是",
+    dialogNo             = "否",
+    settingsTheme        = "主题",
+    themeLight           = "浅色",
+    themeDark            = "深色",
+    themeSystem          = "跟随系统",
 )
 
 private val zhTW = AppStrings(
@@ -565,6 +613,17 @@ private val zhTW = AppStrings(
     callerPresets        = "來電者",
     triggerTimer         = "觸發器",
     noEscapeLabel        = "假電話，真自由",
+    sectionTriggerMode   = "模式",
+    triggerModeButton    = "按鈕",
+    historyClearedMsg    = "記錄已清除！",
+    exitConfirmTitle     = "退出應用",
+    exitConfirmMsg       = "要退出嗎？",
+    dialogYes            = "是",
+    dialogNo             = "否",
+    settingsTheme        = "主題",
+    themeLight           = "淺色",
+    themeDark            = "深色",
+    themeSystem          = "跟隨系統",
 )
 
 private val ja = AppStrings(
@@ -672,6 +731,17 @@ private val ja = AppStrings(
     callerPresets        = "発信者",
     triggerTimer         = "トリガー",
     noEscapeLabel        = "偽電話、本物の自由",
+    sectionTriggerMode   = "モード",
+    triggerModeButton    = "ボタン",
+    historyClearedMsg    = "記録をクリアしました！",
+    exitConfirmTitle     = "アプリ終了",
+    exitConfirmMsg       = "終了しますか？",
+    dialogYes            = "はい",
+    dialogNo             = "いいえ",
+    settingsTheme        = "テーマ",
+    themeLight           = "ライト",
+    themeDark            = "ダーク",
+    themeSystem          = "システム",
 )
 
 private val es = AppStrings(
@@ -779,6 +849,17 @@ private val es = AppStrings(
     callerPresets        = "Llamantes",
     triggerTimer         = "Temporizador",
     noEscapeLabel        = "Llamada falsa, libertad real",
+    sectionTriggerMode   = "Modo",
+    triggerModeButton    = "Botón",
+    historyClearedMsg    = "Historial borrado.",
+    exitConfirmTitle     = "¿Salir de la app?",
+    exitConfirmMsg       = "¿Quieres salir?",
+    dialogYes            = "Sí",
+    dialogNo             = "No",
+    settingsTheme        = "Tema",
+    themeLight           = "Claro",
+    themeDark            = "Oscuro",
+    themeSystem          = "Sistema",
 )
 
 private val hi = AppStrings(
@@ -886,6 +967,17 @@ private val hi = AppStrings(
     callerPresets        = "कॉलर",
     triggerTimer         = "ट्रिगर",
     noEscapeLabel        = "नकली कॉल, असली आज़ादी",
+    sectionTriggerMode   = "मोड",
+    triggerModeButton    = "बटन",
+    historyClearedMsg    = "इतिहास साफ़ हो गया!",
+    exitConfirmTitle     = "ऐप बंद करें?",
+    exitConfirmMsg       = "क्या आप बाहर निकलना चाहते हैं?",
+    dialogYes            = "हाँ",
+    dialogNo             = "नहीं",
+    settingsTheme        = "थीम",
+    themeLight           = "लाइट",
+    themeDark            = "डार्क",
+    themeSystem          = "सिस्टम",
 )
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(
