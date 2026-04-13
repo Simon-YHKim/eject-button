@@ -18,6 +18,8 @@ object EjectPrefs {
     private const val KEY_SIDE_BUTTON_CUSTOM_SEQUENCE = "setting_side_button_custom"
     private const val KEY_SELECTED_SCENARIO = "selected_scenario_id"
     private const val KEY_SELECTED_TRIGGER  = "selected_trigger_mode"
+    private const val KEY_SELECTED_TIME_CHOICE = "selected_time_choice"
+    private const val KEY_SIDE_BUTTON_ARMED = "side_button_armed"
     private const val KEY_CUSTOM_DELAY_SEC  = "custom_delay_sec"
     private const val KEY_EJECT_COUNT = "eject_count"
     private const val KEY_PREMIUM     = "is_premium"
@@ -173,6 +175,24 @@ object EjectPrefs {
     fun loadSelectedTrigger(ctx: Context): String? =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getString(KEY_SELECTED_TRIGGER, null)
+
+    fun saveSelectedTimeChoice(ctx: Context, name: String) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_SELECTED_TIME_CHOICE, name).apply()
+    }
+
+    fun loadSelectedTimeChoice(ctx: Context): String? =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_SELECTED_TIME_CHOICE, null)
+
+    fun saveSideButtonArmed(ctx: Context, armed: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_SIDE_BUTTON_ARMED, armed).apply()
+    }
+
+    fun loadSideButtonArmed(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SIDE_BUTTON_ARMED, false)
 
     fun saveCustomDelaySec(ctx: Context, sec: Int) {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)

@@ -21,12 +21,19 @@ class ShakeDetectionService : Service(), SensorEventListener {
         private const val SHAKE_THRESHOLD = 11f   // m/s² (중력 제외)
         private const val SHAKE_COOLDOWN  = 1500L // ms
 
-        fun start(ctx: Context, callerName: String, callerLabel: String, prompter: String) {
+        fun start(
+            ctx: Context,
+            callerName: String,
+            callerLabel: String,
+            prompter: String,
+            delayMs: Long = 0L,
+        ) {
             ctx.startForegroundService(
                 Intent(ctx, ShakeDetectionService::class.java).apply {
                     putExtra("caller_name",  callerName)
                     putExtra("caller_label", callerLabel)
                     putExtra("prompter",     prompter)
+                    putExtra("delay_ms",     delayMs)
                 }
             )
         }
@@ -40,6 +47,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
     private var callerName  = "엄마"
     private var callerLabel = "휴대전화"
     private var prompter    = ""
+    private var delayMs     = 0L
     private var lastShakeMs = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -54,6 +62,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
         callerName  = intent?.getStringExtra("caller_name")  ?: "엄마"
         callerLabel = intent?.getStringExtra("caller_label") ?: "휴대전화"
         prompter    = intent?.getStringExtra("prompter")     ?: ""
+        delayMs     = intent?.getLongExtra("delay_ms", 0L)    ?: 0L
 
         try { startForeground(NOTIF_ID, buildNotif()) } catch (_: Exception) {}
 
@@ -62,10 +71,10 @@ class ShakeDetectionService : Service(), SensorEventListener {
             sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
         } else {
             // 센서 없으면 즉시 발신
-            FakeCallOverlayService.start(this, callerName, callerLabel, prompter)
+            FakeCallOverlayService.start(this, callerName, callerLabel, prompter, delayMs)
             stopSelf()
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -79,7 +88,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
             val now = SystemClock.elapsedRealtime()
             if (now - lastShakeMs > SHAKE_COOLDOWN) {
                 lastShakeMs = now
-                FakeCallOverlayService.start(this, callerName, callerLabel, prompter)
+                FakeCallOverlayService.start(this, callerName, callerLabel, prompter, delayMs)
                 stopSelf()
             }
         }

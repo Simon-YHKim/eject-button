@@ -49,6 +49,16 @@ object SideButtonTrigger {
     }
 
     private fun resolveDelayMs(ctx: Context, scenario: Scenario): Long {
+        // 시간 선택은 모드와 독립적으로 저장된다 (IMMEDIATE / AFTER_10S / CUSTOM).
+        // 기존 사용자 폴백: KEY_SELECTED_TIME_CHOICE 가 비어 있으면 legacy trigger 를 해석한다.
+        val timeChoice = EjectPrefs.loadSelectedTimeChoice(ctx)
+        if (timeChoice != null) {
+            return when (timeChoice) {
+                "AFTER_10S" -> 10_000L
+                "CUSTOM"    -> EjectPrefs.loadCustomDelaySec(ctx) * 1000L
+                else        -> 0L // IMMEDIATE 또는 알 수 없는 값
+            }
+        }
         val triggerName = EjectPrefs.loadSelectedTrigger(ctx) ?: TriggerMode.IMMEDIATE.name
         val mode = runCatching { TriggerMode.valueOf(triggerName) }.getOrDefault(TriggerMode.IMMEDIATE)
         return when (mode) {
@@ -56,7 +66,7 @@ object SideButtonTrigger {
             TriggerMode.AFTER_10S -> 10_000L
             TriggerMode.AFTER_30S -> 30_000L
             TriggerMode.AFTER_1MIN -> 60_000L
-            TriggerMode.SHAKE     -> -1L
+            TriggerMode.SHAKE     -> 0L
             TriggerMode.SIDE_BUTTON -> 0L
             TriggerMode.CUSTOM    -> EjectPrefs.loadCustomDelaySec(ctx) * 1000L
         }

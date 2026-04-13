@@ -48,10 +48,15 @@ class ButtonWatchService : Service() {
             ctx.stopService(Intent(ctx, ButtonWatchService::class.java))
         }
 
-        /** 사이드 버튼 활성화 여부에 따라 자동으로 시작/중지. */
+        /**
+         * 사이드 버튼 활성화 여부에 따라 자동으로 시작/중지.
+         * armed 플래그와 명령 설정이 둘 다 켜져 있어야 watcher 가 동작한다.
+         * (armed 는 MainScreen 에서 mode=SIDE_BUTTON 일 때만 true 로 설정)
+         */
         fun reconcile(ctx: Context) {
             val cmd = EjectPrefs.loadSideButtonCommand(ctx)
-            if (cmd.isEnabled) start(ctx) else stop(ctx)
+            val armed = EjectPrefs.loadSideButtonArmed(ctx)
+            if (cmd.isEnabled && armed) start(ctx) else stop(ctx)
         }
     }
 
@@ -78,8 +83,8 @@ class ButtonWatchService : Service() {
         detector.command = EjectPrefs.loadSideButtonCommand(this)
         detector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
         try { startForeground(NOTIF_ID, buildNotif()) } catch (_: Exception) {}
-        // pref 가 비활성화 상태로 들어왔다면 자기 자신을 종료
-        if (!detector.command.isEnabled) {
+        // pref 가 비활성화 상태 또는 armed 가 꺼진 상태로 들어왔다면 자기 자신을 종료
+        if (!detector.command.isEnabled || !EjectPrefs.loadSideButtonArmed(this)) {
             stopSelf()
         }
         return START_STICKY

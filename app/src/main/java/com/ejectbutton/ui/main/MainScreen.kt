@@ -51,6 +51,8 @@ import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
 import com.ejectbutton.service.ButtonWatchService
+import com.ejectbutton.service.ShakeDetectionService
+import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
@@ -140,8 +142,12 @@ fun MainScreen(
             TriggerMode.valueOf(EjectPrefs.loadSelectedTrigger(ctx) ?: TriggerMode.IMMEDIATE.name)
         }.getOrDefault(TriggerMode.IMMEDIATE)
     }
+    val initialTime = remember {
+        val saved = EjectPrefs.loadSelectedTimeChoice(ctx)
+        runCatching { TimeChoice.valueOf(saved ?: "") }.getOrDefault(initialTrigger.toTimeChoice())
+    }
     var selectedScenario by remember(strings) { mutableStateOf(initialScenario) }
-    var selectedTime     by remember { mutableStateOf(initialTrigger.toTimeChoice()) }
+    var selectedTime     by remember { mutableStateOf(initialTime) }
     var selectedMode     by remember { mutableStateOf(initialTrigger.toModeChoice()) }
     val selectedTrigger  = composeTrigger(selectedTime, selectedMode)
     var customDelaySec   by remember { mutableIntStateOf(EjectPrefs.loadCustomDelaySec(ctx)) }
@@ -152,8 +158,56 @@ fun MainScreen(
     LaunchedEffect(selectedTrigger) {
         EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
     }
+    LaunchedEffect(selectedTime) {
+        EjectPrefs.saveSelectedTimeChoice(ctx, selectedTime.name)
+    }
     LaunchedEffect(customDelaySec) {
         EjectPrefs.saveCustomDelaySec(ctx, customDelaySec)
+    }
+
+    // ── 모드별 자동 arm/disarm: 사용자가 EJECT 를 누르지 않아도 SHAKE/SIDE 는
+    // 모드 선택만으로 활성화되어야 한다.
+    //
+    // SHAKE 모드 → ShakeDetectionService 가 scenario + delay 로 상시 대기.
+    // SIDE_BUTTON 모드 → side_button_armed=true + ButtonWatchService reconcile.
+    // 그 외 → 두 서비스 모두 중지.
+    DisposableEffect(
+        selectedMode,
+        selectedScenario.id,
+        selectedTime,
+        customDelaySec,
+    ) {
+        val delayMs = when (selectedTime) {
+            TimeChoice.IMMEDIATE -> 0L
+            TimeChoice.AFTER_10S -> 10_000L
+            TimeChoice.CUSTOM    -> customDelaySec * 1000L
+        }
+        when (selectedMode) {
+            ModeChoice.SHAKE -> {
+                EjectPrefs.saveSideButtonArmed(ctx, false)
+                ButtonWatchService.reconcile(ctx)
+                if (AndroidSettings.canDrawOverlays(ctx)) {
+                    ShakeDetectionService.start(
+                        ctx,
+                        selectedScenario.callerName,
+                        selectedScenario.callerLabel,
+                        selectedScenario.prompterHint,
+                        delayMs,
+                    )
+                }
+            }
+            ModeChoice.SIDE_BUTTON -> {
+                ShakeDetectionService.stop(ctx)
+                EjectPrefs.saveSideButtonArmed(ctx, true)
+                ButtonWatchService.reconcile(ctx)
+            }
+            ModeChoice.BUTTON -> {
+                ShakeDetectionService.stop(ctx)
+                EjectPrefs.saveSideButtonArmed(ctx, false)
+                ButtonWatchService.reconcile(ctx)
+            }
+        }
+        onDispose { }
     }
 
     // 사이드 버튼 트리거 명령 — 메인 화면 카드에서도 변경 가능
@@ -340,13 +394,27 @@ fun MainScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩 — 광고가 사이드 버튼 트리거를 가리지 않도록 여유 확보)
+        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩 — 광고가 모드 버튼을 가리지 않도록 여유 확보)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 220.dp),
+                .padding(bottom = 280.dp),
         ) {
-            when (currentScreen) {
+            AnimatedContent(
+                targetState = currentScreen,
+                transitionSpec = {
+                    val goingRight = targetState.ordinal > initialState.ordinal
+                    val dir = if (goingRight) 1 else -1
+                    (slideInHorizontally(
+                        animationSpec = tween(260, easing = FastOutSlowInEasing),
+                    ) { w -> dir * w } + fadeIn(tween(180))) togetherWith
+                    (slideOutHorizontally(
+                        animationSpec = tween(260, easing = FastOutSlowInEasing),
+                    ) { w -> -dir * w } + fadeOut(tween(180)))
+                },
+                label = "screen-slide",
+            ) { screen ->
+            when (screen) {
                 AppScreen.COMMAND -> CommandContent(
                     selectedScenario = selectedScenario,
                     selectedTime     = selectedTime,
@@ -443,6 +511,7 @@ fun MainScreen(
                     },
                     onSettingsTap     = { showSettings = true },
                 )
+            }
             }
         }
 
@@ -1222,7 +1291,7 @@ private fun <T> TriggerChoiceRow(
                     .clip(RoundedCornerShape(14.dp))
                     .background(if (isSel) EjectCoral else EjectSurfaceMid)
                     .clickable { onSelect(key) }
-                    .padding(vertical = 14.dp),
+                    .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
