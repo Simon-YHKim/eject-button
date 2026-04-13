@@ -57,7 +57,11 @@
         <service
             android:name=".service.FakeCallOverlayService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="fake_call_simulation" />
+        </service>
 
         <service
             android:name=".service.ShakeDetectionService"

@@ -7,6 +7,10 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.ejectbutton.data.ThemeMode
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
@@ -45,27 +49,96 @@ val TacticalOnVariant = Color(0xFFC6C6CB)
 val TacticalOutline   = Color(0xFF909095)
 val TacticalOutlineVar= Color(0xFF45474B)
 
-// ── Legacy 토큰 alias — 기존 화면 파일이 참조하는 이름을 그대로 보존 ───────────
-// 이름은 유지하되 값을 Tactical 팔레트로 remap 해서 전 화면을 다크 테마화.
-val EjectRed            = TacticalRedInv
-val EjectCoral          = TacticalRedInv          // EJECT crimson
-val EjectCoralDim       = TacticalRedDeep
+// ── Eject Palette — 라이트/다크 모드 간 전환 가능한 토큰 집합 ─────────────────
+// 기존에는 다크 톤이 하드코딩되어 테마 전환이 UI 에 반영되지 않았다.
+// 이제 [EjectPalette] 에 모든 토큰을 집약하고 [LocalEjectPalette] 로 공급한다.
+// 파일 아래쪽의 top-level `val Eject*` 은 `@Composable @ReadOnlyComposable`
+// getter 로 바뀌어 현재 테마의 팔레트를 반환한다 — 호출 측 코드는 변경이 없다.
 
-val EjectBg             = TacticalBase
-val EjectSurface        = TacticalContainer       // cards
-val EjectSurfaceLow     = TacticalLow             // modules
-val EjectSurfaceMid     = TacticalHigh            // container
-val EjectSurfaceHigh    = TacticalHigh
-val EjectSurfaceHighest = TacticalHighest
+data class EjectPalette(
+    val red: Color,
+    val coral: Color,
+    val coralDim: Color,
 
-val EjectOnSurface    = TacticalOnSurface
-val EjectSecondary    = TacticalOnVariant
-val EjectOutlineVar   = TacticalOutlineVar
+    val bg: Color,
+    val surface: Color,
+    val surfaceLow: Color,
+    val surfaceMid: Color,
+    val surfaceHigh: Color,
+    val surfaceHighest: Color,
 
-val EjectSecContainer       = TacticalHigh
-val EjectPrimaryContainer   = TacticalLowest        // PRO 배너 다크 바탕
-val EjectOnPrimaryContainer = TacticalOnVariant
-val EjectSecondaryContainer = TacticalRedInv
+    val onSurface: Color,
+    val secondary: Color,
+    val outlineVar: Color,
+
+    val secContainer: Color,
+    val primaryContainer: Color,
+    val onPrimaryContainer: Color,
+    val secondaryContainer: Color,
+)
+
+private val DarkEjectPalette = EjectPalette(
+    red                = TacticalRedInv,
+    coral              = TacticalRedInv,
+    coralDim           = TacticalRedDeep,
+    bg                 = TacticalBase,
+    surface            = TacticalContainer,
+    surfaceLow         = TacticalLow,
+    surfaceMid         = TacticalHigh,
+    surfaceHigh        = TacticalHigh,
+    surfaceHighest     = TacticalHighest,
+    onSurface          = TacticalOnSurface,
+    secondary          = TacticalOnVariant,
+    outlineVar         = TacticalOutlineVar,
+    secContainer       = TacticalHigh,
+    primaryContainer   = TacticalLowest,
+    onPrimaryContainer = TacticalOnVariant,
+    secondaryContainer = TacticalRedInv,
+)
+
+// Light mode 톤 — 라이트 배경/어두운 텍스트로 반전. 강조색 (coral/red) 은 공통.
+private val LightEjectPalette = EjectPalette(
+    red                = TacticalRedInv,
+    coral              = TacticalRedInv,
+    coralDim           = TacticalRedDeep,
+    bg                 = Color(0xFFF4F5F7),  // page background
+    surface            = Color(0xFFFFFFFF),  // card body
+    surfaceLow         = Color(0xFFEBECEF),  // module bg
+    surfaceMid         = Color(0xFFDDDEE2),  // container high
+    surfaceHigh        = Color(0xFFDDDEE2),
+    surfaceHighest     = Color(0xFFCFD0D5),  // housing
+    onSurface          = Color(0xFF1A1C1E),  // primary text
+    secondary          = Color(0xFF55575B),  // secondary text
+    outlineVar         = Color(0xFFC0C1C5),  // dividers
+    secContainer       = Color(0xFFDDDEE2),
+    primaryContainer   = Color(0xFF1A1C1E),  // PRO 배너 는 라이트 모드에서도 강한 대비 유지
+    onPrimaryContainer = Color(0xFFC6C6CB),
+    secondaryContainer = TacticalRedInv,
+)
+
+val LocalEjectPalette = staticCompositionLocalOf { DarkEjectPalette }
+
+// ── Legacy top-level 토큰 — 이제는 현재 팔레트에서 읽어오는 getter ────────────
+// 호출 지점은 모두 @Composable 문맥이므로 기존 `EjectBg` 사용은 그대로 동작한다.
+val EjectRed: Color            @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.red
+val EjectCoral: Color          @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.coral
+val EjectCoralDim: Color       @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.coralDim
+
+val EjectBg: Color             @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.bg
+val EjectSurface: Color        @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.surface
+val EjectSurfaceLow: Color     @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.surfaceLow
+val EjectSurfaceMid: Color     @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.surfaceMid
+val EjectSurfaceHigh: Color    @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.surfaceHigh
+val EjectSurfaceHighest: Color @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.surfaceHighest
+
+val EjectOnSurface: Color      @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.onSurface
+val EjectSecondary: Color      @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.secondary
+val EjectOutlineVar: Color     @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.outlineVar
+
+val EjectSecContainer: Color       @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.secContainer
+val EjectPrimaryContainer: Color   @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.primaryContainer
+val EjectOnPrimaryContainer: Color @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.onPrimaryContainer
+val EjectSecondaryContainer: Color @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.secondaryContainer
 
 private val TacticalDarkColors = darkColorScheme(
     primary             = TacticalRedInv,
@@ -126,17 +199,31 @@ private val TacticalShapes = Shapes(
     extraLarge = Square,
 )
 
-// Light mode 용 ColorScheme — Tactical Cockpit 은 기본 다크 디자인이므로
-// 라이트 모드는 Material3 기본 lightColorScheme 기반으로 최소한의 대비만 제공.
-// (앱 내부 팔레트는 여전히 하드코딩된 다크 토큰을 사용 — 이는 의도된 디자인이며
-// 라이트 모드는 Material3 컴포넌트 기본값에만 영향을 준다.)
+// Light mode 용 ColorScheme — Material3 컴포넌트 기본값에 최소한의 대비만 제공.
+// 앱 내부 화면은 위의 [LightEjectPalette] 를 통해 팔레트 전체가 반전된다.
 private val TacticalLightColors = lightColorScheme(
-    primary        = TacticalRedInv,
-    onPrimary      = Color.White,
-    background     = Color(0xFFF7F7F8),
-    onBackground   = Color(0xFF1A1C1E),
-    surface        = Color(0xFFFFFFFF),
-    onSurface      = Color(0xFF1A1C1E),
+    primary             = TacticalRedInv,
+    onPrimary           = Color.White,
+    primaryContainer    = Color(0xFF1A1C1E),
+    onPrimaryContainer  = Color(0xFFE2E2E5),
+    secondary           = Color(0xFF55575B),
+    onSecondary         = Color.White,
+    secondaryContainer  = Color(0xFFDDDEE2),
+    onSecondaryContainer= Color(0xFF1A1C1E),
+    tertiary            = TacticalCyan,
+    onTertiary          = Color(0xFF1A1C1E),
+    background          = Color(0xFFF4F5F7),
+    onBackground        = Color(0xFF1A1C1E),
+    surface             = Color(0xFFFFFFFF),
+    onSurface           = Color(0xFF1A1C1E),
+    surfaceVariant      = Color(0xFFDDDEE2),
+    onSurfaceVariant    = Color(0xFF55575B),
+    outline             = Color(0xFF909095),
+    outlineVariant      = Color(0xFFC0C1C5),
+    error               = TacticalRedInv,
+    onError             = Color.White,
+    errorContainer      = TacticalRedFixed,
+    onErrorContainer    = TacticalOnRed,
 )
 
 @Composable
@@ -149,10 +236,13 @@ fun EjectButtonTheme(
         ThemeMode.DARK   -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    MaterialTheme(
-        colorScheme = if (useDark) TacticalDarkColors else TacticalLightColors,
-        typography  = TacticalTypography,
-        shapes      = TacticalShapes,
-        content     = content,
-    )
+    val palette = if (useDark) DarkEjectPalette else LightEjectPalette
+    CompositionLocalProvider(LocalEjectPalette provides palette) {
+        MaterialTheme(
+            colorScheme = if (useDark) TacticalDarkColors else TacticalLightColors,
+            typography  = TacticalTypography,
+            shapes      = TacticalShapes,
+            content     = content,
+        )
+    }
 }

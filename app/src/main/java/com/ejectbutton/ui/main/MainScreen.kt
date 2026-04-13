@@ -1003,8 +1003,8 @@ private fun SystemsContent(
                         onClick  = onUpgradePremium,
                         modifier = Modifier.fillMaxWidth(),
                         colors   = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor   = EjectOnSurface,
+                            containerColor = EjectCoral,
+                            contentColor   = Color.White,
                         ),
                         shape    = RoundedCornerShape(50),
                     ) {
