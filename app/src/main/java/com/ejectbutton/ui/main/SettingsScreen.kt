@@ -63,18 +63,6 @@ fun SettingsScreen(
     var showSideButtonPicker by remember { mutableStateOf(false) }
     var showHowToUse by remember { mutableStateOf(false) }
     var showLangPicker by remember { mutableStateOf(false) }
-    var showThemePicker by remember { mutableStateOf(false) }
-
-    if (showThemePicker) {
-        ThemeModePickerDialog(
-            current   = themeMode,
-            onSelect  = { mode ->
-                onThemeModeChange(mode)
-                showThemePicker = false
-            },
-            onDismiss = { showThemePicker = false },
-        )
-    }
 
     if (showSideButtonPicker) {
         SideButtonCommandPickerDialog(
@@ -191,14 +179,17 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
         }
 
-        // ── Theme mode ──────────────────────────────────────────────────────
+        // ── Theme mode (direct toggle: LIGHT ↔ DARK) ────────────────────────
         item {
+            val isDark = themeMode != ThemeMode.LIGHT
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(EjectSurface)
-                    .clickable { showThemePicker = true }
+                    .clickable {
+                        onThemeModeChange(if (isDark) ThemeMode.LIGHT else ThemeMode.DARK)
+                    }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
                 Row(
@@ -214,7 +205,7 @@ fun SettingsScreen(
                                 .background(EjectSurfaceMid),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("🎨", fontSize = 18.sp)
+                            Text(if (isDark) "🌙" else "☀", fontSize = 18.sp)
                         }
                         Spacer(Modifier.width(14.dp))
                         Text(
@@ -224,19 +215,18 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Bold,
                         )
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = when (themeMode) {
-                                ThemeMode.LIGHT  -> strings.themeLight
-                                ThemeMode.DARK   -> strings.themeDark
-                                ThemeMode.SYSTEM -> strings.themeSystem
-                            },
-                            fontSize = 14.sp,
-                            color    = EjectSecondary,
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text("›", fontSize = 20.sp, color = EjectSecondary)
-                    }
+                    Switch(
+                        checked = isDark,
+                        onCheckedChange = { checked ->
+                            onThemeModeChange(if (checked) ThemeMode.DARK else ThemeMode.LIGHT)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor   = Color.White,
+                            checkedTrackColor   = EjectCoral,
+                            uncheckedThumbColor = EjectOnSurface,
+                            uncheckedTrackColor = EjectSurfaceMid,
+                        ),
+                    )
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -495,56 +485,6 @@ private fun LanguagePickerDialog(
                         Text(lang.nativeName, fontSize = 15.sp,
                             color = if (isSelected) EjectRed else EjectOnSurface,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
-                        if (isSelected) {
-                            Icon(Icons.Default.Check, null, tint = EjectCoral, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(strings.dialogCancel) }
-        },
-        containerColor = EjectSurface,
-    )
-}
-
-@Composable
-private fun ThemeModePickerDialog(
-    current: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val strings = LocalAppStrings.current
-    val options = listOf(
-        ThemeMode.LIGHT  to strings.themeLight,
-        ThemeMode.DARK   to strings.themeDark,
-        ThemeMode.SYSTEM to strings.themeSystem,
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(strings.settingsTheme) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                options.forEach { (mode, label) ->
-                    val isSelected = mode == current
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) EjectCoral.copy(0.08f) else Color.Transparent)
-                            .clickable { onSelect(mode) }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            label,
-                            fontSize   = 15.sp,
-                            color      = if (isSelected) EjectRed else EjectOnSurface,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        )
                         if (isSelected) {
                             Icon(Icons.Default.Check, null, tint = EjectCoral, modifier = Modifier.size(18.dp))
                         }

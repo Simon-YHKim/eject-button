@@ -88,6 +88,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
             val now = SystemClock.elapsedRealtime()
             if (now - lastShakeMs > SHAKE_COOLDOWN) {
                 lastShakeMs = now
+                CountdownBus.start(delayMs)
                 FakeCallOverlayService.start(this, callerName, callerLabel, prompter, delayMs)
                 stopSelf()
             }

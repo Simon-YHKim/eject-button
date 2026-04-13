@@ -17,20 +17,9 @@ object SideButtonTrigger {
 
     fun fire(ctx: Context) {
         val scenario = resolveScenario(ctx)
-        val delayMs = resolveDelayMs(ctx, scenario)
+        val delayMs = resolveDelayMs(ctx, scenario).coerceAtLeast(0L)
 
-        if (delayMs == -1L) {
-            // SHAKE 트리거는 사이드 버튼 흐름과 의미상 충돌 — 즉시 발신으로 폴백
-            FakeCallOverlayService.start(
-                ctx,
-                scenario.callerName,
-                scenario.callerLabel,
-                scenario.prompterHint,
-                0L,
-            )
-            return
-        }
-
+        CountdownBus.start(delayMs)
         FakeCallOverlayService.start(
             ctx,
             scenario.callerName,

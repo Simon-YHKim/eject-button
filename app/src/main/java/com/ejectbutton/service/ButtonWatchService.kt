@@ -18,17 +18,20 @@ import com.ejectbutton.data.strings
  *
  * 동작 원리:
  * - Android 의 ContentObserver 로 Settings.System 의 볼륨 변경을 감지
+ * - 디바이스/상황마다 볼륨 키가 조절하는 스트림이 다르기 때문에 여러 스트림
+ *   (MUSIC / RING / NOTIFICATION / ALARM / SYSTEM / VOICE_CALL) 을 모두 폴링
  * - 변화 부호로 UP/DOWN 을 판별, [ButtonPatternDetector] 에 전달
- * - 패턴 매칭 시 즉시 원래 볼륨값으로 복원하고 [SideButtonTrigger.fire] 호출
+ * - 패턴 매칭 시 [SideButtonTrigger.fire] 호출. 가능한 경우 볼륨을 원복
+ *   (일부 기기/버전에서는 시스템 볼륨 HUD 를 완전히 막을 수 없음 — 그 경우
+ *    감지 자체는 여전히 동작한다)
  *
  * 동작 범위 (의도적):
  * - 앱이 Foreground / Background (서비스 살아있음) 일 때만 동작
  * - 화면 OFF 또는 앱 완전 종료 상태에서는 동작하지 않음
  *
  * 시작/중지:
- * - 사용자가 설정에서 사이드 버튼 트리거를 활성화 하면 [start]
- * - 사용자가 비활성화 하면 [stop]
- * - 앱 런치 시 pref 가 활성화 상태면 자동 [start]
+ * - 사용자가 메인 화면에서 mode=SIDE_BUTTON 을 선택하면 armed=true 로 [start]
+ * - 다른 모드로 바꾸면 armed=false 로 [stop]
  *
  * 주의: Foreground 상태에서는 [com.ejectbutton.MainActivity.onKeyDown] 이
  * 볼륨 키를 먼저 가로채 consume 하므로 시스템 볼륨이 변하지 않아
@@ -39,6 +42,16 @@ class ButtonWatchService : Service() {
     companion object {
         private const val NOTIF_CHANNEL = "eject_side_button"
         private const val NOTIF_ID      = 1003
+
+        // 디바이스/상황마다 볼륨 키가 영향을 주는 스트림이 다르므로 모두 감시.
+        private val WATCHED_STREAMS = intArrayOf(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.STREAM_RING,
+            AudioManager.STREAM_NOTIFICATION,
+            AudioManager.STREAM_ALARM,
+            AudioManager.STREAM_SYSTEM,
+            AudioManager.STREAM_VOICE_CALL,
+        )
 
         fun start(ctx: Context) {
             ctx.startForegroundService(Intent(ctx, ButtonWatchService::class.java))
@@ -65,15 +78,16 @@ class ButtonWatchService : Service() {
     private val detector = ButtonPatternDetector(SideButtonCommand.DISABLED) {
         SideButtonTrigger.fire(this)
     }
-    private var lastVolume = 0
+    private val lastVolumes = mutableMapOf<Int, Int>()
     private var observer: ContentObserver? = null
+    @Volatile private var suppressNextChange = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        lastVolume = audioManager.getStreamVolume(AudioManager.STREAM_RING)
+        snapshotAllStreams()
         createChannel()
         registerObserver()
     }
@@ -87,7 +101,17 @@ class ButtonWatchService : Service() {
         if (!detector.command.isEnabled || !EjectPrefs.loadSideButtonArmed(this)) {
             stopSelf()
         }
+        // 현재 볼륨으로 기준선 재설정
+        snapshotAllStreams()
         return START_STICKY
+    }
+
+    private fun snapshotAllStreams() {
+        for (stream in WATCHED_STREAMS) {
+            try {
+                lastVolumes[stream] = audioManager.getStreamVolume(stream)
+            } catch (_: Exception) {}
+        }
     }
 
     private fun registerObserver() {
@@ -105,30 +129,39 @@ class ButtonWatchService : Service() {
     }
 
     /**
-     * 볼륨이 변경되면 부호로 UP/DOWN 을 판별하고 detector 에 전달한다.
-     * 같은 값이 두 번 들어올 수도 있으므로 (max/min 도달 시) 변화량 0 도 처리.
+     * ContentObserver 는 Settings.System 의 어떤 값이든 변경되면 호출되므로
+     * 모든 감시 스트림을 순회하며 실제로 값이 변한 스트림을 찾아야 한다.
      */
     private fun handleVolumeChange() {
-        val current = try {
-            audioManager.getStreamVolume(AudioManager.STREAM_RING)
-        } catch (_: Exception) { return }
+        if (suppressNextChange) {
+            // 방금 우리가 setStreamVolume 으로 원복 호출한 결과의 echo
+            suppressNextChange = false
+            snapshotAllStreams()
+            return
+        }
 
-        if (current == lastVolume) return
+        for (stream in WATCHED_STREAMS) {
+            val current = try {
+                audioManager.getStreamVolume(stream)
+            } catch (_: Exception) { continue }
 
-        val isUp = current > lastVolume
-        val previous = lastVolume
-        // 즉시 원복 — detector 에 전달하기 전에 복원해서 사용자 체감 차이 최소화
-        try {
-            audioManager.setStreamVolume(
-                AudioManager.STREAM_RING,
-                previous,
-                0, // FLAG 없음 — UI / 사운드 표시 차단
-            )
-        } catch (_: Exception) {}
-        // setStreamVolume 호출이 다시 onChange 를 트리거할 수 있으므로 lastVolume 은 previous 유지
-        lastVolume = previous
+            val last = lastVolumes[stream] ?: continue
+            if (current == last) continue
 
-        if (isUp) detector.onVolumeUp() else detector.onVolumeDown()
+            val isUp = current > last
+            // 볼륨 HUD 를 숨기기 위해 즉시 원복 시도 (일부 기기에서는 무효).
+            try {
+                suppressNextChange = true
+                audioManager.setStreamVolume(stream, last, 0)
+            } catch (_: Exception) {
+                suppressNextChange = false
+            }
+            // lastVolumes 는 기준선 유지 — 다음 이벤트도 동일 기준으로 비교
+            lastVolumes[stream] = last
+
+            if (isUp) detector.onVolumeUp() else detector.onVolumeDown()
+            return
+        }
     }
 
     private fun createChannel() {

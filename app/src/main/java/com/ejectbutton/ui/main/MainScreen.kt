@@ -51,6 +51,7 @@ import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
 import com.ejectbutton.service.ButtonWatchService
+import com.ejectbutton.service.CountdownBus
 import com.ejectbutton.service.ShakeDetectionService
 import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
@@ -227,11 +228,11 @@ fun MainScreen(
     // 뒤로가기(Command 탭) 종료 확인 팝업
     var showExitConfirmDialog    by remember { mutableStateOf(false) }
 
-    // 딜레이 카운트다운
-    var countdownEnd by remember { mutableLongStateOf(0L) }
+    // 딜레이 카운트다운 — EJECT 탭 / SHAKE / SIDE_BUTTON 어디서 시작하든 공유 버스 구독
+    val countdownEnd by CountdownBus.endMs.collectAsState()
     var countdown    by remember { mutableIntStateOf(0) }
     LaunchedEffect(countdownEnd) {
-        if (countdownEnd <= 0L) return@LaunchedEffect
+        if (countdownEnd <= 0L) { countdown = 0; return@LaunchedEffect }
         while (true) {
             val remaining = ((countdownEnd - System.currentTimeMillis()) / 1000 + 1).toInt()
             countdown = remaining.coerceAtLeast(0)
@@ -394,11 +395,11 @@ fun MainScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩 — 광고가 모드 버튼을 가리지 않도록 여유 확보)
+        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 280.dp),
+                .padding(bottom = 170.dp),
         ) {
             AnimatedContent(
                 targetState = currentScreen,
@@ -475,7 +476,7 @@ fun MainScreen(
                             TriggerMode.SIDE_BUTTON -> 0L // handled above
                             TriggerMode.CUSTOM    -> customDelaySec * 1000L
                         }
-                        if (delayMs > 0L) countdownEnd = System.currentTimeMillis() + delayMs
+                        CountdownBus.start(delayMs)
 
                         if (EjectPrefs.loadHaptic(ctx)) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1254,7 +1255,7 @@ private fun TriggerTimeRow(
         TimeChoice.IMMEDIATE to strings.triggerNow,
         TimeChoice.AFTER_10S to strings.trigger10s,
         TimeChoice.CUSTOM    to if (selected == TimeChoice.CUSTOM && customDelaySec > 0)
-            "${customDelaySec}s" else strings.triggerCustom,
+            "${strings.triggerCustom} (${customDelaySec}s)" else strings.triggerCustom,
     )
     TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
 }
@@ -1500,77 +1501,45 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
     )
 }
 
-// ─── 네이티브 광고 ──────────────────────────────────────────────────────────
+// ─── 네이티브 광고 (compact banner) ─────────────────────────────────────────
+// 한 줄짜리 얇은 배너: 아이콘 + 헤드라인 + AD 라벨 만. body/CTA 는 생략해
+// 광고가 조작 영역을 잡아먹지 않도록 한다.
 
 @Composable
 private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(EjectSurface)
-            .shadow(1.dp, RoundedCornerShape(16.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // 광고 표시 + 헤드라인
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                ad.icon?.drawable?.let { icon ->
-                    AndroidView(
-                        factory = { ctx -> ImageView(ctx).apply { setImageDrawable(icon) } },
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    ad.headline?.let { headline ->
-                        Text(
-                            headline,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = EjectOnSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    ad.body?.let { body ->
-                        Text(
-                            body,
-                            fontSize = 11.sp,
-                            color = EjectSecondary,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                // 광고 라벨
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(EjectSecondary.copy(alpha = 0.15f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text("AD", fontSize = 9.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            // CTA 버튼
-            ad.callToAction?.let { cta ->
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(EjectCoral.copy(alpha = 0.1f))
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(cta, fontSize = 12.sp, color = EjectCoral, fontWeight = FontWeight.Bold)
-                }
-            }
+        ad.icon?.drawable?.let { icon ->
+            AndroidView(
+                factory = { ctx -> ImageView(ctx).apply { setImageDrawable(icon) } },
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(
+            ad.headline ?: ad.body ?: "",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = EjectOnSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(3.dp))
+                .background(EjectSecondary.copy(alpha = 0.15f))
+                .padding(horizontal = 5.dp, vertical = 1.dp)
+        ) {
+            Text("AD", fontSize = 8.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
         }
     }
 }
