@@ -80,7 +80,6 @@ class ButtonWatchService : Service() {
     }
     private val lastVolumes = mutableMapOf<Int, Int>()
     private var observer: ContentObserver? = null
-    @Volatile private var suppressNextChange = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -130,16 +129,21 @@ class ButtonWatchService : Service() {
 
     /**
      * ContentObserver 는 Settings.System 의 어떤 값이든 변경되면 호출되므로
-     * 모든 감시 스트림을 순회하며 실제로 값이 변한 스트림을 찾아야 한다.
+     * 모든 감시 스트림을 순회하며 실제로 값이 변한 스트림을 찾는다.
+     *
+     * 과거에는 setStreamVolume 원복 호출의 echo 를 차단하기 위해
+     * suppressNextChange 플래그를 썼지만, 일부 Android 버전/기기에서
+     * setStreamVolume 이 ContentObserver 콜백을 전혀 발생시키지 않는
+     * 경우가 있어 플래그가 영구적으로 true 로 굳어 감지가 완전히 죽는
+     * 버그가 있었다. 플래그를 버리고 다음 전략으로 대체:
+     *
+     *  1) 실제 변화를 발견하면 detector 에 먼저 통지한다.
+     *  2) 원복(setStreamVolume) 을 시도한 뒤 snapshotAllStreams() 로
+     *     모든 감시 스트림을 재스냅샷한다. 이후 발생하는 echo 콜백은
+     *     current == last 로 평가되어 자연스럽게 no-op 된다.
+     *  3) 따라서 echo 가 오든 오지 않든 상태가 스스로 복구된다.
      */
     private fun handleVolumeChange() {
-        if (suppressNextChange) {
-            // 방금 우리가 setStreamVolume 으로 원복 호출한 결과의 echo
-            suppressNextChange = false
-            snapshotAllStreams()
-            return
-        }
-
         for (stream in WATCHED_STREAMS) {
             val current = try {
                 audioManager.getStreamVolume(stream)
@@ -149,15 +153,15 @@ class ButtonWatchService : Service() {
             if (current == last) continue
 
             val isUp = current > last
+
             // 볼륨 HUD 를 숨기기 위해 즉시 원복 시도 (일부 기기에서는 무효).
             try {
-                suppressNextChange = true
                 audioManager.setStreamVolume(stream, last, 0)
-            } catch (_: Exception) {
-                suppressNextChange = false
-            }
-            // lastVolumes 는 기준선 유지 — 다음 이벤트도 동일 기준으로 비교
-            lastVolumes[stream] = last
+            } catch (_: Exception) {}
+
+            // 재스냅샷: 원복 후의 값으로 모든 스트림 기준선을 갱신해
+            // 이어지는 echo 콜백이 no-op 되도록 한다.
+            snapshotAllStreams()
 
             if (isUp) detector.onVolumeUp() else detector.onVolumeDown()
             return

@@ -516,11 +516,15 @@ fun MainScreen(
             }
         }
 
-        // 하단 고정 영역: 광고 + 탭바
+        // 하단 고정 영역: 광고 + 탭바.
+        // EjectBg 불투명 배경으로 스크롤 컨텐츠가 비쳐 보이지 않도록 한다.
+        // (과거엔 배경이 투명해 SideButtonModeCard 같은 하단 콘텐츠가
+        //  '애매하게' 가려 보였던 문제를 해결)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .background(EjectBg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // 네이티브 광고 (무료 사용자만)
