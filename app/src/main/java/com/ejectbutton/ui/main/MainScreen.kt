@@ -897,7 +897,7 @@ private fun SystemsContent(
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Eject Premium",
+                        "Eject Mayday",
                         fontSize   = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color      = Color.White,
