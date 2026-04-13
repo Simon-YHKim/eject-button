@@ -90,7 +90,9 @@ class ShakeDetectionService : Service(), SensorEventListener {
                 lastShakeMs = now
                 CountdownBus.start(delayMs)
                 FakeCallOverlayService.start(this, callerName, callerLabel, prompter, delayMs)
-                stopSelf()
+                // stopSelf() 를 호출하지 않는다 — 서비스가 죽으면 두 번째 흔들기가
+                // 감지되지 않아 모드를 껐다 켜야 재트리거가 되는 버그가 있었다.
+                // 센서 리스너를 유지하고 SHAKE_COOLDOWN 으로 중복 발화만 방지한다.
             }
         }
     }

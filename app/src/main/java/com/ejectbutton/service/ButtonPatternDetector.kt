@@ -109,9 +109,12 @@ class ButtonPatternDetector(
     }
 
     companion object {
-        private const val DOUBLE_WINDOW_MS = 700L
-        private const val TRIPLE_WINDOW_MS = 1000L
-        private const val MAX_WINDOW_MS    = 1000L
+        // 배경 모드에서는 ContentObserver 전달 지연 때문에 키 입력 간격이
+        // 실제보다 크게 계측될 수 있어 원래 700ms/1000ms 는 너무 빡빡했다.
+        // 1200ms / 1600ms 로 완화. 사람의 '빠른 더블탭' 은 여전히 이 범위 안.
+        private const val DOUBLE_WINDOW_MS = 1200L
+        private const val TRIPLE_WINDOW_MS = 1600L
+        private const val MAX_WINDOW_MS    = 1600L
 
         private const val CUSTOM_STEP_MS     = 600L
         private const val CUSTOM_WINDOW_MIN  = 1200L

@@ -131,19 +131,29 @@ class ButtonWatchService : Service() {
      * ContentObserver 는 Settings.System 의 어떤 값이든 변경되면 호출되므로
      * 모든 감시 스트림을 순회하며 실제로 값이 변한 스트림을 찾는다.
      *
-     * 과거에는 setStreamVolume 원복 호출의 echo 를 차단하기 위해
-     * suppressNextChange 플래그를 썼지만, 일부 Android 버전/기기에서
-     * setStreamVolume 이 ContentObserver 콜백을 전혀 발생시키지 않는
-     * 경우가 있어 플래그가 영구적으로 true 로 굳어 감지가 완전히 죽는
-     * 버그가 있었다. 플래그를 버리고 다음 전략으로 대체:
+     * 기준선 갱신 전략 (과거 버그의 원인이었던 snapshotAllStreams 문제 수정):
      *
-     *  1) 실제 변화를 발견하면 detector 에 먼저 통지한다.
-     *  2) 원복(setStreamVolume) 을 시도한 뒤 snapshotAllStreams() 로
-     *     모든 감시 스트림을 재스냅샷한다. 이후 발생하는 echo 콜백은
-     *     current == last 로 평가되어 자연스럽게 no-op 된다.
-     *  3) 따라서 echo 가 오든 오지 않든 상태가 스스로 복구된다.
+     *  - 감지된 스트림의 `last` 기준선은 '강제로' last 로 유지한다. 원복용
+     *    setStreamVolume 이 일부 기기에서 비동기로 처리되거나 실패해서 그 직후
+     *    snapshot 이 아직 복원되지 않은 값을 읽어오면, 이어지는 echo 콜백이
+     *    `current != last` 로 해석되어 유령 VOL_UP 이벤트를 만들고 detector 의
+     *    큐를 오염시키는 문제가 있었다. 기준선을 last 로 고정하면 echo 가 어떤
+     *    타이밍/값으로 오든 자연스럽게 no-op 된다.
+     *
+     *  - 그 외 스트림은 '현재 값' 으로 스냅샷한다. 한 번의 키 입력이 MUSIC 과
+     *    RING 등 여러 스트림을 동시에 내릴 수 있기 때문에, 처리한 스트림
+     *    이외의 스트림도 새 기준선으로 받아들여야 다음 사이클에 중복 감지되지
+     *    않는다.
+     *
+     *  - 서비스 재시작 등으로 detector.command 가 DISABLED 로 남아있는 edge
+     *    case 를 대비해 방어적으로 pref 를 재로드.
      */
     private fun handleVolumeChange() {
+        if (!detector.command.isEnabled) {
+            detector.command = EjectPrefs.loadSideButtonCommand(this)
+            detector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
+        }
+
         for (stream in WATCHED_STREAMS) {
             val current = try {
                 audioManager.getStreamVolume(stream)
@@ -159,9 +169,15 @@ class ButtonWatchService : Service() {
                 audioManager.setStreamVolume(stream, last, 0)
             } catch (_: Exception) {}
 
-            // 재스냅샷: 원복 후의 값으로 모든 스트림 기준선을 갱신해
-            // 이어지는 echo 콜백이 no-op 되도록 한다.
-            snapshotAllStreams()
+            // 처리한 스트림 외 나머지 스트림은 현재 값으로 스냅샷 (동시 하강 흡수).
+            for (s in WATCHED_STREAMS) {
+                if (s == stream) continue
+                try {
+                    lastVolumes[s] = audioManager.getStreamVolume(s)
+                } catch (_: Exception) {}
+            }
+            // 감지된 스트림은 last 로 강제 고정 — 비동기 원복 / 실패 / echo 모두 흡수.
+            lastVolumes[stream] = last
 
             if (isUp) detector.onVolumeUp() else detector.onVolumeDown()
             return
