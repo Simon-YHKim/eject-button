@@ -52,6 +52,7 @@ import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.CountdownBus
+import com.ejectbutton.service.FakeCallOverlayService
 import com.ejectbutton.service.ShakeDetectionService
 import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
@@ -395,11 +396,14 @@ fun MainScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩)
+        // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩).
+        // 광고 카드 ~34dp + spacer 8dp + BottomBar ~56dp + spacer 12dp ≈ 110dp
+        // 정도만 필요하므로 여유 10dp 포함 120dp 로 축소. 과거 170dp 는 너무
+        // 많이 잡아먹어서 standby/countdown 배너가 뜨면 모드 섹션이 잘렸다.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 170.dp),
+                .padding(bottom = 120.dp),
         ) {
             AnimatedContent(
                 targetState = currentScreen,
@@ -496,6 +500,13 @@ fun MainScreen(
                         history = EjectPrefs.loadHistory(ctx)
                         onEject(selectedScenario, delayMs)
                     },
+                    onCancel = {
+                        // countdown 중이면 진행 중인 가짜 전화 서비스도 함께 종료.
+                        // sideButtonStandby 배지만 떠 있는 상태라면 배지만 해제.
+                        FakeCallOverlayService.stop(ctx)
+                        CountdownBus.clear()
+                        sideButtonStandby = false
+                    },
                 )
                 AppScreen.HISTORY -> HistoryContent(
                     history = history,
@@ -571,8 +582,10 @@ private fun CommandContent(
     onAddCaller: () -> Unit,
     onSettingsTap: () -> Unit,
     onEject: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    val isCancelMode = countdown > 0 || sideButtonStandby
 
     Column(
         modifier = Modifier
@@ -648,8 +661,11 @@ private fun CommandContent(
             )
         }
 
-        // EJECT 버튼 (흰 채움 + 크림슨 테두리 + 글로우)
-        EjectButton(onClick = onEject)
+        // EJECT 버튼 — countdown/standby 중엔 취소 버튼으로 변신
+        EjectButton(
+            isCancelMode = isCancelMode,
+            onClick = { if (isCancelMode) onCancel() else onEject() },
+        )
         Spacer(Modifier.height(14.dp))
         Text(
             text          = strings.noEscapeLabel,
@@ -1120,7 +1136,11 @@ private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
 // ─── 공통 컴포넌트 ────────────────────────────────────────────────────────────
 
 @Composable
-private fun EjectButton(onClick: () -> Unit) {
+private fun EjectButton(
+    isCancelMode: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 1.03f,
@@ -1128,7 +1148,7 @@ private fun EjectButton(onClick: () -> Unit) {
         label = "s",
     )
 
-    // 흰 원 + 코랄 테두리 + 은은한 글로우 halo
+    // 취소 모드: 채워진 코랄 원 + 흰색 X 아이콘. 일반 모드: 흰 원 + 코랄 테두리.
     Box(
         modifier = Modifier
             .size(260.dp)
@@ -1153,26 +1173,43 @@ private fun EjectButton(onClick: () -> Unit) {
                     spotColor    = EjectCoral.copy(alpha = 0.35f),
                 )
                 .clip(CircleShape)
-                .background(EjectSurface)
+                .background(if (isCancelMode) EjectCoral else EjectSurface)
                 .border(4.dp, EjectCoral, CircleShape)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "⏏",
-                    fontSize   = 72.sp,
-                    color      = EjectOnSurface,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "EJECT",
-                    fontSize      = 13.sp,
-                    color         = EjectCoral,
-                    fontWeight    = FontWeight.ExtraBold,
-                    letterSpacing = 4.sp,
-                )
+                if (isCancelMode) {
+                    Text(
+                        "✕",
+                        fontSize   = 72.sp,
+                        color      = Color.White,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        strings.dialogCancel.uppercase(Locale.getDefault()),
+                        fontSize      = 13.sp,
+                        color         = Color.White,
+                        fontWeight    = FontWeight.ExtraBold,
+                        letterSpacing = 4.sp,
+                    )
+                } else {
+                    Text(
+                        "⏏",
+                        fontSize   = 72.sp,
+                        color      = EjectOnSurface,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "EJECT",
+                        fontSize      = 13.sp,
+                        color         = EjectCoral,
+                        fontWeight    = FontWeight.ExtraBold,
+                        letterSpacing = 4.sp,
+                    )
+                }
             }
         }
     }

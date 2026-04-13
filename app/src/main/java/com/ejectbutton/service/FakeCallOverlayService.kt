@@ -58,6 +58,14 @@ class FakeCallOverlayService : Service() {
                 }
             )
         }
+
+        /**
+         * 카운트다운 중 취소용 — 아직 벨소리/오버레이가 뜨기 전이라면
+         * 서비스만 내리고, 이미 오버레이가 올라가 있으면 그것도 함께 정리된다.
+         */
+        fun stop(ctx: Context) {
+            ctx.stopService(Intent(ctx, FakeCallOverlayService::class.java))
+        }
     }
 
     private var wm: WindowManager? = null

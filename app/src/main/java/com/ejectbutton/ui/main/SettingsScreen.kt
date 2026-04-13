@@ -179,54 +179,68 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
         }
 
-        // ── Theme mode (direct toggle: LIGHT ↔ DARK) ────────────────────────
+        // ── Theme mode (3-way segmented picker: LIGHT / SYSTEM / DARK) ──────
         item {
-            val isDark = themeMode != ThemeMode.LIGHT
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(EjectSurface)
-                    .clickable {
-                        onThemeModeChange(if (isDark) ThemeMode.LIGHT else ThemeMode.DARK)
-                    }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(EjectSurfaceMid),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        val icon = when (themeMode) {
+                            ThemeMode.LIGHT  -> "☀"
+                            ThemeMode.DARK   -> "🌙"
+                            ThemeMode.SYSTEM -> "⚙"
+                        }
+                        Text(icon, fontSize = 18.sp)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        strings.settingsTheme,
+                        fontSize = 15.sp,
+                        color = EjectOnSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                // LIGHT / SYSTEM / DARK 를 한 행에 세그먼트 형태로 배치.
                 Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    val opts = listOf(
+                        ThemeMode.LIGHT  to strings.themeLight,
+                        ThemeMode.SYSTEM to strings.themeSystem,
+                        ThemeMode.DARK   to strings.themeDark,
+                    )
+                    opts.forEach { (mode, label) ->
+                        val isSel = themeMode == mode
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(EjectSurfaceMid),
+                                .background(if (isSel) EjectCoral else EjectSurfaceMid)
+                                .clickable { onThemeModeChange(mode) }
+                                .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(if (isDark) "🌙" else "☀", fontSize = 18.sp)
+                            Text(
+                                label,
+                                fontSize = 12.sp,
+                                color = if (isSel) Color.White else EjectOnSurface,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
-                        Spacer(Modifier.width(14.dp))
-                        Text(
-                            strings.settingsTheme,
-                            fontSize = 15.sp,
-                            color = EjectOnSurface,
-                            fontWeight = FontWeight.Bold,
-                        )
                     }
-                    Switch(
-                        checked = isDark,
-                        onCheckedChange = { checked ->
-                            onThemeModeChange(if (checked) ThemeMode.DARK else ThemeMode.LIGHT)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor   = Color.White,
-                            checkedTrackColor   = EjectCoral,
-                            uncheckedThumbColor = EjectOnSurface,
-                            uncheckedTrackColor = EjectSurfaceMid,
-                        ),
-                    )
                 }
             }
             Spacer(Modifier.height(24.dp))
