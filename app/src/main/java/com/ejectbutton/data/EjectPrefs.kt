@@ -23,6 +23,7 @@ object EjectPrefs {
     private const val KEY_CUSTOM_DELAY_SEC  = "custom_delay_sec"
     private const val KEY_EJECT_COUNT = "eject_count"
     private const val KEY_PREMIUM     = "is_premium"
+    private const val KEY_SHOW_ONBOARDING = "show_onboarding"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -226,6 +227,17 @@ object EjectPrefs {
     fun loadPremium(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_PREMIUM, false)
+
+    // ── Onboarding ───────────────────────────────────────────────────────────
+
+    fun saveShowOnboarding(ctx: Context, show: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_SHOW_ONBOARDING, show).apply()
+    }
+
+    fun loadShowOnboarding(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SHOW_ONBOARDING, true)
 
     // ── Theme mode ───────────────────────────────────────────────────────────
 
