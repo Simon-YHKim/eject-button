@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.Scenario
+import com.ejectbutton.data.ThemeMode
 import com.ejectbutton.data.strings
 import com.ejectbutton.crash.CrashReportManager
 import com.ejectbutton.data.SideButtonCommand
@@ -59,7 +61,11 @@ class MainActivity : ComponentActivity() {
      * Foreground 상태에서 볼륨 키 패턴을 감지.
      * Background 진입 시 [ButtonWatchService] 의 ContentObserver 가 이어받음.
      */
-    private val foregroundDetector = ButtonPatternDetector(SideButtonCommand.DISABLED) {
+    private val foregroundDetector = ButtonPatternDetector(
+        command = SideButtonCommand.DISABLED,
+        doubleWindowMs = ButtonPatternDetector.FOREGROUND_DOUBLE_WINDOW_MS,
+        tripleWindowMs = ButtonPatternDetector.FOREGROUND_TRIPLE_WINDOW_MS,
+    ) {
         SideButtonTrigger.fire(this)
     }
 
@@ -99,13 +105,35 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {}
     }
 
+    /**
+     * 상태표시줄/네비게이션바 색을 현재 (다크/라이트) 테마에 맞춰 재적용.
+     * Compose 트리의 SideEffect 에서 호출되므로 themeMode 변경 또는 시스템
+     * 다크모드 토글에 따라 즉시 반영된다.
+     */
+    private fun applySystemBars(useDark: Boolean) {
+        if (useDark) {
+            val dark = android.graphics.Color.parseColor("#191C1E")
+            enableEdgeToEdge(
+                statusBarStyle     = SystemBarStyle.dark(dark),
+                navigationBarStyle = SystemBarStyle.dark(dark),
+            )
+        } else {
+            // light scrim 은 반투명 흰색, darkScrim 은 API<29 폴백용 흑색
+            val lightScrim = android.graphics.Color.argb(0xE6, 0xFF, 0xFF, 0xFF)
+            val darkScrim  = android.graphics.Color.argb(0x80, 0x1B, 0x1B, 0x1B)
+            enableEdgeToEdge(
+                statusBarStyle     = SystemBarStyle.light(lightScrim, darkScrim),
+                navigationBarStyle = SystemBarStyle.light(lightScrim, darkScrim),
+            )
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // 상태표시줄: 어두운 배경 + 흰 아이콘, 네비게이션바: 어두운 배경
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#191C1E")),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#191C1E")),
-        )
+        // 상태표시줄/네비게이션바 색상은 아래 setContent 안에서 themeMode 에
+        // 반응해 [applySystemBars] 로 동적으로 설정한다. 여기서는 edge-to-edge
+        // 모드로 진입만 시키고, 실제 색상은 Compose 가 그려지기 직전에 적용.
+        enableEdgeToEdge()
 
         // 이전 크래시 로그가 있으면 자동으로 이메일 전송 화면 열기
         if (CrashReportManager.hasPendingReport(this)) {
@@ -146,6 +174,16 @@ class MainActivity : ComponentActivity() {
             var themeMode by remember {
                 mutableStateOf(EjectPrefs.loadThemeMode(this@MainActivity))
             }
+            // themeMode / 시스템 다크모드 변경에 맞춰 상태표시줄/네비바 색 재적용
+            val systemDark = isSystemInDarkTheme()
+            val useDarkBars = when (themeMode) {
+                ThemeMode.LIGHT  -> false
+                ThemeMode.DARK   -> true
+                ThemeMode.SYSTEM -> systemDark
+            }
+            SideEffect {
+                applySystemBars(useDarkBars)
+            }
             EjectButtonTheme(themeMode = themeMode) {
                 // 앱 언어 상태 — 최상위에서 관리하여 전체 Composition 재구성
                 var currentLanguage by remember {
@@ -156,6 +194,11 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalAppStrings provides strings) {
                     var splashDone by remember { mutableStateOf(false) }
                     val isPremium by billingManager.isPremium.collectAsState()
+
+                    // 프리미엄 구매/복원 시 광고 로더/슬롯을 즉시 비운다.
+                    LaunchedEffect(isPremium) {
+                        AdManager.setPremium(this@MainActivity, isPremium)
+                    }
 
                     LaunchedEffect(Unit) {
                         delay(2_000L)   // 2초 스플래시

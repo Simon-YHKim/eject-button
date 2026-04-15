@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.telephony.TelephonyManager
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.strings
@@ -44,13 +45,14 @@ class ButtonWatchService : Service() {
         private const val NOTIF_ID      = 1003
 
         // 디바이스/상황마다 볼륨 키가 영향을 주는 스트림이 다르므로 모두 감시.
+        // STREAM_VOICE_CALL 은 통화 중에만 움직이는데, 통화 중에는 아예 감지를
+        // 차단(실통화 위에 가짜 전화가 뜨면 안 됨)하므로 여기선 제외한다.
         private val WATCHED_STREAMS = intArrayOf(
             AudioManager.STREAM_MUSIC,
             AudioManager.STREAM_RING,
             AudioManager.STREAM_NOTIFICATION,
             AudioManager.STREAM_ALARM,
             AudioManager.STREAM_SYSTEM,
-            AudioManager.STREAM_VOICE_CALL,
         )
 
         fun start(ctx: Context) {
@@ -149,6 +151,16 @@ class ButtonWatchService : Service() {
      *    case 를 대비해 방어적으로 pref 를 재로드.
      */
     private fun handleVolumeChange() {
+        // 실통화 중이면 볼륨 키는 VOICE_CALL 조절용이고, 가짜 전화가
+        // 그 위에 뜨는 건 명백히 잘못된 동작. 감지 자체를 short-circuit.
+        val tm = getSystemService(TELEPHONY_SERVICE) as? TelephonyManager
+        if (tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE) {
+            // 통화 종료 후 곧바로 이전 볼륨과 비교해 유령 이벤트가 나지 않도록
+            // 기준선도 현재 값으로 재스냅샷.
+            snapshotAllStreams()
+            return
+        }
+
         if (!detector.command.isEnabled) {
             detector.command = EjectPrefs.loadSideButtonCommand(this)
             detector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)

@@ -58,9 +58,15 @@ import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
+import android.content.res.ColorStateList
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
-import android.view.LayoutInflater
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -200,8 +206,29 @@ fun MainScreen(
             }
             ModeChoice.SIDE_BUTTON -> {
                 ShakeDetectionService.stop(ctx)
-                EjectPrefs.saveSideButtonArmed(ctx, true)
-                ButtonWatchService.reconcile(ctx)
+                // 오버레이 권한 없이 arm 해봐야 트리거 시 가짜 전화가 뜨지 않는다
+                // (WindowManager.addView 가 silent fail). 권한 요청 화면을 바로 띄우고
+                // 허용되기 전까지는 arm 하지 않는다.
+                if (AndroidSettings.canDrawOverlays(ctx)) {
+                    EjectPrefs.saveSideButtonArmed(ctx, true)
+                    ButtonWatchService.reconcile(ctx)
+                } else {
+                    EjectPrefs.saveSideButtonArmed(ctx, false)
+                    ButtonWatchService.reconcile(ctx)
+                    runCatching {
+                        ctx.startActivity(
+                            android.content.Intent(
+                                AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${ctx.packageName}"),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                    android.widget.Toast.makeText(
+                        ctx,
+                        strings.sideButtonOverlayRequired,
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
             ModeChoice.BUTTON -> {
                 ShakeDetectionService.stop(ctx)
@@ -1543,46 +1570,110 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
 }
 
 // ─── 네이티브 광고 (compact banner) ─────────────────────────────────────────
-// 한 줄짜리 얇은 배너: 아이콘 + 헤드라인 + AD 라벨 만. body/CTA 는 생략해
-// 광고가 조작 영역을 잡아먹지 않도록 한다.
+// AdMob 정책: 네이티브 광고 에셋(headline/icon/body/CTA) 은 반드시
+// [NativeAdView] 의 자식으로 배치되고 `setHeadlineView` 등으로 등록된 뒤
+// `setNativeAd(ad)` 가 호출돼야 한다. 그래야 impression/click 이 집계되고
+// 사용자의 탭이 광고주 페이지로 넘어간다. 이 규칙을 어기면 계정 정지 사유.
+//
+// 따라서 한 줄 배너이긴 하지만 NativeAdView 안에 LinearLayout (icon +
+// headline + AD 뱃지) 를 구성하고 각 View 를 NativeAdView 의 슬롯에 바인드한다.
 
 @Composable
 private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(EjectSurface)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-    ) {
-        ad.icon?.drawable?.let { icon ->
-            AndroidView(
-                factory = { ctx -> ImageView(ctx).apply { setImageDrawable(icon) } },
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(RoundedCornerShape(6.dp)),
-            )
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(
-            ad.headline ?: ad.body ?: "",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = EjectOnSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(3.dp))
-                .background(EjectSecondary.copy(alpha = 0.15f))
-                .padding(horizontal = 5.dp, vertical = 1.dp)
-        ) {
-            Text("AD", fontSize = 8.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
-        }
-    }
+    val surfaceColor   = EjectSurface.toArgb()
+    val onSurfaceColor = EjectOnSurface.toArgb()
+    val secondaryColor = EjectSecondary.toArgb()
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            fun dp(value: Int): Int = (value * ctx.resources.displayMetrics.density).toInt()
+
+            val adView = NativeAdView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            }
+
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(10), dp(6), dp(10), dp(6))
+                // 둥근 모서리 + 배경색을 프로그램매틱하게 그린 GradientDrawable
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = dp(12).toFloat()
+                    setColor(surfaceColor)
+                }
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            }
+
+            val iconView = ImageView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply {
+                    marginEnd = dp(8)
+                }
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+
+            val headlineView = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f,
+                )
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTextColor(onSurfaceColor)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+
+            val badgeView = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = dp(8) }
+                text = "AD"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+                setTextColor(secondaryColor)
+                setPadding(dp(5), dp(1), dp(5), dp(1))
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = dp(3).toFloat()
+                    // 15% alpha 보조색
+                    setColor((secondaryColor and 0x00FFFFFF) or 0x26000000)
+                }
+            }
+
+            row.addView(iconView)
+            row.addView(headlineView)
+            row.addView(badgeView)
+            adView.addView(row)
+
+            adView.iconView     = iconView
+            adView.headlineView = headlineView
+            adView
+        },
+        update = { adView ->
+            val iconView     = adView.iconView as? ImageView
+            val headlineView = adView.headlineView as? TextView
+
+            val iconDrawable = ad.icon?.drawable
+            if (iconDrawable != null) {
+                iconView?.setImageDrawable(iconDrawable)
+                iconView?.visibility = android.view.View.VISIBLE
+            } else {
+                iconView?.visibility = android.view.View.GONE
+            }
+            headlineView?.text = ad.headline ?: ad.body ?: ""
+
+            // impression + click 집계를 위한 필수 호출.
+            adView.setNativeAd(ad)
+        },
+    )
 }
 
 // ─── 프리미엄 업그레이드 다이얼로그 ─────────────────────────────────────────

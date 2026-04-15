@@ -121,15 +121,36 @@ class FakeCallOverlayService : Service() {
                 try { acquireWake() } catch (_: Exception) {}
                 try { ring() } catch (_: Exception) {}
                 try { startFlashBlink() } catch (_: Exception) {}
-                try { showOverlay(callerName, callerLabel, prompter) } catch (_: Exception) { stopSelf() }
+                tryShowOverlayOrAbort(callerName, callerLabel, prompter)
             }, delayMs)
         } else {
             try { acquireWake() } catch (_: Exception) {}
             try { ring() } catch (_: Exception) {}
             try { startFlashBlink() } catch (_: Exception) {}
-            try { showOverlay(callerName, callerLabel, prompter) } catch (_: Exception) { stopSelf() }
+            tryShowOverlayOrAbort(callerName, callerLabel, prompter)
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * 오버레이 표시 시도. 실패 시(권한 철회, BadTokenException 등) 링/플래시/진동
+     * 을 모두 중단하고 사용자에게 토스트로 원인 안내 → silent fail 방지.
+     */
+    private fun tryShowOverlayOrAbort(callerName: String, callerLabel: String, prompter: String) {
+        try {
+            showOverlay(callerName, callerLabel, prompter)
+        } catch (e: Exception) {
+            // 링/플래시/진동 정리
+            stopRing()
+            stopFlashBlink()
+            releaseWake()
+            // 사용자 피드백
+            try {
+                val msg = EjectPrefs.loadLanguage(this).strings().sideButtonOverlayRequired
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {}
+            stopSelf()
+        }
     }
 
     /**
