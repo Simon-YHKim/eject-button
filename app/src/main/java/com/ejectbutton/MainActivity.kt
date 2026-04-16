@@ -47,6 +47,7 @@ import com.microsoft.clarity.Clarity
 import com.microsoft.clarity.ClarityConfig
 import com.ejectbutton.service.ShakeDetectionService
 import com.ejectbutton.ui.main.MainScreen
+import com.ejectbutton.ui.main.OnboardingScreen
 import com.ejectbutton.ui.theme.*
 import androidx.compose.foundation.border
 import com.google.android.play.core.review.ReviewManagerFactory
@@ -194,6 +195,12 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalAppStrings provides strings) {
                     var splashDone by remember { mutableStateOf(false) }
                     val isPremium by billingManager.isPremium.collectAsState()
+                    // 첫 실행 튜토리얼: pref 값이 true 일 때 MainScreen 대신 OnboardingScreen 을 보여준다.
+                    // 사용자가 '더이상의 설명은 필요 없다' 를 누르면 false 로 저장.
+                    // '다음번에... 한번만... 더...' 를 누르면 값을 유지 (다음 실행에 다시 표시).
+                    var showOnboarding by remember {
+                        mutableStateOf(EjectPrefs.loadShowOnboarding(this@MainActivity))
+                    }
 
                     // 프리미엄 구매/복원 시 광고 로더/슬롯을 즉시 비운다.
                     LaunchedEffect(isPremium) {
@@ -206,9 +213,28 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Box(modifier = Modifier.fillMaxSize()) {
+                        // 튜토리얼 (최초 실행 / 사용자가 설정에서 재활성화한 경우)
+                        AnimatedVisibility(
+                            visible = splashDone && showOnboarding,
+                            enter   = fadeIn(tween(400)),
+                            exit    = fadeOut(tween(250)),
+                        ) {
+                            OnboardingScreen(
+                                onDoneNoMore   = {
+                                    EjectPrefs.saveShowOnboarding(this@MainActivity, false)
+                                    showOnboarding = false
+                                },
+                                onDoneOnceMore = {
+                                    // pref 유지 — 다음 실행에 다시 표시
+                                    EjectPrefs.saveShowOnboarding(this@MainActivity, true)
+                                    showOnboarding = false
+                                },
+                            )
+                        }
+
                         // 메인 화면
                         AnimatedVisibility(
-                            visible = splashDone,
+                            visible = splashDone && !showOnboarding,
                             enter   = fadeIn(tween(400)),
                         ) {
                             MainScreen(
