@@ -1,10 +1,14 @@
 package com.ejectbutton.service
 
 import android.app.*
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
 import android.media.AudioManager
+import android.media.VolumeProvider
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -26,9 +30,16 @@ import com.ejectbutton.data.strings
  *   (일부 기기/버전에서는 시스템 볼륨 HUD 를 완전히 막을 수 없음 — 그 경우
  *    감지 자체는 여전히 동작한다)
  *
- * 동작 범위 (의도적):
- * - 앱이 Foreground / Background (서비스 살아있음) 일 때만 동작
- * - 화면 OFF 또는 앱 완전 종료 상태에서는 동작하지 않음
+ * Round 10 추가: MediaSession + VolumeProvider 를 '원격 재생' 모드로 등록하면
+ * 시스템이 모든 볼륨 키를 AudioManager 보다 먼저 이 세션으로 라우팅한다 → 화면이
+ * 꺼진 상태에서도 onAdjustVolume 이 호출되므로 백그라운드·락스크린 모두에서 감지
+ * 가능하다. ContentObserver 경로는 다른 미디어 앱이 세션 우선순위를 가져간 경우의
+ * fallback 으로 그대로 유지.
+ *
+ * 동작 범위:
+ * - 앱이 Foreground / Background (서비스 살아있음) 에서 동작 — 화면 ON/OFF 무관.
+ * - 앱 완전 종료 (스와이프로 recent apps 에서 제거 등) 상태에서는 서비스가 중지되어
+ *   동작하지 않음 (안드로이드 제약).
  *
  * 시작/중지:
  * - 사용자가 메인 화면에서 mode=SIDE_BUTTON 을 선택하면 armed=true 로 [start]
@@ -83,6 +94,10 @@ class ButtonWatchService : Service() {
     private val lastVolumes = mutableMapOf<Int, Int>()
     private var observer: ContentObserver? = null
 
+    // Round 10 — 화면 OFF 에서도 볼륨 키를 잡기 위한 MediaSession.
+    // Remote playback + VolumeProvider 조합으로 시스템이 볼륨 이벤트를 라우팅한다.
+    private var mediaSession: MediaSession? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -91,6 +106,56 @@ class ButtonWatchService : Service() {
         snapshotAllStreams()
         createChannel()
         registerObserver()
+        registerMediaSession()
+    }
+
+    /**
+     * 화면 OFF / 락스크린 상태에서도 볼륨 키 이벤트를 받기 위한 MediaSession.
+     *
+     * 원리:
+     *  - VolumeProvider.VOLUME_CONTROL_ABSOLUTE 로 만든 "가상 볼륨" 에 대한
+     *    원격 재생(remote playback) 세션을 활성화한다.
+     *  - 세션이 active 이고 재생 중(STATE_PLAYING) 이면 시스템은 볼륨 키를
+     *    AudioManager 보다 먼저 이 세션의 onAdjustVolume 에 전달한다.
+     *  - currentVolume 을 그대로 두면 시스템 HUD 도 뜨지 않는다.
+     *  - 다른 미디어 앱이 포커스를 가져가면 이 경로가 막히지만, 그 경우에도
+     *    ContentObserver fallback 이 동작한다 (사용자 미디어 앱의 볼륨이 변할 때).
+     */
+    private fun registerMediaSession() {
+        val session = MediaSession(this, "EjectButton-ButtonWatch")
+        val volumeProvider = object : VolumeProvider(
+            VOLUME_CONTROL_ABSOLUTE,
+            100,   // max 가상 볼륨
+            50,    // 현재 가상 볼륨 (절대 변경하지 않아 HUD 미노출)
+        ) {
+            override fun onAdjustVolume(direction: Int) {
+                // direction: +1 = UP, -1 = DOWN, 0 = (raise/lower 구분 없는 수정, 무시)
+                if (!detector.command.isEnabled || !EjectPrefs.loadSideButtonArmed(this@ButtonWatchService)) {
+                    return
+                }
+                // 통화 중에는 가짜 전화가 뜨면 안 되므로 무시.
+                val tm = getSystemService(TELEPHONY_SERVICE) as? TelephonyManager
+                if (tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE) return
+
+                when {
+                    direction > 0 -> detector.onVolumeUp()
+                    direction < 0 -> detector.onVolumeDown()
+                }
+                // currentVolume 유지 — 시스템 볼륨에 영향 없음.
+            }
+
+            override fun onSetVolumeTo(volume: Int) { /* no-op */ }
+        }
+        session.setPlaybackToRemote(volumeProvider)
+
+        // 활성 상태 + 재생 중 상태여야 볼륨 키가 이 세션으로 라우팅된다.
+        val playbackState = PlaybackState.Builder()
+            .setState(PlaybackState.STATE_PLAYING, 0L, 1.0f)
+            .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE)
+            .build()
+        session.setPlaybackState(playbackState)
+        session.isActive = true
+        mediaSession = session
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -223,6 +288,13 @@ class ButtonWatchService : Service() {
             try { contentResolver.unregisterContentObserver(it) } catch (_: Exception) {}
         }
         observer = null
+        mediaSession?.let {
+            try {
+                it.isActive = false
+                it.release()
+            } catch (_: Exception) {}
+        }
+        mediaSession = null
         super.onDestroy()
     }
 }
