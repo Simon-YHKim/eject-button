@@ -11,6 +11,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,6 +35,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -173,64 +175,22 @@ fun MainScreen(
         EjectPrefs.saveCustomDelaySec(ctx, customDelaySec)
     }
 
-    // ── 모드별 자동 arm/disarm: 사용자가 EJECT 를 누르지 않아도 SHAKE/SIDE 는
-    // 모드 선택만으로 활성화되어야 한다.
-    //
-    // SHAKE 모드 → ShakeDetectionService 가 scenario + delay 로 상시 대기.
-    // SIDE_BUTTON 모드 → side_button_armed=true + ButtonWatchService reconcile.
-    // 그 외 → 두 서비스 모두 중지.
-    DisposableEffect(
-        selectedMode,
-        selectedScenario.id,
-        selectedTime,
-        customDelaySec,
-    ) {
-        val delayMs = when (selectedTime) {
-            TimeChoice.IMMEDIATE -> 0L
-            TimeChoice.AFTER_10S -> 10_000L
-            TimeChoice.CUSTOM    -> customDelaySec * 1000L
-        }
+    // Round 9 — 모드 선택만으로 자동 arm 하지 않는다.
+    // 사용자가 EJECT 를 눌러야 각 모드가 실제로 대기 상태로 들어간다 (onEject 참고).
+    // 모드를 전환할 때는 직전 모드의 남아있는 arm 상태만 정리한다.
+    DisposableEffect(selectedMode) {
         when (selectedMode) {
             ModeChoice.SHAKE -> {
+                // SHAKE 로 전환 시점: 과거 사이드 arm 이 남아있을 수 있으니 해제.
                 EjectPrefs.saveSideButtonArmed(ctx, false)
                 ButtonWatchService.reconcile(ctx)
-                if (AndroidSettings.canDrawOverlays(ctx)) {
-                    ShakeDetectionService.start(
-                        ctx,
-                        selectedScenario.callerName,
-                        selectedScenario.callerLabel,
-                        selectedScenario.prompterHint,
-                        delayMs,
-                    )
-                }
             }
             ModeChoice.SIDE_BUTTON -> {
+                // SIDE_BUTTON 로 전환 시점: 과거 shake arm 해제.
                 ShakeDetectionService.stop(ctx)
-                // 오버레이 권한 없이 arm 해봐야 트리거 시 가짜 전화가 뜨지 않는다
-                // (WindowManager.addView 가 silent fail). 권한 요청 화면을 바로 띄우고
-                // 허용되기 전까지는 arm 하지 않는다.
-                if (AndroidSettings.canDrawOverlays(ctx)) {
-                    EjectPrefs.saveSideButtonArmed(ctx, true)
-                    ButtonWatchService.reconcile(ctx)
-                } else {
-                    EjectPrefs.saveSideButtonArmed(ctx, false)
-                    ButtonWatchService.reconcile(ctx)
-                    runCatching {
-                        ctx.startActivity(
-                            android.content.Intent(
-                                AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                android.net.Uri.parse("package:${ctx.packageName}"),
-                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        )
-                    }
-                    android.widget.Toast.makeText(
-                        ctx,
-                        strings.sideButtonOverlayRequired,
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
-                }
             }
             ModeChoice.BUTTON -> {
+                // BUTTON 로 전환: 두 백그라운드 모드 모두 해제.
                 ShakeDetectionService.stop(ctx)
                 EjectPrefs.saveSideButtonArmed(ctx, false)
                 ButtonWatchService.reconcile(ctx)
@@ -249,6 +209,10 @@ fun MainScreen(
     // SIDE_BUTTON 트리거 상태: 대기 중 배지 + 미설정 경고 배너
     var sideButtonStandby by remember { mutableStateOf(false) }
     var sideButtonNotice  by remember { mutableStateOf(false) }
+    // Round 9 — SHAKE arm 상태 (EJECT 탭으로 arm 된 상태).
+    var shakeStandby      by remember { mutableStateOf(false) }
+    // Round 9 — SIDE_BUTTON arm 직후 한 번만 띄우는 "볼륨 커맨드 안내" 팝업.
+    var showSideVolumeHint by remember { mutableStateOf(false) }
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
     var history          by remember { mutableStateOf(EjectPrefs.loadHistory(ctx)) }
     // 탈출 기록 초기화 후 확인 팝업
@@ -369,6 +333,25 @@ fun MainScreen(
         )
     }
 
+    // Round 9 — 사이드 모드 arm 직후 "백그라운드에서 볼륨 커맨드를 누르세요" 안내 팝업.
+    if (showSideVolumeHint) {
+        AlertDialog(
+            onDismissRequest = { showSideVolumeHint = false },
+            title            = { Text(strings.sideModeArmedTitle, fontWeight = FontWeight.Bold) },
+            text             = { Text(strings.sideModeArmedMsg) },
+            confirmButton    = {
+                TextButton(onClick = { showSideVolumeHint = false }) {
+                    Text(
+                        strings.dialogConfirm,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
     // 뒤로가기 처리 (최우선)
     // 우선순위: 종료 다이얼로그 열림 → 닫기 / 설정 화면 열림 → 닫기 /
     //          Command 이외 탭 → Command 로 이동 / Command 탭 → 종료 확인 팝업
@@ -376,6 +359,7 @@ fun MainScreen(
         when {
             showExitConfirmDialog    -> showExitConfirmDialog = false
             showHistoryClearedDialog -> showHistoryClearedDialog = false
+            showSideVolumeHint       -> showSideVolumeHint = false
             showPremiumSheet         -> showPremiumSheet = false
             showAddCaller            -> showAddCaller = false
             showCustomDialog         -> showCustomDialog = false
@@ -421,7 +405,20 @@ fun MainScreen(
             .fillMaxSize()
             .background(EjectBg)
             .statusBarsPadding()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            // Round 9 — COMMAND ↔ HISTORY ↔ SYSTEMS 탭을 좌/우 스와이프로 이동.
+            // 임계값 ±18f: 가볍게 밀기만 해도 전환되도록.
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    val screens = AppScreen.entries
+                    val cur = screens.indexOf(currentScreen)
+                    if (dragAmount < -18f && cur < screens.size - 1) {
+                        currentScreen = screens[cur + 1]
+                    } else if (dragAmount > 18f && cur > 0) {
+                        currentScreen = screens[cur - 1]
+                    }
+                }
+            },
     ) {
         // 메인 컨텐츠 (하단 바 + 광고 영역만큼 패딩).
         // 광고 카드 ~34dp + spacer 8dp + BottomBar ~56dp + spacer 12dp ≈ 110dp
@@ -457,6 +454,7 @@ fun MainScreen(
                     countdown        = countdown,
                     sideButtonCommand = sideButtonCommand,
                     sideButtonStandby = sideButtonStandby,
+                    shakeStandby      = shakeStandby,
                     sideButtonNotice  = sideButtonNotice,
                     onDismissNotice   = { sideButtonNotice = false },
                     onOpenSettingsForSideButton = {
@@ -481,17 +479,78 @@ fun MainScreen(
                     onAddCaller      = { showAddCaller = true },
                     onSettingsTap    = { showSettings = true },
                     onEject          = handleEject@{
-                        // SIDE_BUTTON 선택 시: 사이드 버튼 명령이 설정돼 있어야 발동 가능
+                        // Round 9 — SIDE_BUTTON 모드: EJECT 탭으로 arm + 볼륨 안내 팝업.
                         if (selectedTrigger == TriggerMode.SIDE_BUTTON) {
                             val cmd = EjectPrefs.loadSideButtonCommand(ctx)
                             if (!cmd.isEnabled) {
                                 sideButtonNotice = true
                                 return@handleEject
                             }
+                            // 오버레이 권한이 없으면 arm 해도 트리거 시 가짜 전화가 뜨지 않으므로
+                            // 권한 설정 화면을 띄우고 arm 은 보류.
+                            if (!AndroidSettings.canDrawOverlays(ctx)) {
+                                EjectPrefs.saveSideButtonArmed(ctx, false)
+                                ButtonWatchService.reconcile(ctx)
+                                runCatching {
+                                    ctx.startActivity(
+                                        android.content.Intent(
+                                            AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            android.net.Uri.parse("package:${ctx.packageName}"),
+                                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                                android.widget.Toast.makeText(
+                                    ctx,
+                                    strings.sideButtonOverlayRequired,
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                                return@handleEject
+                            }
                             EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
                             EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
+                            EjectPrefs.saveSideButtonArmed(ctx, true)
                             ButtonWatchService.reconcile(ctx)
-                            sideButtonStandby = true
+                            sideButtonStandby    = true
+                            showSideVolumeHint   = true
+                            if (EjectPrefs.loadHaptic(ctx)) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            return@handleEject
+                        }
+
+                        // Round 9 — SHAKE 모드: EJECT 탭으로 ShakeDetectionService arm.
+                        if (selectedTrigger == TriggerMode.SHAKE) {
+                            if (!AndroidSettings.canDrawOverlays(ctx)) {
+                                runCatching {
+                                    ctx.startActivity(
+                                        android.content.Intent(
+                                            AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            android.net.Uri.parse("package:${ctx.packageName}"),
+                                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                                android.widget.Toast.makeText(
+                                    ctx,
+                                    strings.sideButtonOverlayRequired,
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                                return@handleEject
+                            }
+                            EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
+                            EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
+                            val shakeDelayMs = when (selectedTime) {
+                                TimeChoice.IMMEDIATE -> 0L
+                                TimeChoice.AFTER_10S -> 10_000L
+                                TimeChoice.CUSTOM    -> customDelaySec * 1000L
+                            }
+                            ShakeDetectionService.start(
+                                ctx,
+                                selectedScenario.callerName,
+                                selectedScenario.callerLabel,
+                                selectedScenario.prompterHint,
+                                shakeDelayMs,
+                            )
+                            shakeStandby = true
                             if (EjectPrefs.loadHaptic(ctx)) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
@@ -529,10 +588,14 @@ fun MainScreen(
                     },
                     onCancel = {
                         // countdown 중이면 진행 중인 가짜 전화 서비스도 함께 종료.
-                        // sideButtonStandby 배지만 떠 있는 상태라면 배지만 해제.
+                        // SHAKE / SIDE_BUTTON arm 상태도 모두 해제 (Round 9).
                         FakeCallOverlayService.stop(ctx)
                         CountdownBus.clear()
                         sideButtonStandby = false
+                        shakeStandby      = false
+                        ShakeDetectionService.stop(ctx)
+                        EjectPrefs.saveSideButtonArmed(ctx, false)
+                        ButtonWatchService.reconcile(ctx)
                     },
                 )
                 AppScreen.HISTORY -> HistoryContent(
@@ -598,6 +661,7 @@ private fun CommandContent(
     countdown: Int,
     sideButtonCommand: SideButtonCommand,
     sideButtonStandby: Boolean,
+    shakeStandby: Boolean,
     sideButtonNotice: Boolean,
     onDismissNotice: () -> Unit,
     onOpenSettingsForSideButton: () -> Unit,
@@ -612,7 +676,7 @@ private fun CommandContent(
     onCancel: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    val isCancelMode = countdown > 0 || sideButtonStandby
+    val isCancelMode = countdown > 0 || sideButtonStandby || shakeStandby
 
     Column(
         modifier = Modifier
@@ -664,6 +728,28 @@ private fun CommandContent(
             ) {
                 Text(
                     strings.sideButtonStandby,
+                    fontSize = 14.sp, color = EjectCoral, fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                )
+            }
+        }
+
+        // Round 9 — 흔들기 대기 중 배너 (EJECT 탭으로 arm 된 상태).
+        AnimatedVisibility(
+            visible = shakeStandby && countdown == 0,
+            enter   = fadeIn() + slideInVertically(),
+            exit    = fadeOut() + slideOutVertically(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(EjectCoral.copy(alpha = 0.1f))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    strings.shakeNotifTitle,
                     fontSize = 14.sp, color = EjectCoral, fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                 )
