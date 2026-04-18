@@ -57,6 +57,9 @@ fun SettingsScreen(
     var vibration  by remember { mutableStateOf(EjectPrefs.loadVibration(ctx)) }
     var haptic     by remember { mutableStateOf(EjectPrefs.loadHaptic(ctx)) }
     var flash      by remember { mutableStateOf(EjectPrefs.loadFlash(ctx)) }
+    // Round 9 — 다음 실행 시 튜토리얼을 다시 보여줄지 여부. 사용자가 끄면 OnboardingScreen 은
+    // 더 이상 뜨지 않고, 여기서 다시 켜면 다음 앱 실행 때 튜토리얼이 되살아난다.
+    var showManualNext by remember { mutableStateOf(EjectPrefs.loadShowOnboarding(ctx)) }
     var sideButtonCommand by remember {
         mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
     }
@@ -395,6 +398,31 @@ fun SettingsScreen(
                     icon = "📘",
                     label = strings.howToUseTitle,
                     onClick = { showHowToUse = true },
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ── Tutorial (re-enable onboarding for next launch) ─────────────────
+        item {
+            EjectSectionHeader(strings.howToUseTitle)
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(EjectSurfaceLow)
+                    .padding(8.dp),
+            ) {
+                EjectToggleCard(
+                    icon  = "📖",
+                    label = strings.settingsShowManual,
+                    desc  = strings.settingsShowManualDesc,
+                    checked = showManualNext,
+                    onCheckedChange = {
+                        showManualNext = it
+                        EjectPrefs.saveShowOnboarding(ctx, it)
+                    },
                 )
             }
             Spacer(Modifier.height(24.dp))
