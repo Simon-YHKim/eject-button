@@ -7,6 +7,9 @@ on:
       - main
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,10 +35,21 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - name: Rename APK with run metadata
+        run: |
+          mkdir -p release-assets
+          cp app/build/outputs/apk/debug/app-debug.apk \
+             "release-assets/eject-button-debug-run${{ github.run_number }}-${GITHUB_SHA::7}.apk"
+          ls -la release-assets/
+
+      - name: Publish debug build as GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: eject-button-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: debug-build-${{ github.run_number }}
+          name: "Debug Build #${{ github.run_number }} (${{ github.ref_name }} @ ${{ github.sha }})"
+          prerelease: true
+          body: |
+            Debug APK built from commit `${{ github.sha }}` on branch `${{ github.ref_name }}`.
+            Install directly on an Android device for testing.
+          files: release-assets/*.apk
+          fail_on_unmatched_files: true
