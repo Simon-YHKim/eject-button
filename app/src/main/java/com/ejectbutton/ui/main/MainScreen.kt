@@ -175,21 +175,6 @@ fun MainScreen(
         EjectPrefs.saveCustomDelaySec(ctx, customDelaySec)
     }
 
-    // Round 11 — 모드 전환 = 자동 취소.
-    // 현재 진행 중인 countdown / 서비스 / arm 플래그를 모두 정리.
-    // 사용자가 EJECT 취소 버튼을 누르지 않고 모드만 바꿔도 안전하게 clean slate 로
-    // 돌아가도록. 새 모드에서 arm 하려면 EJECT 를 다시 눌러야 한다.
-    DisposableEffect(selectedMode) {
-        CountdownBus.clear()
-        FakeCallOverlayService.stop(ctx)
-        ShakeDetectionService.stop(ctx)
-        EjectPrefs.saveSideButtonArmed(ctx, false)
-        ButtonWatchService.reconcile(ctx)
-        sideButtonStandby = false
-        shakeStandby      = false
-        onDispose { }
-    }
-
     // 사이드 버튼 트리거 명령 — 메인 화면 카드에서도 변경 가능
     var sideButtonCommand by remember {
         mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
@@ -204,6 +189,23 @@ fun MainScreen(
     var shakeStandby      by remember { mutableStateOf(false) }
     // Round 9 — SIDE_BUTTON arm 직후 한 번만 띄우는 "볼륨 커맨드 안내" 팝업.
     var showSideVolumeHint by remember { mutableStateOf(false) }
+
+    // Round 11 — 모드 전환 = 자동 취소.
+    // 현재 진행 중인 countdown / 서비스 / arm 플래그를 모두 정리.
+    // 사용자가 EJECT 취소 버튼을 누르지 않고 모드만 바꿔도 안전하게 clean slate 로
+    // 돌아가도록. 새 모드에서 arm 하려면 EJECT 를 다시 눌러야 한다.
+    // (모든 state var 가 선언된 뒤에 위치해야 Kotlin 이 캡처할 수 있음 — 위로 올려두면 컴파일 에러)
+    DisposableEffect(selectedMode) {
+        CountdownBus.clear()
+        FakeCallOverlayService.stop(ctx)
+        ShakeDetectionService.stop(ctx)
+        EjectPrefs.saveSideButtonArmed(ctx, false)
+        ButtonWatchService.reconcile(ctx)
+        sideButtonStandby = false
+        shakeStandby      = false
+        onDispose { }
+    }
+
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
     var history          by remember { mutableStateOf(EjectPrefs.loadHistory(ctx)) }
     // 탈출 기록 초기화 후 확인 팝업
