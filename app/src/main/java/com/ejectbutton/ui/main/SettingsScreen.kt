@@ -472,7 +472,7 @@ fun SettingsScreen(
                     label = strings.settingsPrivacy,
                     onClick = {
                         ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                            Uri.parse("https://ejectbutton.app/privacy")))
+                            Uri.parse("https://simon-yhkim.github.io/eject-button/privacy-policy.html")))
                     }
                 )
             }

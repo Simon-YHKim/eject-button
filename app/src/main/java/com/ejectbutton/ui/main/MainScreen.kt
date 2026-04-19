@@ -1592,7 +1592,10 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
             cursor?.use {
                 val idx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val seen = mutableSetOf<String>()
-                while (it.moveToNext() && result.size < 50) {
+                // Round 14 — 전체 연락처 표시. 과거엔 50개에서 잘라 "스크롤 해도
+                // 더 없음" 처럼 보였던 UX 버그를 수정. LazyColumn 이 viewport
+                // 바깥 아이템을 지연 렌더링하므로 수천 개도 부드럽게 처리된다.
+                while (it.moveToNext()) {
                     val name = it.getString(idx) ?: continue
                     if (seen.add(name)) result.add(name)
                 }
