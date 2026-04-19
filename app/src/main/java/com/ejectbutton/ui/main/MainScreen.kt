@@ -472,35 +472,19 @@ fun MainScreen(
                         if (selectedScenario.id == toDelete.id) selectedScenario = localizedDefaults[0]
                     },
                     onSelectTime     = { time ->
-                        // Round 10 — CUSTOM delay 는 Eject Mayday (premium) 전용.
-                        if (time == TimeChoice.CUSTOM && !isPremium) {
-                            showPremiumSheet = true
-                        } else {
-                            selectedTime = time
-                            if (time == TimeChoice.CUSTOM) showCustomDialog = true
-                        }
+                        // Round 12 — 프리미엄 게이팅 임시 해제 (사용자 테스트용).
+                        // Play Console 에 제품 등록 + 수익 플로우 준비되면 다시 건다.
+                        selectedTime = time
+                        if (time == TimeChoice.CUSTOM) showCustomDialog = true
                     },
                     onSelectMode     = { mode ->
-                        // Round 10 — SHAKE / SIDE_BUTTON 모드는 Eject Mayday 전용.
-                        if ((mode == ModeChoice.SHAKE || mode == ModeChoice.SIDE_BUTTON) && !isPremium) {
-                            showPremiumSheet = true
-                        } else {
-                            selectedMode = mode
-                        }
+                        // Round 12 — 프리미엄 게이팅 임시 해제.
+                        selectedMode = mode
                     },
                     onAddCaller      = { showAddCaller = true },
                     onSettingsTap    = { showSettings = true },
                     onEject          = handleEject@{
-                        // Round 10 — 프리미엄 전용 모드/커스텀 타이머는 구매 전 발동 차단.
-                        // (사용자가 premium 상태를 잃었거나 레거시 pref 값이 남아있는 경우)
-                        val needsPremium =
-                            selectedMode == ModeChoice.SHAKE ||
-                            selectedMode == ModeChoice.SIDE_BUTTON ||
-                            selectedTime == TimeChoice.CUSTOM
-                        if (needsPremium && !isPremium) {
-                            showPremiumSheet = true
-                            return@handleEject
-                        }
+                        // Round 12 — 프리미엄 게이팅 임시 해제 (사용자 테스트용).
 
                         // Round 9 — SIDE_BUTTON 모드: EJECT 탭으로 arm + 볼륨 안내 팝업.
                         if (selectedTrigger == TriggerMode.SIDE_BUTTON) {

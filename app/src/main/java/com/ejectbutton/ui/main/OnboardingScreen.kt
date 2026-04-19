@@ -105,15 +105,23 @@ fun OnboardingScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
             .pointerInput(totalSteps) {
+                // Round 11 — 누적 드래그 방식으로 전환. 드래그 중엔 아무 동작도
+                // 하지 않고 손가락을 뗐을 때(onDragEnd) 한 번만 판정 → 빠른
+                // 플릭이어도 무조건 한 페이지만 이동.
+                var totalDrag = 0f
                 detectHorizontalDragGestures(
-                    onDragEnd = {},
+                    onDragStart  = { totalDrag = 0f },
+                    onDragCancel = { totalDrag = 0f },
+                    onDragEnd = {
+                        if (totalDrag < -60f && index < totalSteps - 1) {
+                            index += 1
+                        } else if (totalDrag > 60f && index > 0) {
+                            index -= 1
+                        }
+                        totalDrag = 0f
+                    },
                 ) { _, dragAmount ->
-                    // 좌 스와이프 → 다음, 우 스와이프 → 이전
-                    if (dragAmount < -16f && index < totalSteps - 1) {
-                        index += 1
-                    } else if (dragAmount > 16f && index > 0) {
-                        index -= 1
-                    }
+                    totalDrag += dragAmount
                 }
             },
     ) {
