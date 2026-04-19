@@ -3,6 +3,7 @@ package com.ejectbutton.billing
 import android.app.Activity
 import android.content.Context
 import com.android.billingclient.api.*
+import com.ejectbutton.analytics.EjectAnalytics
 import com.ejectbutton.data.EjectPrefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -136,6 +137,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
                     EjectPrefs.savePremium(context, true)
                     _isPremium.value = true
+                    EjectAnalytics.logPremiumPurchased(PRODUCT_PREMIUM)
                     if (!purchase.isAcknowledged) {
                         val ackParams = AcknowledgePurchaseParams.newBuilder()
                             .setPurchaseToken(purchase.purchaseToken)

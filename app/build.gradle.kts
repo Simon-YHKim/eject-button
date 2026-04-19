@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 // keystore.properties 로드 (없으면 릴리즈 서명 스킵)
@@ -97,5 +98,8 @@ dependencies {
     implementation(libs.play.billing)
     implementation(libs.google.admob)
     implementation(libs.ms.clarity)
+    // Firebase — BoM 으로 모든 Firebase 라이브러리 버전을 한 번에 통일.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
     debugImplementation(libs.androidx.ui.tooling)
 }

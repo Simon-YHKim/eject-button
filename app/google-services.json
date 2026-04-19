@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1028287268274",
+    "project_id": "eject-button",
+    "storage_bucket": "eject-button.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1028287268274:android:78cdf437eb0532d82690ab",
+        "android_client_info": {
+          "package_name": "com.simonykim.ejectbutton"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAp-feshLubvV9zVSZCguSI1mJWcVhuSws"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

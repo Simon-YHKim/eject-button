@@ -48,6 +48,7 @@ import com.ejectbutton.service.FakeCallOverlayService
 import com.ejectbutton.service.SideButtonTrigger
 import com.microsoft.clarity.Clarity
 import com.microsoft.clarity.ClarityConfig
+import com.ejectbutton.analytics.EjectAnalytics
 import com.ejectbutton.service.ShakeDetectionService
 import com.ejectbutton.ui.main.MainScreen
 import com.ejectbutton.ui.main.OnboardingScreen
@@ -147,6 +148,9 @@ class MainActivity : ComponentActivity() {
         // MS Clarity 초기화 (프로젝트 ID가 설정된 경우에만)
         initClarity()
 
+        // Firebase Analytics 초기화 — 이벤트 트래킹은 EjectAnalytics 헬퍼를 통해 호출.
+        EjectAnalytics.init(this)
+
         // AdMob 초기화
         AdManager.initialize(this)
 
@@ -241,11 +245,13 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(
                                 onDoneNoMore   = {
                                     EjectPrefs.saveShowOnboarding(this@MainActivity, false)
+                                    EjectAnalytics.logOnboardingDone(skipFurther = true)
                                     showOnboarding = false
                                 },
                                 onDoneOnceMore = {
                                     // pref 유지 — 다음 실행에 다시 표시
                                     EjectPrefs.saveShowOnboarding(this@MainActivity, true)
+                                    EjectAnalytics.logOnboardingDone(skipFurther = false)
                                     showOnboarding = false
                                 },
                             )
@@ -299,6 +305,13 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                     val count = EjectPrefs.incrementEjectCount(this@MainActivity)
+                                    val mode = when {
+                                        delayMs == -1L -> "shake"
+                                        delayMs == 0L  -> "button_now"
+                                        else            -> "button_delayed"
+                                    }
+                                    val delaySec = if (delayMs > 0) (delayMs / 1000).toInt() else 0
+                                    EjectAnalytics.logEjectFired(mode, delaySec, scenario.id)
                                     maybeRequestReview(count)
                                 }
                             )

@@ -480,6 +480,7 @@ fun MainScreen(
                     onSelectMode     = { mode ->
                         // Round 12 — 프리미엄 게이팅 임시 해제.
                         selectedMode = mode
+                        com.ejectbutton.analytics.EjectAnalytics.logModeChanged(mode.name)
                     },
                     onAddCaller      = { showAddCaller = true },
                     onSettingsTap    = { showSettings = true },
