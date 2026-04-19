@@ -1,13 +1,9 @@
-name: Deploy Pages
+# DISABLED — repo is private, so GitHub Pages requires a paid plan.
+# We are using Cloudflare Pages instead (free for private repos).
+# Left in place as workflow_dispatch-only in case we switch hosts later.
+name: Deploy Pages (disabled)
 
 on:
-  push:
-    branches:
-      - 'claude/**'
-      - main
-    paths:
-      - 'docs/**'
-      - '.github/workflows/pages.yml'
   workflow_dispatch: {}
 
 permissions:
