@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 오버레이 권한 (가짜 전화 화면 표시) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -46,6 +47,19 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3230287048532628~3824645265" />
+
+        <!--
+          AD_SERVICES_CONFIG 충돌 해결 (Round 16).
+          play-services-measurement-api (Firebase Analytics) 는 ga_ad_services_config,
+          play-services-ads-lite (AdMob) 는 gma_ad_services_config 를 같은 속성명으로
+          선언한다. 둘 다 Privacy Sandbox Topics API 를 설정하는 메타데이터이므로
+          기능적으로 호환되며, 여기서는 AdMob 쪽(gma_*) 을 명시적으로 채택해
+          manifest merger 충돌을 해소한다.
+        -->
+        <property
+            android:name="android.adservices.AD_SERVICES_CONFIG"
+            android:resource="@xml/gma_ad_services_config"
+            tools:replace="android:resource" />
 
         <activity
             android:name=".MainActivity"
