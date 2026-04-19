@@ -23,7 +23,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.ejectbutton.app"
+        applicationId = "com.simonykim.ejectbutton"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
