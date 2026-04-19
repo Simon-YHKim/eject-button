@@ -31,8 +31,12 @@ jobs:
 
       # Enables GitHub Pages automatically on first run if the repo has
       # not yet had Pages configured. Requires pages: write permission.
+      # enablement: true tells the action to self-enable Pages via the
+      # REST API instead of failing with "Pages site not found".
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload docs/ as Pages artifact
         uses: actions/upload-pages-artifact@v3
