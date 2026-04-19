@@ -175,27 +175,18 @@ fun MainScreen(
         EjectPrefs.saveCustomDelaySec(ctx, customDelaySec)
     }
 
-    // Round 9 — 모드 선택만으로 자동 arm 하지 않는다.
-    // 사용자가 EJECT 를 눌러야 각 모드가 실제로 대기 상태로 들어간다 (onEject 참고).
-    // 모드를 전환할 때는 직전 모드의 남아있는 arm 상태만 정리한다.
+    // Round 11 — 모드 전환 = 자동 취소.
+    // 현재 진행 중인 countdown / 서비스 / arm 플래그를 모두 정리.
+    // 사용자가 EJECT 취소 버튼을 누르지 않고 모드만 바꿔도 안전하게 clean slate 로
+    // 돌아가도록. 새 모드에서 arm 하려면 EJECT 를 다시 눌러야 한다.
     DisposableEffect(selectedMode) {
-        when (selectedMode) {
-            ModeChoice.SHAKE -> {
-                // SHAKE 로 전환 시점: 과거 사이드 arm 이 남아있을 수 있으니 해제.
-                EjectPrefs.saveSideButtonArmed(ctx, false)
-                ButtonWatchService.reconcile(ctx)
-            }
-            ModeChoice.SIDE_BUTTON -> {
-                // SIDE_BUTTON 로 전환 시점: 과거 shake arm 해제.
-                ShakeDetectionService.stop(ctx)
-            }
-            ModeChoice.BUTTON -> {
-                // BUTTON 로 전환: 두 백그라운드 모드 모두 해제.
-                ShakeDetectionService.stop(ctx)
-                EjectPrefs.saveSideButtonArmed(ctx, false)
-                ButtonWatchService.reconcile(ctx)
-            }
-        }
+        CountdownBus.clear()
+        FakeCallOverlayService.stop(ctx)
+        ShakeDetectionService.stop(ctx)
+        EjectPrefs.saveSideButtonArmed(ctx, false)
+        ButtonWatchService.reconcile(ctx)
+        sideButtonStandby = false
+        shakeStandby      = false
         onDispose { }
     }
 
@@ -406,26 +397,28 @@ fun MainScreen(
             .background(EjectBg)
             .statusBarsPadding()
             .navigationBarsPadding()
-            // Round 9 — COMMAND ↔ HISTORY ↔ SYSTEMS 탭 좌/우 스와이프.
-            // consumed 플래그로 한 번의 스와이프 = 한 탭 이동 보장 (빠른 스와이프가
-            // 여러 탭을 건너뛰지 않도록).
+            // Round 11 — COMMAND ↔ HISTORY ↔ SYSTEMS 탭 스와이프.
+            // 드래그 누적 거리를 저장했다가 onDragEnd 시점에 단 한 번만 판정해
+            // 어떤 속도/길이의 제스처에서도 항상 "한 번 스와이프 = 한 탭 이동" 보장.
             .pointerInput(Unit) {
-                var consumed = false
+                var totalDrag = 0f
                 detectHorizontalDragGestures(
-                    onDragStart = { consumed = false },
-                    onDragEnd   = { consumed = false },
-                    onDragCancel = { consumed = false },
+                    onDragStart  = { totalDrag = 0f },
+                    onDragCancel = { totalDrag = 0f },
+                    onDragEnd = {
+                        val screens = AppScreen.entries
+                        val cur = screens.indexOf(currentScreen)
+                        // 60f 는 의도한 스와이프만 통과시키는 실측 임계값
+                        // (너무 낮으면 스크롤 중의 횡 흔들림이 탭 이동으로 오인됨).
+                        if (totalDrag < -60f && cur < screens.size - 1) {
+                            currentScreen = screens[cur + 1]
+                        } else if (totalDrag > 60f && cur > 0) {
+                            currentScreen = screens[cur - 1]
+                        }
+                        totalDrag = 0f
+                    },
                 ) { _, dragAmount ->
-                    if (consumed) return@detectHorizontalDragGestures
-                    val screens = AppScreen.entries
-                    val cur = screens.indexOf(currentScreen)
-                    if (dragAmount < -18f && cur < screens.size - 1) {
-                        currentScreen = screens[cur + 1]
-                        consumed = true
-                    } else if (dragAmount > 18f && cur > 0) {
-                        currentScreen = screens[cur - 1]
-                        consumed = true
-                    }
+                    totalDrag += dragAmount
                 }
             },
     ) {

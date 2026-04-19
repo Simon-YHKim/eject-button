@@ -24,6 +24,7 @@ object EjectPrefs {
     private const val KEY_EJECT_COUNT = "eject_count"
     private const val KEY_PREMIUM     = "is_premium"
     private const val KEY_SHOW_ONBOARDING = "show_onboarding"
+    private const val KEY_BATTERY_OPT_ASKED = "battery_opt_asked"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -238,6 +239,17 @@ object EjectPrefs {
     fun loadShowOnboarding(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_SHOW_ONBOARDING, true)
+
+    // ── Battery optimization dialog (한 번 물어보고 기록) ─────────────────────
+
+    fun saveBatteryOptAsked(ctx: Context, asked: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_BATTERY_OPT_ASKED, asked).apply()
+    }
+
+    fun loadBatteryOptAsked(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_BATTERY_OPT_ASKED, false)
 
     // ── Theme mode ───────────────────────────────────────────────────────────
 

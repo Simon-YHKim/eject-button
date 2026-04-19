@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
 import android.media.AudioManager
+import android.media.MediaMetadata
 import android.media.VolumeProvider
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -123,13 +124,67 @@ class ButtonWatchService : Service() {
      */
     private fun registerMediaSession() {
         val session = MediaSession(this, "EjectButton-ButtonWatch")
-        val volumeProvider = object : VolumeProvider(
+
+        // FLAG_HANDLES_MEDIA_BUTTONS + TRANSPORT_CONTROLS: 시스템이 볼륨/미디어
+        // 버튼 이벤트를 이 세션 쪽으로 최우선 라우팅하게 한다. flags 를 안 주면
+        // 세션이 'active' 더라도 다른 앱이 우선권을 쥐기 쉽다.
+        @Suppress("DEPRECATION")
+        session.setFlags(
+            MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+        )
+
+        session.setPlaybackToRemote(buildVolumeProvider())
+        session.setCallback(object : MediaSession.Callback() {
+            // 빈 Callback — play/pause 같은 미디어 제어는 무시하지만 세션이
+            // callback 을 가지고 있어야 시스템이 active 로 취급한다.
+            override fun onPlay() {}
+            override fun onPause() {}
+            override fun onStop() {}
+        })
+
+        // 메타데이터 — 시스템이 세션을 "media" 로 인식하는 데 도움. 표시될 일은 없음.
+        val metadata = MediaMetadata.Builder()
+            .putString(MediaMetadata.METADATA_KEY_TITLE, "Eject Button")
+            .putString(MediaMetadata.METADATA_KEY_ARTIST, "Standby")
+            .build()
+        session.setMetadata(metadata)
+
+        // MediaButtonReceiver — 시스템이 볼륨/미디어 버튼 이벤트를 서비스로 전달.
+        val mbIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+            component = ComponentName(this@ButtonWatchService, ButtonWatchService::class.java)
+        }
+        val mbPi = PendingIntent.getService(
+            this, 0, mbIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        session.setMediaButtonReceiver(mbPi)
+
+        // 활성 + 재생 상태로 선언해야 볼륨 키 라우팅이 열린다.
+        val playbackState = PlaybackState.Builder()
+            .setState(PlaybackState.STATE_PLAYING, 0L, 1.0f)
+            .setActions(
+                PlaybackState.ACTION_PLAY or
+                PlaybackState.ACTION_PAUSE or
+                PlaybackState.ACTION_PLAY_PAUSE or
+                PlaybackState.ACTION_STOP
+            )
+            .build()
+        session.setPlaybackState(playbackState)
+        session.isActive = true
+        mediaSession = session
+    }
+
+    /**
+     * 볼륨 키 이벤트를 가상 볼륨으로 흡수하면서 detector 에 전달.
+     * currentVolume 은 절대 건드리지 않아 시스템 HUD 가 뜨지 않는다.
+     */
+    private fun buildVolumeProvider(): VolumeProvider =
+        object : VolumeProvider(
             VOLUME_CONTROL_ABSOLUTE,
-            100,   // max 가상 볼륨
-            50,    // 현재 가상 볼륨 (절대 변경하지 않아 HUD 미노출)
+            100,   // max
+            50,    // fixed current volume — 변경 안 함
         ) {
             override fun onAdjustVolume(direction: Int) {
-                // direction: +1 = UP, -1 = DOWN, 0 = (raise/lower 구분 없는 수정, 무시)
                 if (!detector.command.isEnabled || !EjectPrefs.loadSideButtonArmed(this@ButtonWatchService)) {
                     return
                 }
@@ -141,22 +196,10 @@ class ButtonWatchService : Service() {
                     direction > 0 -> detector.onVolumeUp()
                     direction < 0 -> detector.onVolumeDown()
                 }
-                // currentVolume 유지 — 시스템 볼륨에 영향 없음.
             }
 
-            override fun onSetVolumeTo(volume: Int) { /* no-op */ }
+            override fun onSetVolumeTo(volume: Int) { /* no-op — 가상 볼륨은 고정 */ }
         }
-        session.setPlaybackToRemote(volumeProvider)
-
-        // 활성 상태 + 재생 중 상태여야 볼륨 키가 이 세션으로 라우팅된다.
-        val playbackState = PlaybackState.Builder()
-            .setState(PlaybackState.STATE_PLAYING, 0L, 1.0f)
-            .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE)
-            .build()
-        session.setPlaybackState(playbackState)
-        session.isActive = true
-        mediaSession = session
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // pref 변경에 즉시 반응

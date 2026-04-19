@@ -17,6 +17,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- 포그라운드 서비스 타입: specialUse (센서 감지) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 포그라운드 서비스 타입: mediaPlayback (ButtonWatchService 의 MediaSession 볼륨 라우팅용) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- 배터리 최적화 제외 요청 (백그라운드 서비스가 Doze 모드에서도 살아있도록) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 인터넷 (Clarity 분석, 크래시 리포트) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -71,10 +75,16 @@
         <service
             android:name=".service.ButtonWatchService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="mediaPlayback|specialUse">
+            <!-- mediaPlayback: 화면 OFF 상태에서도 볼륨 키를 MediaSession 으로 라우팅받아야 하므로 필수. -->
+            <!-- specialUse: hardware_button_pattern_detection 서브타입도 유지. -->
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="hardware_button_pattern_detection" />
+            <!-- MediaSession 이 media button 이벤트를 수신할 수 있는 진입점 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
         </service>
 
     </application>

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -18,7 +19,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -201,6 +204,10 @@ class MainActivity : ComponentActivity() {
                     var showOnboarding by remember {
                         mutableStateOf(EjectPrefs.loadShowOnboarding(this@MainActivity))
                     }
+                    // Round 11 — 배터리 최적화 제외 안내 다이얼로그.
+                    // 백그라운드/락스크린에서 사이드 버튼·흔들기 서비스가 Doze 모드에
+                    // 먹히지 않으려면 제외 설정이 필요하다. 첫 진입 후 한 번만 물어본다.
+                    var showBatteryOptDialog by remember { mutableStateOf(false) }
 
                     // 프리미엄 구매/복원 시 광고 로더/슬롯을 즉시 비운다.
                     LaunchedEffect(isPremium) {
@@ -210,6 +217,18 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         delay(2_000L)   // 2초 스플래시
                         splashDone = true
+                    }
+
+                    // 온보딩이 끝나고 메인이 보이게 되는 시점에 한 번 체크.
+                    LaunchedEffect(splashDone, showOnboarding) {
+                        if (splashDone && !showOnboarding) {
+                            val pm = getSystemService(POWER_SERVICE) as? PowerManager
+                            val exempt = pm?.isIgnoringBatteryOptimizations(packageName) ?: true
+                            val alreadyAsked = EjectPrefs.loadBatteryOptAsked(this@MainActivity)
+                            if (!exempt && !alreadyAsked) {
+                                showBatteryOptDialog = true
+                            }
+                        }
                     }
 
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -291,6 +310,61 @@ class MainActivity : ComponentActivity() {
                             exit    = fadeOut(tween(400)),
                         ) {
                             SplashScreen(strings.systemInitializing, strings.catchphrase)
+                        }
+
+                        // Round 11 — 배터리 최적화 제외 요청 다이얼로그
+                        if (showBatteryOptDialog) {
+                            AlertDialog(
+                                onDismissRequest = {
+                                    EjectPrefs.saveBatteryOptAsked(this@MainActivity, true)
+                                    showBatteryOptDialog = false
+                                },
+                                title = {
+                                    Text(
+                                        strings.batteryOptTitle,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                },
+                                text = { Text(strings.batteryOptMsg) },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        EjectPrefs.saveBatteryOptAsked(this@MainActivity, true)
+                                        showBatteryOptDialog = false
+                                        // 시스템 배터리 최적화 제외 요청 화면 열기.
+                                        // 일부 OEM 은 ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS 에
+                                        // 바로 토글 가능한 확인창을 띄우고, 일부는 앱 전체 목록으로
+                                        // 이동시킨다. 실패 시 앱 상세 설정으로 폴백.
+                                        runCatching {
+                                            startActivity(
+                                                Intent(
+                                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                                    Uri.parse("package:$packageName"),
+                                                )
+                                            )
+                                        }.onFailure {
+                                            runCatching {
+                                                startActivity(
+                                                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                                )
+                                            }
+                                        }
+                                    }) {
+                                        Text(
+                                            strings.batteryOptGrant,
+                                            color = EjectCoral,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        EjectPrefs.saveBatteryOptAsked(this@MainActivity, true)
+                                        showBatteryOptDialog = false
+                                    }) {
+                                        Text(strings.batteryOptLater)
+                                    }
+                                },
+                            )
                         }
                     }
                 }

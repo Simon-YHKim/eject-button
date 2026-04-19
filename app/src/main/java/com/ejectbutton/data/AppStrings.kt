@@ -174,6 +174,11 @@ data class AppStrings(
     // Round 9 — settings toggle to re-enable onboarding
     val settingsShowManual: String,
     val settingsShowManualDesc: String,
+    // Round 11 — battery optimization permission request dialog
+    val batteryOptTitle: String,
+    val batteryOptMsg: String,
+    val batteryOptGrant: String,
+    val batteryOptLater: String,
 )
 
 private val en = AppStrings(
@@ -311,6 +316,10 @@ private val en = AppStrings(
     onboardingFinalRepeat    = "One more time... just once more...",
     settingsShowManual       = "Show Manual",
     settingsShowManualDesc   = "Replay the tutorial on next launch",
+    batteryOptTitle          = "Keep Eject Button awake",
+    batteryOptMsg            = "For side-button and shake triggers to work when the screen is off, disable battery optimization for Eject Button. Tap Allow, then pick \"Don't optimize\" / \"Unrestricted\".",
+    batteryOptGrant          = "Open settings",
+    batteryOptLater          = "Later",
 )
 
 private val ko = AppStrings(
@@ -448,6 +457,10 @@ private val ko = AppStrings(
     onboardingFinalRepeat    = "다음번에... 한번만... 더...",
     settingsShowManual       = "📖 사용 설명 보기",
     settingsShowManualDesc   = "다음 실행 시 튜토리얼을 다시 표시",
+    batteryOptTitle          = "백그라운드 감지 허용",
+    batteryOptMsg            = "화면이 꺼진 상태에서도 사이드 버튼·흔들기 트리거가 동작하려면 배터리 최적화 제외가 필요합니다. '설정 열기' 를 누르고 '최적화하지 않음' 또는 '제한 없음' 으로 설정해 주세요.",
+    batteryOptGrant          = "설정 열기",
+    batteryOptLater          = "나중에",
 )
 
 private val zhCN = AppStrings(
@@ -585,6 +598,10 @@ private val zhCN = AppStrings(
     onboardingFinalRepeat    = "下次... 再讲一次...",
     settingsShowManual       = "📖 查看使用说明",
     settingsShowManualDesc   = "下次启动时重新显示教程",
+    batteryOptTitle          = "允许后台检测",
+    batteryOptMsg            = "让侧键与摇动触发在屏幕关闭时仍可工作，请取消 Eject Button 的电池优化。点击「打开设置」，选择「不优化」或「无限制」。",
+    batteryOptGrant          = "打开设置",
+    batteryOptLater          = "稍后",
 )
 
 private val zhTW = AppStrings(
@@ -722,6 +739,10 @@ private val zhTW = AppStrings(
     onboardingFinalRepeat    = "下次... 再講一次...",
     settingsShowManual       = "📖 查看使用說明",
     settingsShowManualDesc   = "下次啟動時重新顯示教學",
+    batteryOptTitle          = "允許背景偵測",
+    batteryOptMsg            = "要讓側鍵與搖動觸發在螢幕關閉時仍可運作，請取消 Eject Button 的電池最佳化。點擊「開啟設定」，選擇「不最佳化」或「無限制」。",
+    batteryOptGrant          = "開啟設定",
+    batteryOptLater          = "稍後",
 )
 
 private val ja = AppStrings(
@@ -859,6 +880,10 @@ private val ja = AppStrings(
     onboardingFinalRepeat    = "次回... もう一度だけ...",
     settingsShowManual       = "📖 使い方を見る",
     settingsShowManualDesc   = "次回起動時にチュートリアルを再表示",
+    batteryOptTitle          = "バックグラウンド検知を許可",
+    batteryOptMsg            = "画面オフでもサイドボタン・シェイクを検知するには、Eject Button の電池最適化を無効にしてください。「設定を開く」から「最適化しない」または「制限なし」を選択。",
+    batteryOptGrant          = "設定を開く",
+    batteryOptLater          = "後で",
 )
 
 private val es = AppStrings(
@@ -996,6 +1021,10 @@ private val es = AppStrings(
     onboardingFinalRepeat    = "Una vez más... sólo una vez...",
     settingsShowManual       = "📖 Ver tutorial",
     settingsShowManualDesc   = "Mostrar el tutorial al próximo inicio",
+    batteryOptTitle          = "Mantén Eject Button activo",
+    batteryOptMsg            = "Para que el botón lateral y la sacudida funcionen con la pantalla apagada, desactiva la optimización de batería para Eject Button. Pulsa «Abrir ajustes» y elige «No optimizar» o «Sin restricciones».",
+    batteryOptGrant          = "Abrir ajustes",
+    batteryOptLater          = "Más tarde",
 )
 
 private val hi = AppStrings(
@@ -1133,6 +1162,10 @@ private val hi = AppStrings(
     onboardingFinalRepeat    = "अगली बार... बस एक बार और...",
     settingsShowManual       = "📖 सहायता देखें",
     settingsShowManualDesc   = "अगले लॉन्च पर ट्यूटोरियल फिर दिखाएँ",
+    batteryOptTitle          = "बैकग्राउंड डिटेक्शन की अनुमति",
+    batteryOptMsg            = "स्क्रीन बंद होने पर भी साइड बटन और शेक ट्रिगर चलाने के लिए Eject Button की बैटरी ऑप्टिमाइज़ेशन बंद करें। 'सेटिंग्स खोलें' पर टैप करें, फिर 'ऑप्टिमाइज़ न करें' या 'अप्रतिबंधित' चुनें।",
+    batteryOptGrant          = "सेटिंग्स खोलें",
+    batteryOptLater          = "बाद में",
 )
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(
