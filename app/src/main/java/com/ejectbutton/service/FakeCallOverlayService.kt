@@ -30,8 +30,9 @@ import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.strings
-import com.ejectbutton.ui.call.FakeInCallScreen
 import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
+import com.ejectbutton.ui.call.InCallScreenV2
+import com.ejectbutton.ui.call.rememberCallTimer
 import com.ejectbutton.ui.theme.LegacyCallTheme
 
 class FakeCallOverlayService : Service() {
@@ -280,10 +281,17 @@ class FakeCallOverlayService : Service() {
                                 },
                             )
                         } else {
-                            FakeInCallScreen(
-                                callerName   = callerName,
-                                prompterHint = prompter,
-                                onEndCall    = { dismiss() },
+                            // Round 18 — One UI 8.5 active-call screen V2.
+                            // prompterHint 파라미터는 V2 에 슬롯이 없어 제거.
+                            val elapsedSeconds by rememberCallTimer(startSeconds = 0)
+                            InCallScreenV2(
+                                callerName          = callerName,
+                                callerLabel         = callerLabel,
+                                elapsedSeconds      = elapsedSeconds,
+                                isRecording         = true,
+                                statusSubtext       = strings.transcribing,
+                                bluetoothDeviceName = null,
+                                onEndCall           = { dismiss() },
                             )
                         }
                     }
