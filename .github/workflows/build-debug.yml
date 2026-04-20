@@ -5,6 +5,7 @@ on:
     branches:
       - 'claude/**'
       - main
+      - Eject_Button_app
   workflow_dispatch: {}
 
 permissions:
