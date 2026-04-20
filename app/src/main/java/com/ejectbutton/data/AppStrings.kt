@@ -179,6 +179,9 @@ data class AppStrings(
     val batteryOptMsg: String,
     val batteryOptGrant: String,
     val batteryOptLater: String,
+    // Round 17 — One UI 8.5 incoming-call screen (V2) additions
+    val callAssist: String,
+    val sendMessage: String,
 )
 
 private val en = AppStrings(
@@ -320,6 +323,8 @@ private val en = AppStrings(
     batteryOptMsg            = "For side-button and shake triggers to work when the screen is off, disable battery optimization for Eject Button. Tap Allow, then pick \"Don't optimize\" / \"Unrestricted\".",
     batteryOptGrant          = "Open settings",
     batteryOptLater          = "Later",
+    callAssist               = "Call Assist",
+    sendMessage              = "Send message",
 )
 
 private val ko = AppStrings(
@@ -461,6 +466,8 @@ private val ko = AppStrings(
     batteryOptMsg            = "화면이 꺼진 상태에서도 사이드 버튼·흔들기 트리거가 동작하려면 배터리 최적화 제외가 필요합니다. '설정 열기' 를 누르고 '최적화하지 않음' 또는 '제한 없음' 으로 설정해 주세요.",
     batteryOptGrant          = "설정 열기",
     batteryOptLater          = "나중에",
+    callAssist               = "통화 어시스트",
+    sendMessage              = "메시지 보내기",
 )
 
 private val zhCN = AppStrings(
@@ -602,6 +609,8 @@ private val zhCN = AppStrings(
     batteryOptMsg            = "让侧键与摇动触发在屏幕关闭时仍可工作，请取消 Eject Button 的电池优化。点击「打开设置」，选择「不优化」或「无限制」。",
     batteryOptGrant          = "打开设置",
     batteryOptLater          = "稍后",
+    callAssist               = "通话助手",
+    sendMessage              = "发送消息",
 )
 
 private val zhTW = AppStrings(
@@ -743,6 +752,8 @@ private val zhTW = AppStrings(
     batteryOptMsg            = "要讓側鍵與搖動觸發在螢幕關閉時仍可運作，請取消 Eject Button 的電池最佳化。點擊「開啟設定」，選擇「不最佳化」或「無限制」。",
     batteryOptGrant          = "開啟設定",
     batteryOptLater          = "稍後",
+    callAssist               = "通話助理",
+    sendMessage              = "傳送訊息",
 )
 
 private val ja = AppStrings(
@@ -884,6 +895,8 @@ private val ja = AppStrings(
     batteryOptMsg            = "画面オフでもサイドボタン・シェイクを検知するには、Eject Button の電池最適化を無効にしてください。「設定を開く」から「最適化しない」または「制限なし」を選択。",
     batteryOptGrant          = "設定を開く",
     batteryOptLater          = "後で",
+    callAssist               = "通話アシスタント",
+    sendMessage              = "メッセージを送る",
 )
 
 private val es = AppStrings(
@@ -1025,6 +1038,8 @@ private val es = AppStrings(
     batteryOptMsg            = "Para que el botón lateral y la sacudida funcionen con la pantalla apagada, desactiva la optimización de batería para Eject Button. Pulsa «Abrir ajustes» y elige «No optimizar» o «Sin restricciones».",
     batteryOptGrant          = "Abrir ajustes",
     batteryOptLater          = "Más tarde",
+    callAssist               = "Asistente de llamada",
+    sendMessage              = "Enviar mensaje",
 )
 
 private val hi = AppStrings(
@@ -1166,6 +1181,8 @@ private val hi = AppStrings(
     batteryOptMsg            = "स्क्रीन बंद होने पर भी साइड बटन और शेक ट्रिगर चलाने के लिए Eject Button की बैटरी ऑप्टिमाइज़ेशन बंद करें। 'सेटिंग्स खोलें' पर टैप करें, फिर 'ऑप्टिमाइज़ न करें' या 'अप्रतिबंधित' चुनें।",
     batteryOptGrant          = "सेटिंग्स खोलें",
     batteryOptLater          = "बाद में",
+    callAssist               = "कॉल असिस्ट",
+    sendMessage              = "संदेश भेजें",
 )
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(

@@ -31,7 +31,7 @@ import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.strings
 import com.ejectbutton.ui.call.FakeInCallScreen
-import com.ejectbutton.ui.call.FakeIncomingCallScreen
+import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
 import com.ejectbutton.ui.theme.LegacyCallTheme
 
 class FakeCallOverlayService : Service() {
@@ -266,12 +266,14 @@ class FakeCallOverlayService : Service() {
                 LegacyCallTheme {
                     androidx.compose.runtime.CompositionLocalProvider(LocalAppStrings provides strings) {
                         if (!callState.value) {
-                            FakeIncomingCallScreen(
-                                callerName   = callerName,
-                                callerLabel  = callerLabel,
-                                prompterHint = prompter,
-                                onDecline    = { dismiss() },
-                                onAccept     = {
+                            // Round 17 — One UI 8.5 style V2 화면으로 교체.
+                            // V2 는 prompterHint 파라미터를 받지 않으므로 제거.
+                            // 힌트는 accept 이후 FakeInCallScreen 에서 계속 표시된다.
+                            FakeIncomingCallScreenV2(
+                                callerName  = callerName,
+                                callerLabel = callerLabel,
+                                onDecline   = { dismiss() },
+                                onAccept    = {
                                     stopRing()
                                     stopFlashBlink()
                                     callState.value = true
