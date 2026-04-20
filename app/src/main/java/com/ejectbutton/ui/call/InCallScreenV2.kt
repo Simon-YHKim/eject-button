@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
@@ -115,7 +114,7 @@ fun InCallScreenV2(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.FiberManualRecord,
+                    imageVector = Icons.Filled.Mic,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
@@ -321,7 +320,7 @@ private fun RowScope.RecordingTile(
             // your project's rec-icon-green drawable via painterResource if you
             // have a custom asset.
             Icon(
-                imageVector = Icons.Filled.FiberManualRecord,
+                imageVector = Icons.Filled.Mic,
                 contentDescription = null,
                 tint = if (isRecording) RecGreen else Color.White.copy(alpha = 0.9f),
                 modifier = Modifier.size(26.dp)
