@@ -182,6 +182,16 @@ data class AppStrings(
     // Round 17 — One UI 8.5 incoming-call screen (V2) additions
     val callAssist: String,
     val sendMessage: String,
+    // Round 19 — One UI 8.5 in-call (active call) screen (V2) additions
+    // (callAssist, endCall 은 위에 이미 선언돼 있어 여기선 추가 안 함)
+    val mute: String,
+    val speaker: String,
+    val keypad: String,
+    val bluetooth: String,
+    val more: String,
+    val record: String,
+    val transcribing: String,
+    val callAssistActive: String,
 )
 
 private val en = AppStrings(
@@ -325,6 +335,14 @@ private val en = AppStrings(
     batteryOptLater          = "Later",
     callAssist               = "Call Assist",
     sendMessage              = "Send message",
+    mute                     = "Mute",
+    speaker                  = "Speaker",
+    keypad                   = "Keypad",
+    bluetooth                = "Bluetooth",
+    more                     = "More",
+    record                   = "Record",
+    transcribing             = "Transcribing…",
+    callAssistActive         = "Call Assist active",
 )
 
 // Round 18 — 한국어 전체 "상사 → 존중받는 파일럿" 말투로 개편.
@@ -470,6 +488,14 @@ private val ko = AppStrings(
     batteryOptLater          = "나중에",
     callAssist               = "통화 어시스트",
     sendMessage              = "메시지 보내기",
+    mute                     = "내 소리 차단",
+    speaker                  = "스피커",
+    keypad                   = "키패드",
+    bluetooth                = "블루투스",
+    more                     = "더 보기",
+    record                   = "녹음",
+    transcribing             = "텍스트로 변환 중…",
+    callAssistActive         = "통화 어시스트 사용 중",
 )
 
 private val zhCN = AppStrings(
@@ -613,6 +639,14 @@ private val zhCN = AppStrings(
     batteryOptLater          = "稍后",
     callAssist               = "通话助手",
     sendMessage              = "发送消息",
+    mute                     = "静音",
+    speaker                  = "扬声器",
+    keypad                   = "拨号键盘",
+    bluetooth                = "蓝牙",
+    more                     = "更多",
+    record                   = "录音",
+    transcribing             = "正在转换为文本…",
+    callAssistActive         = "通话助手已启用",
 )
 
 private val zhTW = AppStrings(
@@ -756,6 +790,14 @@ private val zhTW = AppStrings(
     batteryOptLater          = "稍後",
     callAssist               = "通話助理",
     sendMessage              = "傳送訊息",
+    mute                     = "靜音",
+    speaker                  = "擴音",
+    keypad                   = "撥號鍵盤",
+    bluetooth                = "藍牙",
+    more                     = "更多",
+    record                   = "錄音",
+    transcribing             = "正在轉換為文字…",
+    callAssistActive         = "通話助理使用中",
 )
 
 private val ja = AppStrings(
@@ -899,6 +941,14 @@ private val ja = AppStrings(
     batteryOptLater          = "後で",
     callAssist               = "通話アシスタント",
     sendMessage              = "メッセージを送る",
+    mute                     = "ミュート",
+    speaker                  = "スピーカー",
+    keypad                   = "キーパッド",
+    bluetooth                = "Bluetooth",
+    more                     = "その他",
+    record                   = "録音",
+    transcribing             = "テキスト変換中…",
+    callAssistActive         = "通話アシスタント使用中",
 )
 
 private val es = AppStrings(
@@ -1042,6 +1092,14 @@ private val es = AppStrings(
     batteryOptLater          = "Más tarde",
     callAssist               = "Asistente de llamada",
     sendMessage              = "Enviar mensaje",
+    mute                     = "Silenciar",
+    speaker                  = "Altavoz",
+    keypad                   = "Teclado",
+    bluetooth                = "Bluetooth",
+    more                     = "Más",
+    record                   = "Grabar",
+    transcribing             = "Transcribiendo…",
+    callAssistActive         = "Asistente de llamada activo",
 )
 
 private val hi = AppStrings(
@@ -1185,6 +1243,14 @@ private val hi = AppStrings(
     batteryOptLater          = "बाद में",
     callAssist               = "कॉल असिस्ट",
     sendMessage              = "संदेश भेजें",
+    mute                     = "म्यूट",
+    speaker                  = "स्पीकर",
+    keypad                   = "कीपैड",
+    bluetooth                = "ब्लूटूथ",
+    more                     = "और",
+    record                   = "रिकॉर्ड",
+    transcribing             = "टेक्स्ट में बदल रहा है…",
+    callAssistActive         = "कॉल असिस्ट सक्रिय",
 )
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(

@@ -31,6 +31,8 @@ import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.strings
 import com.ejectbutton.ui.call.FakeInCallScreen
+import com.ejectbutton.ui.call.InCallScreenV2
+import com.ejectbutton.ui.call.rememberCallTimer
 import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
 import com.ejectbutton.ui.theme.LegacyCallTheme
 
@@ -280,10 +282,25 @@ class FakeCallOverlayService : Service() {
                                 },
                             )
                         } else {
-                            FakeInCallScreen(
-                                callerName   = callerName,
-                                prompterHint = prompter,
-                                onEndCall    = { dismiss() },
+                            // Round 19 — One UI 8.5 style in-call screen (V2).
+                            // prompterHint 는 V2 가 직접 지원하지 않음. transcribing 서브텍스트로 대체.
+                            // 통화 경과 시간은 rememberCallTimer 헬퍼로 1초마다 증가.
+                            val elapsed by rememberCallTimer(startSeconds = 0)
+                            InCallScreenV2(
+                                callerName          = callerName,
+                                callerLabel         = callerLabel,
+                                elapsedSeconds      = elapsed,
+                                isRecording         = true,
+                                statusSubtext       = strings.transcribing,
+                                bluetoothDeviceName = null,
+                                onMute              = {},
+                                onRecordingToggle   = {},
+                                onSpeaker           = {},
+                                onKeypad            = {},
+                                onBluetooth         = {},
+                                onMore              = {},
+                                onAssist            = {},
+                                onEndCall           = { dismiss() },
                             )
                         }
                     }
