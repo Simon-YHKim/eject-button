@@ -1844,21 +1844,26 @@ private fun PremiumFeatureRow(text: String) {
     }
 }
 
+/**
+ * Round 18 — 월 구독 근사치 fallback. Google Play Billing 이 아직 제품을
+ * 못 받아왔을 때만 쓰인다 (제품 미등록·오프라인·디버그).
+ * premiumBuyBtn 이 "업그레이드 — %s/월" 포맷이므로 여기서는 금액만 반환.
+ */
 @Composable
 private fun localizedFallbackPrice(): String {
     val country = Locale.getDefault().country
     return when (country) {
-        "KR" -> "₩4,500"
-        "JP" -> "¥500"
-        "CN", "TW", "HK" -> "¥19.9"
-        "IN" -> "₹249"
-        "MX" -> "MX\$59"
-        "ES" -> "2,99 €"
-        "GB" -> "£2.49"
-        "DE", "FR", "IT", "NL" -> "2,99 €"
-        "BR" -> "R\$14.90"
-        "AU" -> "A\$4.49"
-        "CA" -> "CA\$3.99"
-        else -> "$2.99"
+        "KR" -> "₩1,900"
+        "JP" -> "¥250"
+        "CN", "TW", "HK" -> "¥9.9"
+        "IN" -> "₹99"
+        "MX" -> "MX\$29"
+        "ES" -> "1,49 €"
+        "GB" -> "£1.49"
+        "DE", "FR", "IT", "NL" -> "1,49 €"
+        "BR" -> "R\$6.90"
+        "AU" -> "A\$1.99"
+        "CA" -> "CA\$1.99"
+        else -> "$1.99"
     }
 }

@@ -1,6 +1,7 @@
 package com.ejectbutton.data
 
 import android.content.Context
+import java.util.Locale
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
@@ -90,11 +91,35 @@ object EjectPrefs {
             .edit().putString(KEY_LANGUAGE, code).apply()
     }
 
-    fun loadLanguage(ctx: Context): AppLanguage =
-        AppLanguage.fromCode(
-            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-                .getString(KEY_LANGUAGE, AppLanguage.ENGLISH.code) ?: AppLanguage.ENGLISH.code
-        )
+    fun loadLanguage(ctx: Context): AppLanguage {
+        val prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val saved = prefs.getString(KEY_LANGUAGE, null)
+        if (saved != null) return AppLanguage.fromCode(saved)
+        // Round 18 — 첫 실행에는 저장된 값이 없으므로 기기의 시스템 로케일을
+        // 읽어 앱이 지원하는 가장 가까운 언어로 자동 매핑한다.
+        return detectDefaultLanguage()
+    }
+
+    /**
+     * 기기 언어를 앱이 지원하는 7개 언어 중 하나로 매핑.
+     * 매칭이 없으면 ENGLISH fallback.
+     * (Round 18 - 한국 시장 우선이라 기본 우선순위도 자연스럽게 한국어가 먼저)
+     */
+    private fun detectDefaultLanguage(): AppLanguage {
+        val locale = Locale.getDefault()
+        val lang = locale.language.lowercase()
+        val country = locale.country.uppercase()
+        return when {
+            lang == "ko" -> AppLanguage.KOREAN
+            lang == "zh" && (country == "TW" || country == "HK" || country == "MO") ->
+                AppLanguage.CHINESE_TRADITIONAL
+            lang == "zh" -> AppLanguage.CHINESE_SIMPLIFIED
+            lang == "ja" -> AppLanguage.JAPANESE
+            lang == "es" -> AppLanguage.SPANISH
+            lang == "hi" -> AppLanguage.HINDI
+            else         -> AppLanguage.ENGLISH
+        }
+    }
 
     // ── Feature Toggles ───────────────────────────────────────────────────────
 

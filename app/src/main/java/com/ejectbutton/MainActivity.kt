@@ -88,6 +88,33 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {}
 
+    /**
+     * Round 18 — 최초 실행 & 튜토리얼을 끝냈을 때 한 번만 호출.
+     * 런타임 퍼미션 (알림/전화상태/연락처) + 오버레이 퍼미션을 연속으로 요청.
+     * pref "perms_requested" 로 재요청을 막는다.
+     */
+    private fun requestInitialPermissionsIfNeeded() {
+        val prefs = getSharedPreferences("eject_prefs", MODE_PRIVATE)
+        if (prefs.getBoolean("perms_requested", false)) return
+        prefs.edit().putBoolean("perms_requested", true).apply()
+
+        val runtimePerms = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            add(Manifest.permission.READ_PHONE_STATE)
+            add(Manifest.permission.READ_CONTACTS)
+        }
+        if (runtimePerms.isNotEmpty()) {
+            multiPermLauncher.launch(runtimePerms.toTypedArray())
+        }
+
+        if (!Settings.canDrawOverlays(this)) {
+            overlayPermLauncher.launch(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+            )
+        }
+    }
+
     private fun initClarity() {
         try {
             val projectId = BuildConfig.CLARITY_PROJECT_ID
@@ -158,24 +185,9 @@ class MainActivity : ComponentActivity() {
         billingManager = BillingManager(this)
         billingManager.connect()
 
-        // 최초 실행 시 권한 일괄 요청
-        val prefs = getSharedPreferences("eject_prefs", MODE_PRIVATE)
-        if (!prefs.getBoolean("perms_requested", false)) {
-            prefs.edit().putBoolean("perms_requested", true).apply()
-            val runtimePerms = buildList {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                    add(Manifest.permission.POST_NOTIFICATIONS)
-                add(Manifest.permission.READ_PHONE_STATE)
-                add(Manifest.permission.READ_CONTACTS)
-            }
-            if (runtimePerms.isNotEmpty()) multiPermLauncher.launch(runtimePerms.toTypedArray())
-        }
-
-        if (!Settings.canDrawOverlays(this)) {
-            overlayPermLauncher.launch(
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-            )
-        }
+        // Round 18 — 권한 요청은 onCreate 가 아니라 '튜토리얼 이후' 에 실행.
+        // 컴포지션 트리 안의 LaunchedEffect 에서 showOnboarding 이 false 로 바뀐 순간
+        // 아래 [requestInitialPermissionsIfNeeded] 를 호출한다.
 
         setContent {
             // 테마 모드 상태 — Settings 에서 변경 가능
@@ -223,9 +235,14 @@ class MainActivity : ComponentActivity() {
                         splashDone = true
                     }
 
-                    // 온보딩이 끝나고 메인이 보이게 되는 시점에 한 번 체크.
+                    // Round 18 — 튜토리얼이 끝나고 메인이 뜨는 순간에 한 번만:
+                    //   1) 런타임 권한 + 오버레이 권한 요청 (requestInitialPermissionsIfNeeded)
+                    //   2) 배터리 최적화 제외 다이얼로그
+                    // 런치 순서: 스플래시 → 튜토리얼 → 권한 → 배터리. 튜토리얼을
+                    // 먼저 보여주면 사용자가 맥락을 이해한 상태에서 권한 허용 판단.
                     LaunchedEffect(splashDone, showOnboarding) {
                         if (splashDone && !showOnboarding) {
+                            requestInitialPermissionsIfNeeded()
                             val pm = getSystemService(POWER_SERVICE) as? PowerManager
                             val exempt = pm?.isIgnoringBatteryOptimizations(packageName) ?: true
                             val alreadyAsked = EjectPrefs.loadBatteryOptAsked(this@MainActivity)
