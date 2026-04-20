@@ -56,8 +56,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
+          # storeFile path is resolved relative to the app/ module dir,
+          # so "release.jks" here points to app/release.jks which matches
+          # where the decode step writes the file.
           cat > keystore.properties <<EOF
-          storeFile=app/release.jks
+          storeFile=release.jks
           storePassword=${STORE_PASSWORD}
           keyAlias=${KEY_ALIAS}
           keyPassword=${KEY_PASSWORD}
