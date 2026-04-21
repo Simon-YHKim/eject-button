@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VolumeUp
@@ -71,7 +70,11 @@ private val InCallGradient = Brush.verticalGradient(
 )
 
 private val TileBg      = Color(0xFF3C374B).copy(alpha = 0.55f)
-private val RecTileBg   = Color(0xFF1C1C22)
+// Recording tile is the same base color as the other tiles but more
+// opaque (0.80 vs 0.55) — matches rgba(60,55,75,0.8) from the spec.
+// Previously a flat solid #1C1C22 which read as a hard black square
+// and made the tile look visually heavier than the reference.
+private val RecTileBg   = Color(0xFF3C374B).copy(alpha = 0.80f)
 private val RecGreen    = Color(0xFF22C55E)
 private val EndRed      = Color(0xFFEF4444)
 private val AssistBg    = Color(0xFF32283C).copy(alpha = 0.70f)
@@ -109,28 +112,22 @@ fun InCallScreenV2(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .padding(top = 16.dp, end = 16.dp),
+                .padding(top = 14.dp, end = 18.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             if (isRecording) {
-                // Android 12+ privacy indicator — small 24dp circle,
-                // tight to the top-right corner, per Samsung spec.
+                // Android 12+ privacy dot — an 8dp solid green circle with
+                // a soft drop-shadow approximating the CSS
+                // box-shadow: 0 0 6px rgba(34,197,94,0.6) glow.
+                // No icon inside: the dot itself is the indicator.
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
-                        .shadow(6.dp, CircleShape, clip = false)
+                        .size(8.dp)
+                        .shadow(3.dp, CircleShape, clip = false)
                         .clip(CircleShape)
-                        .background(RecGreen),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Mic,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
+                        .background(RecGreen)
+                )
             }
 
             // Video camera (always shown)
@@ -213,17 +210,18 @@ fun InCallScreenV2(
             Spacer(Modifier.weight(1f))
 
             // AI assist floating pill — right-aligned above controls.
-            // Per design spec: 42dp circle, 50dp from right edge, 16dp above
-            // the first control row. Slightly larger than the 40dp we had.
+            // Spec: 40dp circle, 44dp from right edge, 24dp above the first
+            // control row. Pulls the pill inward from the screen edge so it
+            // reads as floating above the tile grid rather than hugging it.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 50.dp, bottom = 16.dp),
+                    .padding(end = 44.dp, bottom = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(AssistBg)
                         .clickable(onClick = onAssist),
@@ -339,21 +337,21 @@ private fun RowScope.RecordingTile(
         Box(
             modifier = Modifier
                 .size(60.dp)
-                // 20dp rounded corners (not 18dp) matches the reference screenshot.
-                .clip(if (isRecording) RoundedCornerShape(20.dp) else CircleShape)
+                // 22dp rounded corners match the reference squircle.
+                .clip(if (isRecording) RoundedCornerShape(22.dp) else CircleShape)
                 .background(if (isRecording) RecTileBg else TileBg)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            // Cassette / record icon. Sized at 44dp so it visually fills the
-            // 60dp tile (~73% coverage) — matches the real Samsung UI where
-            // the cassette glyph nearly reaches the tile edges. The previous
-            // 26dp left the icon looking dwarfed inside the square.
+            // Cassette icon at 26dp. The new simplified drawable (no T stem,
+            // filled reels) reads cleanly at this size; the previous 44dp
+            // with the old T-shape design was visually too heavy and drifted
+            // off-brief from the reference.
             Icon(
                 painter = painterResource(id = R.drawable.rec_icon_green),
                 contentDescription = null,
                 tint = RecGreen,
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier.size(26.dp)
             )
         }
         Text(

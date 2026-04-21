@@ -1,12 +1,19 @@
 <!--
   rec_icon_green.xml
 
-  Replacement for 49x46 PNG. Crisp at all densities (mdpi..xxxhdpi).
-  Tintable via androidx.compose.material3.Icon(tint=...).
+  Cassette mini-glyph for the recording tile. White strokes/fills are
+  overridden by Icon(tint = RecGreen) in the composable, so the whole
+  mark renders as a single green color.
 
-  Matches the original rec_icon_green.png design (cassette body with
-  two reels and a T-shape below). Used in the recording tile (3x2 grid)
-  per in-call-v2.html design spec.
+  Derived from the simplified reference SVG (no T stem, two filled
+  reels, short tape line):
+
+    <svg viewBox="0 0 24 24" stroke="#22C55E" stroke-width="1.8">
+      <rect x="3" y="6" width="18" height="12" rx="2"/>
+      <circle cx="8"  cy="12" r="2" fill="#22C55E"/>
+      <circle cx="16" cy="12" r="2" fill="#22C55E"/>
+      <line x1="10" y1="12" x2="14" y2="12"/>
+    </svg>
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -14,35 +21,27 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Cassette body (rounded rect, outer stroke) -->
+    <!-- Cassette body (rounded rect, stroke only, rx = 2) -->
     <path
-        android:pathData="M4,5 L18,5 A2,2 0 0 1 20,7 L20,14 A2,2 0 0 1 18,16 L4,16 A2,2 0 0 1 2,14 L2,7 A2,2 0 0 1 4,5 Z"
+        android:pathData="M5,6 L19,6 A2,2 0 0 1 21,8 L21,16 A2,2 0 0 1 19,18 L5,18 A2,2 0 0 1 3,16 L3,8 A2,2 0 0 1 5,6 Z"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8" />
+        android:strokeWidth="1.8"
+        android:strokeLineJoin="round" />
 
-    <!-- Left reel -->
+    <!-- Left reel (filled) -->
     <path
-        android:pathData="M8.8,10.5 A1.8,1.8 0 1 1 5.2,10.5 A1.8,1.8 0 1 1 8.8,10.5 Z"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8" />
+        android:pathData="M10,12 A2,2 0 1 1 6,12 A2,2 0 1 1 10,12 Z"
+        android:fillColor="#FFFFFF" />
 
-    <!-- Right reel -->
+    <!-- Right reel (filled) -->
     <path
-        android:pathData="M16.8,10.5 A1.8,1.8 0 1 1 13.2,10.5 A1.8,1.8 0 1 1 16.8,10.5 Z"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8" />
+        android:pathData="M18,12 A2,2 0 1 1 14,12 A2,2 0 1 1 18,12 Z"
+        android:fillColor="#FFFFFF" />
 
-    <!-- T horizontal bar -->
+    <!-- Tape line between reels -->
     <path
-        android:pathData="M10,17 L20,17"
+        android:pathData="M10,12 L14,12"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
-        android:strokeLineCap="round" />
-
-    <!-- T vertical stem -->
-    <path
-        android:pathData="M15,17 L15,22"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="1.8"
         android:strokeLineCap="round" />
 </vector>
