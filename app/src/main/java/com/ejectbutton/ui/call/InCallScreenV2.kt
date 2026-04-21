@@ -1,6 +1,5 @@
 package com.ejectbutton.ui.call
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ejectbutton.R
@@ -50,15 +50,16 @@ import kotlinx.coroutines.delay
 //   • Caller name + caller label (phone number / relation)
 //   • AI assist floating pill (right-aligned, just above controls)
 //   • 3×2 controls grid — recording tile is dark-squircle + green cassette icon;
-//     all others are circular translucent tiles
-//   • End-call 60dp round button
+//     others are circular translucent tiles. Uses weight(1f) so tiles adapt
+//     to screen width and long i18n labels wrap instead of truncating.
+//   • 60dp red round end-call button
 // ──────────────────────────────────────────────────────────────────────────
 
 private val InCallGradient = Brush.verticalGradient(
-    colors = listOf(
-        Color(0xFF050506), Color(0xFF0A0812), Color(0xFF17132A),
-        Color(0xFF2D2440), Color(0xFF4E3A49), Color(0xFF6D4F4C),
-    )
+    0.00f to Color(0xFF302A3A),
+    0.35f to Color(0xFF3A2E46),
+    0.70f to Color(0xFF5A3F4E),
+    1.00f to Color(0xFF7A4A4C),
 )
 
 private val TileBg      = Color(0xFF3C374B).copy(alpha = 0.55f)
@@ -92,42 +93,53 @@ fun InCallScreenV2(
             .background(InCallGradient)
     ) {
         // ── Upper-right icons ──────────────────────────────────────────
-        // Video camera (always shown)
-        Icon(
-            imageVector = Icons.Filled.Videocam,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.85f),
+        // Stacked in a Column anchored below the status bar; recording badge
+        // sits above the video camera icon when recording is active.
+        // Using statusBarsPadding() adapts to actual device insets (notches,
+        // punch-holes, gesture vs 3-button nav) instead of hardcoded 44/118dp.
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 118.dp, end = 24.dp)
-                .size(28.dp)
-        )
-
-        // Recording mic badge — green circle w/ rec-icon-green drawable
-        if (isRecording) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 44.dp, end = 20.dp)
-                    .size(32.dp)
-                    .shadow(8.dp, CircleShape, clip = false)
-                    .clip(CircleShape)
-                    .background(RecGreen),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.rec_icon_green),
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
+                .statusBarsPadding()
+                .padding(top = 12.dp, end = 20.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            if (isRecording) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .shadow(8.dp, CircleShape, clip = false)
+                        .clip(CircleShape)
+                        .background(RecGreen),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // tint = White fixes the green-on-green invisibility bug:
+                    // the cassette drawable is drawn WHITE on green background,
+                    // matching the design mockup (in-call-v3.html).
+                    Icon(
+                        painter = painterResource(id = R.drawable.rec_icon_green),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
+
+            // Video camera (always shown)
+            Icon(
+                imageVector = Icons.Filled.Videocam,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(28.dp)
+            )
         }
 
         // ── Main column ────────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 48.dp, bottom = 36.dp)  // reserve system UI space
+                .systemBarsPadding()  // adapt to device status/nav bars
         ) {
             Spacer(Modifier.height(12.dp))
 
@@ -306,7 +318,7 @@ private fun RowScope.RecordingTile(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp),
+        modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
@@ -317,19 +329,24 @@ private fun RowScope.RecordingTile(
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            // Cassette / record icon — project's rec-icon-green drawable.
-            Image(
+            // Cassette / record icon — project's rec-icon-green vector drawable.
+            // Icon() + tint = RecGreen preserves the original green visual intent
+            // while allowing crisp rendering at any density (XML vector).
+            Icon(
                 painter = painterResource(id = R.drawable.rec_icon_green),
                 contentDescription = null,
+                tint = RecGreen,
                 modifier = Modifier.size(26.dp)
             )
         }
         Text(
-            text = if (isRecording) formatDuration(elapsedSeconds - 1).take(5)
+            text = if (isRecording) formatDuration(elapsedSeconds).take(5)
                    else labelOff,
             color = Color.White.copy(alpha = 0.92f),
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -343,7 +360,7 @@ private fun RowScope.ControlTile(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp),
+        modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
@@ -367,6 +384,8 @@ private fun RowScope.ControlTile(
             fontSize = if (labelSmall) 11.sp else 12.sp,
             textAlign = TextAlign.Center,
             lineHeight = 14.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
