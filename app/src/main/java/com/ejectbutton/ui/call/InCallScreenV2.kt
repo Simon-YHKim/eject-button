@@ -1,5 +1,6 @@
 package com.ejectbutton.ui.call
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,7 +12,6 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VolumeUp
@@ -27,10 +27,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ejectbutton.R
 import com.ejectbutton.data.LocalAppStrings
 import kotlinx.coroutines.delay
 
@@ -101,7 +103,7 @@ fun InCallScreenV2(
                 .size(28.dp)
         )
 
-        // Recording mic badge — green circle w/ white mic
+        // Recording mic badge — green circle w/ rec-icon-green drawable
         if (isRecording) {
             Box(
                 modifier = Modifier
@@ -113,10 +115,9 @@ fun InCallScreenV2(
                     .background(RecGreen),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Mic,
+                Image(
+                    painter = painterResource(id = R.drawable.rec_icon_green),
                     contentDescription = null,
-                    tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -316,13 +317,10 @@ private fun RowScope.RecordingTile(
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            // Cassette / record icon — simple mic as stand-in; replace with
-            // your project's rec-icon-green drawable via painterResource if you
-            // have a custom asset.
-            Icon(
-                imageVector = Icons.Filled.Mic,
+            // Cassette / record icon — project's rec-icon-green drawable.
+            Image(
+                painter = painterResource(id = R.drawable.rec_icon_green),
                 contentDescription = null,
-                tint = if (isRecording) RecGreen else Color.White.copy(alpha = 0.9f),
                 modifier = Modifier.size(26.dp)
             )
         }
