@@ -58,11 +58,16 @@ import kotlinx.coroutines.delay
 //   • 60dp red round end-call button
 // ──────────────────────────────────────────────────────────────────────────
 
+// Gradient tuned to match the real Samsung One UI in-call screen on
+// Galaxy S26 Ultra: near-black at the top (below the punch-hole), deep
+// navy-purple through the middle, warm dusty-rose at the bottom. The
+// previous 4-stop #302A3A→#7A4A4C was too uniform and too bright.
 private val InCallGradient = Brush.verticalGradient(
-    0.00f to Color(0xFF302A3A),
-    0.35f to Color(0xFF3A2E46),
-    0.70f to Color(0xFF5A3F4E),
-    1.00f to Color(0xFF7A4A4C),
+    0.00f to Color(0xFF050506),
+    0.22f to Color(0xFF171432),
+    0.50f to Color(0xFF3E3350),
+    0.78f to Color(0xFF8A5D60),
+    1.00f to Color(0xFFA36966),
 )
 
 private val TileBg      = Color(0xFF3C374B).copy(alpha = 0.55f)
@@ -104,28 +109,26 @@ fun InCallScreenV2(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .padding(top = 12.dp, end = 20.dp),
+                .padding(top = 16.dp, end = 16.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             if (isRecording) {
+                // Android 12+ privacy indicator — small 24dp circle,
+                // tight to the top-right corner, per Samsung spec.
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .shadow(8.dp, CircleShape, clip = false)
+                        .size(24.dp)
+                        .shadow(6.dp, CircleShape, clip = false)
                         .clip(CircleShape)
                         .background(RecGreen),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Badge icon = Material Mic per v2 approved design
-                    // (in-call-v2.html uses inline Material Mic SVG, not the
-                    // rec_icon_green cassette — see commit round20 rollback).
-                    // tint = White so it's visible on the green circle.
                     Icon(
                         imageVector = Icons.Filled.Mic,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -145,7 +148,10 @@ fun InCallScreenV2(
                 .fillMaxSize()
                 .systemBarsPadding()  // adapt to device status/nav bars
         ) {
-            Spacer(Modifier.height(12.dp))
+            // Breathing room below the status bar. systemBarsPadding() handles
+            // the inset; this 28dp is the additional gap Samsung uses between
+            // the status bar and the phone-icon + timer line.
+            Spacer(Modifier.height(28.dp))
 
             // Top center: 📞 + timer + subtext
             Column(
@@ -206,16 +212,18 @@ fun InCallScreenV2(
 
             Spacer(Modifier.weight(1f))
 
-            // AI assist floating pill — right-aligned above controls
+            // AI assist floating pill — right-aligned above controls.
+            // Per design spec: 42dp circle, 50dp from right edge, 16dp above
+            // the first control row. Slightly larger than the 40dp we had.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 32.dp, bottom = 10.dp),
+                    .padding(end = 50.dp, bottom = 16.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
                         .background(AssistBg)
                         .clickable(onClick = onAssist),
@@ -281,11 +289,13 @@ fun InCallScreenV2(
                 }
             }
 
-            // End call (60dp round)
+            // End call (60dp round). Bottom padding (40dp) stacks on top of
+            // systemBarsPadding() so there's visible breathing room above the
+            // 3-button / gesture nav bar, matching the real Samsung in-call UI.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 32.dp, bottom = 16.dp),
+                    .padding(top = 32.dp, bottom = 40.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -323,26 +333,27 @@ private fun RowScope.RecordingTile(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        // 4dp (not 8dp) matches Samsung spec — icon and label read as one unit.
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(60.dp)
-                .clip(if (isRecording) RoundedCornerShape(18.dp) else CircleShape)
+                // 20dp rounded corners (not 18dp) matches the reference screenshot.
+                .clip(if (isRecording) RoundedCornerShape(20.dp) else CircleShape)
                 .background(if (isRecording) RecTileBg else TileBg)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            // Cassette / record icon — project's rec-icon-green vector drawable.
-            // Icon() + tint = RecGreen preserves the original green visual intent
-            // while allowing crisp rendering at any density (XML vector).
-            // Per v2 spec, this green cassette appears ONLY here (in the tile),
-            // not in the badge above.
+            // Cassette / record icon. Sized at 44dp so it visually fills the
+            // 60dp tile (~73% coverage) — matches the real Samsung UI where
+            // the cassette glyph nearly reaches the tile edges. The previous
+            // 26dp left the icon looking dwarfed inside the square.
             Icon(
                 painter = painterResource(id = R.drawable.rec_icon_green),
                 contentDescription = null,
                 tint = RecGreen,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(44.dp)
             )
         }
         Text(
@@ -367,7 +378,8 @@ private fun RowScope.ControlTile(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        // 4dp matches RecordingTile; tightens the icon-label pairing.
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Box(
             modifier = Modifier
