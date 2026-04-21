@@ -21,14 +21,16 @@ val secretsProps = Properties().also { props ->
 
 android {
     namespace = "com.ejectbutton"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.simonykim.ejectbutton"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        // versionCode is overridden by CI via -PversionCodeOverride=<int>.
+        // See .github/workflows/release-aab.yml (uses GITHUB_RUN_NUMBER + offset).
+        versionCode = (project.findProperty("versionCodeOverride") as String?)?.toInt() ?: 1
+        versionName = (project.findProperty("versionNameOverride") as String?) ?: "1.0"
 
         // secrets.properties에서 API 키 주입 (보안: 소스코드에 키 노출 방지)
         buildConfigField("String", "CLARITY_PROJECT_ID",

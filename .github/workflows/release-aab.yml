@@ -66,11 +66,38 @@ jobs:
           keyPassword=${KEY_PASSWORD}
           EOF
 
+      # Play Console rejects any AAB whose versionCode is <= the previously
+      # uploaded one. We derive versionCode from GITHUB_RUN_NUMBER with a fixed
+      # offset so every release-aab workflow run yields a strictly larger code.
+      # The offset (1000) reserves the first 1000 codes for legacy/manual uploads.
+      #
+      # versionName prefers the workflow_dispatch input; tag pushes fall back to
+      # the tag name minus the leading "v", matching the tag convention "v1.2.3".
+      - name: Compute version metadata
+        id: version
+        run: |
+          VERSION_CODE=$(( 1000 + GITHUB_RUN_NUMBER ))
+          if [ -n "${{ inputs.version_name }}" ]; then
+            VERSION_NAME="${{ inputs.version_name }}"
+          elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+          else
+            VERSION_NAME="1.0.0"
+          fi
+          echo "versionCode=${VERSION_CODE}"  | tee -a "$GITHUB_OUTPUT"
+          echo "versionName=${VERSION_NAME}" | tee -a "$GITHUB_OUTPUT"
+
       - name: Assemble release AAB (Play Store)
-        run: ./gradlew bundleRelease --no-daemon --stacktrace
+        run: |
+          ./gradlew bundleRelease --no-daemon --stacktrace \
+            -PversionCodeOverride=${{ steps.version.outputs.versionCode }} \
+            -PversionNameOverride=${{ steps.version.outputs.versionName }}
 
       - name: Assemble release APK (sideload testing)
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: |
+          ./gradlew assembleRelease --no-daemon --stacktrace \
+            -PversionCodeOverride=${{ steps.version.outputs.versionCode }} \
+            -PversionNameOverride=${{ steps.version.outputs.versionName }}
 
       - name: Rename artifacts with run metadata
         run: |
@@ -90,6 +117,8 @@ jobs:
           body: |
             Production-signed release artifacts from commit `${{ github.sha }}`.
 
+            - **versionCode**: `${{ steps.version.outputs.versionCode }}`
+            - **versionName**: `${{ steps.version.outputs.versionName }}`
             - **AAB** — upload this to Play Console (Internal Testing → Production).
             - **APK** — sideload directly for release-build QA.
           files: release-assets/*

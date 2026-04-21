@@ -1,0 +1,40 @@
+Stuck in a meeting that should have ended an hour ago?
+Trapped at a family dinner you can't leave?
+On a date that isn't going anywhere?
+
+Eject Button gives you a clean exit — a fake incoming call that looks and sounds completely real.
+
+■ HOW IT WORKS
+Tap EJECT and your phone rings immediately. Or set a timer (10s / 30s / 1 min / custom) so the call comes in at exactly the right moment. Shake your phone secretly to trigger it without anyone noticing.
+
+The incoming call screen looks identical to a real call. Pick it up, say a few words from the built-in script hints, and walk out. No awkward goodbyes. No explanations.
+
+■ FEATURES
+• Instant, timer, shake, and custom delay triggers
+• Real ringtone + vibration (uses your phone's default)
+• Customizable caller name — set it to Mom, Boss, or anyone
+• Script hints during the call so you know what to say
+• Call history log
+• 7 languages: English, 한국어, 日本語, 中文, Español, हिन्दी
+
+■ WHEN PEOPLE USE IT
+→ Stuck at work dinners with no polite exit
+→ First dates that need to end
+→ Sales calls that go too long
+→ Awkward family gatherings
+→ Uncomfortable one-on-ones
+
+No prank. No joke. A real tool for real social pressure.
+
+■ PERMISSIONS
+• Display over other apps — shows the fake call UI on top of whatever you're in (core function)
+• Phone state — hides the fake call if a real one arrives
+• Contacts — optional, lets you pick a real contact as the fake caller
+• Camera — only to blink the flashlight LED on incoming call (no photos or video)
+
+■ PRIVACY
+Contact and call data stays entirely on your device. Nothing is uploaded.
+Full policy: https://ejectbutton.pages.dev/privacy-policy.html
+
+■ SUPPORT
+simonykim@gmail.com

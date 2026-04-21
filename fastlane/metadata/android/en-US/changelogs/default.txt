@@ -1,0 +1,7 @@
+First release.
+
+• Fake incoming call screen (One UI 8.5 style)
+• Instant / timer / shake / volume-button triggers
+• 7 languages supported
+• In-call script hints
+• Premium upgrade (removes ads + unlimited hints)
