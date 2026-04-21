@@ -1,0 +1,52 @@
+<!--
+  rec_icon_green.xml
+
+  Replacement for 49x46 PNG. Crisp at all densities (mdpi..xxxhdpi).
+  Tintable via androidx.compose.material3.Icon(tint=...).
+
+  Derived from in-call-v3.html design mockup "cassette with T" SVG:
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+      <rect x="2" y="5" width="18" height="11" rx="2"/>
+      <circle cx="7" cy="10.5" r="1.8"/>
+      <circle cx="15" cy="10.5" r="1.8"/>
+      <path d="M10 17h10M15 17v5" stroke-linecap="round" stroke-width="2.2"/>
+    </svg>
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Cassette body (rounded rect, outer stroke) -->
+    <path
+        android:pathData="M4,5 L18,5 A2,2 0 0 1 20,7 L20,14 A2,2 0 0 1 18,16 L4,16 A2,2 0 0 1 2,14 L2,7 A2,2 0 0 1 4,5 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8" />
+
+    <!-- Left reel -->
+    <path
+        android:pathData="M8.8,10.5 A1.8,1.8 0 1 1 5.2,10.5 A1.8,1.8 0 1 1 8.8,10.5 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8" />
+
+    <!-- Right reel -->
+    <path
+        android:pathData="M16.8,10.5 A1.8,1.8 0 1 1 13.2,10.5 A1.8,1.8 0 1 1 16.8,10.5 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8" />
+
+    <!-- T horizontal bar -->
+    <path
+        android:pathData="M10,17 L20,17"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+
+    <!-- T vertical stem -->
+    <path
+        android:pathData="M15,17 L15,22"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+</vector>
