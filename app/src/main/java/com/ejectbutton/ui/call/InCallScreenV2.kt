@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -304,7 +304,7 @@ fun InCallScreenV2(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     ControlTile(
-                        icon = Icons.Filled.VolumeUp,
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
                         label = s.speaker,
                         onClick = onSpeaker,
                     )
