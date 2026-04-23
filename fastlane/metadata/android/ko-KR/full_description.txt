@@ -37,7 +37,7 @@ Eject Button은 본인의 자발적 탈출을 위한 도구입니다. 타인을 
 ■ 개인정보
 연락처와 통화 기록은 기기 안에만 저장되며 외부로 업로드되지 않습니다.
 서비스 개선을 위해 Google AdMob(광고 개인화), Firebase Analytics(사용 이벤트), Microsoft Clarity(익명 세션 기록) 를 사용합니다. 개인 식별 정보는 수집하지 않습니다.
-전체 정책: https://ejectbutton.pages.dev/privacy-policy.html
+전체 정책: https://eject-button.hwanydanh.workers.dev/privacy-policy
 
 ■ 문의
 simonykim@gmail.com

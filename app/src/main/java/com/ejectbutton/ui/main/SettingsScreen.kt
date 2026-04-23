@@ -471,12 +471,12 @@ fun SettingsScreen(
                     icon = "🔒",
                     label = strings.settingsPrivacy,
                     onClick = {
-                        // Round 28 — single canonical privacy URL across the app
-                        // and Play Console store listing. Previously pointed at
-                        // a Cloudflare Workers staging subdomain which would
-                        // break Play review if it ever 404'd.
+                        // Round 29 — canonical URL is the live Cloudflare
+                        // Workers deployment. The pages.dev alias I briefly
+                        // switched to in round 28 is NOT live (ECONNREFUSED
+                        // confirmed 2026-04-24) and would break Play review.
                         ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                            Uri.parse("https://ejectbutton.pages.dev/privacy-policy.html")))
+                            Uri.parse("https://eject-button.hwanydanh.workers.dev/privacy-policy")))
                     }
                 )
             }

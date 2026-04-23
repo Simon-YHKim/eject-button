@@ -37,7 +37,7 @@ No prank. No joke. A real tool for real social pressure.
 ■ PRIVACY
 Your contacts and call history stay on your device — we never upload them.
 For product improvement the app uses Google AdMob (ad personalization), Firebase Analytics (app-usage events), and Microsoft Clarity (anonymous session recording). No personally identifying information is collected.
-Full policy: https://ejectbutton.pages.dev/privacy-policy.html
+Full policy: https://eject-button.hwanydanh.workers.dev/privacy-policy
 
 ■ SUPPORT
 simonykim@gmail.com
