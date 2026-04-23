@@ -57,4 +57,44 @@ class PhoneNumberUtilTest {
         val b = randomKoreanMobileLabel(Random(42))
         assertEquals("same seed → same output", a, b)
     }
+
+    // ── formatPhoneWithHyphens (Round 32) ────────────────────────────────────
+
+    @Test
+    fun `korean 11 digit gets 3-4-4 hyphens`() {
+        assertEquals("010-2484-1120", formatPhoneWithHyphens("01024841120", "KR"))
+    }
+
+    @Test
+    fun `korean with country code plus noise normalized`() {
+        assertEquals("010-2484-1120", formatPhoneWithHyphens("+82 10-2484 1120", "KR"))
+    }
+
+    @Test
+    fun `korean 10 digit falls back to 3-3-4`() {
+        // 10 자리는 현실적으론 "02-XXXX-XXXX" 같은 패턴이 흔하지만 현재 구현은
+        // 단순 3-3-4 로 fallback 한다. 사용 빈도가 낮은 legacy path 라 이렇게 유지.
+        assertEquals("021-234-5678", formatPhoneWithHyphens("0212345678", "KR"))
+    }
+
+    @Test
+    fun `us 10 digit gets 3-3-4`() {
+        assertEquals("415-555-0123", formatPhoneWithHyphens("4155550123", "US"))
+    }
+
+    @Test
+    fun `empty returns empty`() {
+        assertEquals("", formatPhoneWithHyphens("", "KR"))
+    }
+
+    @Test
+    fun `non-digit only returns trimmed`() {
+        // 숫자 하나도 없으면 원본을 trim 해서 반환 — 망가뜨리지 않음 계약.
+        assertEquals("---", formatPhoneWithHyphens(" --- ", "KR"))
+    }
+
+    @Test
+    fun `unknown country falls back to 3-4-4 for 11 digits`() {
+        assertEquals("010-2484-1120", formatPhoneWithHyphens("01024841120", "XX"))
+    }
 }

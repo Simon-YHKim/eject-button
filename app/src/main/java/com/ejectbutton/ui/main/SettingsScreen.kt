@@ -69,6 +69,8 @@ fun SettingsScreen(
     var showSideButtonPicker by remember { mutableStateOf(false) }
     var showHowToUse by remember { mutableStateOf(false) }
     var showLangPicker by remember { mutableStateOf(false) }
+    // Round 32 — "프리셋 복원" 탭 시 사용자 확인용 완료 팝업.
+    var showRestoreDoneDialog by remember { mutableStateOf(false) }
 
     if (showSideButtonPicker) {
         SideButtonCommandPickerDialog(
@@ -96,6 +98,25 @@ fun SettingsScreen(
                 showLangPicker = false
             },
             onDismiss = { showLangPicker = false },
+        )
+    }
+
+    // Round 32 — 프리셋 복원 완료 확인 팝업. 사용자가 OK 눌러야 닫힌다.
+    if (showRestoreDoneDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDoneDialog = false },
+            title = { Text(strings.restoreDoneTitle, fontWeight = FontWeight.Bold) },
+            text  = { Text(strings.restoreDoneMsg) },
+            confirmButton = {
+                TextButton(onClick = { showRestoreDoneDialog = false }) {
+                    Text(
+                        strings.dialogConfirm,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            containerColor = EjectSurface,
         )
     }
 
@@ -433,13 +454,17 @@ fun SettingsScreen(
 
         // ── Callers: restore default presets (Round 31) ────────────────────
         // 사용자가 메인 화면에서 mom/dad 칩의 X 를 눌러 soft-delete 한 프리셋을 한 번에 복원한다.
+        // Round 32 — 복원 성공 후 확인 팝업으로 사용자가 인지할 수 있게 한다.
         item {
             EjectSectionHeader(strings.settingsRestorePresets)
             Spacer(Modifier.height(8.dp))
             EjectLinkCard(
                 icon = "↩️",
                 label = strings.settingsRestorePresets,
-                onClick = onRestorePresets,
+                onClick = {
+                    onRestorePresets()
+                    showRestoreDoneDialog = true
+                },
             )
             Spacer(Modifier.height(24.dp))
         }

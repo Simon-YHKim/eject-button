@@ -21,3 +21,59 @@ internal fun randomKoreanMobileLabel(random: Random = Random.Default): String {
     val tail = random.nextInt(1000, 10000)   // 1000..9999
     return "폰 010-%04d-%04d".format(mid, tail)
 }
+
+/**
+ * 아무 포맷의 전화번호 문자열을 받아 국가별 하이픈 포맷으로 재조립한다.
+ *
+ * Round 32 — 주소록 NUMBER 컬럼은 공백·괄호·점·국가코드 등이 섞여서 온다.
+ * 예: "+82 10-2484-1120", "010 1234 5678", "(032)123-4567".
+ * 이걸 그대로 가짜 수신 화면에 박으면 포맷이 들쑥날쑥이라 가짜 통화 몰입이 깨진다.
+ *
+ * 전략:
+ * 1) 숫자만 추출.
+ * 2) 국가별 대표 길이 패턴에 맞추어 하이픈 넣기.
+ * 3) 매칭 안 되면 원본 숫자만 그대로 반환 (망가뜨리지 않음).
+ *
+ * 지원 국가: KR (기본), US/CA, JP, CN/TW/HK, ES, IN.
+ * 그 외: 11자리 → 3-4-4, 10자리 → 3-3-4 의 한국식 fallback.
+ */
+fun formatPhoneWithHyphens(raw: String, country: String = "KR"): String {
+    if (raw.isBlank()) return raw
+    val digits = raw.filter { it.isDigit() }
+    if (digits.isEmpty()) return raw.trim()
+    val c = country.uppercase()
+    return when (c) {
+        "KR" -> when (digits.length) {
+            11 -> "${digits.take(3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
+            10 -> "${digits.take(3)}-${digits.substring(3, 6)}-${digits.substring(6)}"
+            else -> digits
+        }
+        "US", "CA" -> when (digits.length) {
+            10 -> "${digits.take(3)}-${digits.substring(3, 6)}-${digits.substring(6)}"
+            11 -> "+1 ${digits.substring(1, 4)}-${digits.substring(4, 7)}-${digits.substring(7)}"
+            else -> digits
+        }
+        "JP" -> when (digits.length) {
+            11 -> "${digits.take(3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
+            10 -> "${digits.take(2)}-${digits.substring(2, 6)}-${digits.substring(6)}"
+            else -> digits
+        }
+        "CN", "TW", "HK" -> when (digits.length) {
+            11 -> "${digits.take(3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
+            else -> digits
+        }
+        "ES" -> when (digits.length) {
+            9 -> "${digits.take(3)}-${digits.substring(3, 6)}-${digits.substring(6)}"
+            else -> digits
+        }
+        "IN" -> when (digits.length) {
+            10 -> "${digits.take(5)}-${digits.substring(5)}"
+            else -> digits
+        }
+        else -> when (digits.length) {
+            11 -> "${digits.take(3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
+            10 -> "${digits.take(3)}-${digits.substring(3, 6)}-${digits.substring(6)}"
+            else -> digits
+        }
+    }
+}

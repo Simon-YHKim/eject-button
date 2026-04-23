@@ -52,6 +52,7 @@ import com.ejectbutton.data.TriggerMode
 import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
+import com.ejectbutton.data.formatPhoneWithHyphens
 import com.ejectbutton.data.randomKoreanMobileLabel
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.CountdownBus
@@ -210,6 +211,9 @@ fun MainScreen(
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
     // Round 30 — 사용자가 숨긴 프리셋 (mom/dad) id 집합. Settings > "프리셋 복원" 에서 초기화.
     var deletedPresetIds by remember { mutableStateOf(EjectPrefs.loadDeletedPresetIds(ctx)) }
+    // Round 32 — 실수로 X 를 눌러 발신자가 바로 삭제되는 걸 막기 위한 확인 팝업.
+    // 사용자가 "예" 를 눌러야 실제 삭제가 실행됨.
+    var pendingDeleteCaller by remember { mutableStateOf<Scenario?>(null) }
     var history          by remember { mutableStateOf(EjectPrefs.loadHistory(ctx)) }
     // 탈출 기록 초기화 후 확인 팝업
     var showHistoryClearedDialog by remember { mutableStateOf(false) }
@@ -281,6 +285,41 @@ fun MainScreen(
                 }
             )
         }
+    }
+
+    // Round 32 — 호출 대상 삭제 확인. 실수로 X 를 눌러 즉시 삭제되는 걸 막는다.
+    pendingDeleteCaller?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteCaller = null },
+            title = { Text(strings.deleteCallerTitle, fontWeight = FontWeight.Bold) },
+            text  = { Text(strings.deleteCallerMsg.format(target.name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val presetIds = defaultScenarios.map { it.id }.toSet()
+                    if (target.id in presetIds) {
+                        val updated = deletedPresetIds + target.id
+                        deletedPresetIds = updated
+                        EjectPrefs.saveDeletedPresetIds(ctx, updated)
+                    } else {
+                        val updated = customCallers.filter { it.id != target.id }
+                        customCallers = updated
+                        EjectPrefs.saveScenarios(ctx, updated)
+                    }
+                    if (selectedScenario.id == target.id) {
+                        val remaining = localizedDefaults.filterNot { it.id in deletedPresetIds || it.id == target.id } +
+                                customCallers.filter { it.id != target.id }
+                        selectedScenario = remaining.firstOrNull() ?: localizedDefaults[0]
+                    }
+                    pendingDeleteCaller = null
+                }) { Text(strings.dialogYes, color = EjectCoral, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteCaller = null }) {
+                    Text(strings.dialogNo)
+                }
+            },
+            containerColor = EjectSurface,
+        )
     }
 
     // 기록 초기화 확인 팝업
@@ -478,22 +517,8 @@ fun MainScreen(
                     onOpenSideButtonPicker = { showSideButtonPicker = true },
                     onSelectCaller   = { selectedScenario = it },
                     onDeleteCaller   = { toDelete ->
-                        // Round 30 — preset(mom/dad) 삭제 = deletedPresetIds 에 soft-delete 저장. Settings 로 복원 가능.
-                        // custom 발신자 삭제 = 기존처럼 customCallers 리스트에서 제거.
-                        val presetIds = defaultScenarios.map { it.id }.toSet()
-                        if (toDelete.id in presetIds) {
-                            val updated = deletedPresetIds + toDelete.id
-                            deletedPresetIds = updated
-                            EjectPrefs.saveDeletedPresetIds(ctx, updated)
-                        } else {
-                            val updated = customCallers.filter { it.id != toDelete.id }
-                            customCallers = updated
-                            EjectPrefs.saveScenarios(ctx, updated)
-                        }
-                        if (selectedScenario.id == toDelete.id) {
-                            val remaining = localizedDefaults.filterNot { it.id in deletedPresetIds || it.id == toDelete.id } + customCallers.filter { it.id != toDelete.id }
-                            selectedScenario = remaining.firstOrNull() ?: localizedDefaults[0]
-                        }
+                        // Round 32 — 즉시 삭제하지 않고 확인 다이얼로그 표시. 실제 삭제는 "예" 버튼 onClick.
+                        pendingDeleteCaller = toDelete
                     },
                     onSelectTime     = { time ->
                         // Round 12 — 프리미엄 게이팅 임시 해제 (사용자 테스트용).
@@ -1678,12 +1703,17 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                     // 어느 번호가 가짜 수신 화면에 뜰지 미리 확인 가능.
                     LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
                         items(contacts) { entry ->
+                            // Round 32 — 주소록 번호를 국가별 하이픈 포맷으로 보여서 사용자가
+                            // 어떤 모양이 실제 가짜 수신 화면에 뜰지 미리 확인 가능하게.
+                            val formatted = remember(entry.phone) {
+                                formatPhoneWithHyphens(entry.phone, Locale.getDefault().country)
+                            }
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
                                         callerName = entry.name
-                                        selectedPhone = entry.phone
+                                        selectedPhone = formatted
                                     }
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
                             ) {
@@ -1692,9 +1722,9 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                                     fontSize = 14.sp,
                                     color = EjectOnSurface,
                                 )
-                                if (entry.phone.isNotBlank()) {
+                                if (formatted.isNotBlank()) {
                                     Text(
-                                        text = entry.phone,
+                                        text = formatted,
                                         fontSize = 12.sp,
                                         color = EjectSecondary,
                                     )
