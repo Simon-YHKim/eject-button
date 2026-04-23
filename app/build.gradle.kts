@@ -104,4 +104,10 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     debugImplementation(libs.androidx.ui.tooling)
+
+    // Unit tests — JVM only, no Android runtime required.
+    // Added in Round 27 so we can regression-test the emoji/surrogate-pair
+    // history parser, callerLabel formatting, and future pure-Kotlin logic.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
 }

@@ -15,6 +15,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
 import android.telephony.PhoneStateListener
+import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.os.Build
 import android.view.WindowInsets
@@ -90,6 +91,10 @@ class FakeCallOverlayService : Service() {
 
     @Suppress("DEPRECATION")
     private var phoneListener: PhoneStateListener? = null
+
+    // API 31+ replacement for PhoneStateListener.  Held separately so we can
+    // unregister it on the correct code path in onDestroy.
+    private var telephonyCallback: TelephonyCallback? = null
 
     override fun onBind(intent: Intent?) = null
 
@@ -458,15 +463,37 @@ class FakeCallOverlayService : Service() {
         audioFocusRequest = null
     }
 
-    @Suppress("DEPRECATION")
+    /**
+     * Listen for real incoming calls so the fake-call overlay dismisses
+     * itself if the user's phone actually rings — we don't want to be on
+     * top of Samsung's real in-call UI.
+     *
+     * API 31+ (Android 12+): TelephonyManager.registerTelephonyCallback
+     * with a TelephonyCallback.CallStateListener.  Required because
+     * PhoneStateListener.listen() is deprecated on S and raises a warning.
+     *
+     * API 26-30: PhoneStateListener.listen() is still the supported path.
+     */
     private fun listenRealCall() {
         val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
-        phoneListener = object : PhoneStateListener() {
-            override fun onCallStateChanged(state: Int, phoneNumber: String?) {
-                if (state != TelephonyManager.CALL_STATE_IDLE) dismiss()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val cb = object : TelephonyCallback(), TelephonyCallback.CallStateListener {
+                override fun onCallStateChanged(state: Int) {
+                    if (state != TelephonyManager.CALL_STATE_IDLE) dismiss()
+                }
             }
+            telephonyCallback = cb
+            try { tm.registerTelephonyCallback(mainExecutor, cb) } catch (_: Exception) {}
+        } else {
+            @Suppress("DEPRECATION")
+            phoneListener = object : PhoneStateListener() {
+                override fun onCallStateChanged(state: Int, phoneNumber: String?) {
+                    if (state != TelephonyManager.CALL_STATE_IDLE) dismiss()
+                }
+            }
+            @Suppress("DEPRECATION")
+            tm.listen(phoneListener, PhoneStateListener.LISTEN_CALL_STATE)
         }
-        tm.listen(phoneListener, PhoneStateListener.LISTEN_CALL_STATE)
     }
 
     private fun createChannel() {
@@ -492,10 +519,16 @@ class FakeCallOverlayService : Service() {
         stopFlashBlink()
         releaseWake()
         serviceLifecycle?.stop()
-        @Suppress("DEPRECATION")
+        // Symmetric teardown — same API-level split as listenRealCall.
         try {
-            (getSystemService(TELEPHONY_SERVICE) as TelephonyManager)
-                .listen(phoneListener, PhoneStateListener.LISTEN_NONE)
+            val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                telephonyCallback?.let { tm.unregisterTelephonyCallback(it) }
+                telephonyCallback = null
+            } else {
+                @Suppress("DEPRECATION")
+                tm.listen(phoneListener, PhoneStateListener.LISTEN_NONE)
+            }
         } catch (_: Exception) {}
         super.onDestroy()
     }

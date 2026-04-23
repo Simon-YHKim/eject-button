@@ -446,12 +446,12 @@ private fun RowScope.ControlTile(
     }
 }
 
-private fun formatDuration(totalSeconds: Int): String {
-    val s = totalSeconds.coerceAtLeast(0)
-    val m = s / 60
-    val r = s % 60
-    return "%02d:%02d".format(m, r)
-}
+// formatDuration moved to com.ejectbutton.ui.util so it can be unit-tested.
+// Re-exported here as an aliased top-level reference so existing call sites
+// (and any callers from other files in this package) keep working without a
+// package-qualified call.
+private fun formatDuration(totalSeconds: Int): String =
+    com.ejectbutton.ui.util.formatDuration(totalSeconds)
 
 // Soft radial "blob" used to produce the One UI 8.5 pastel wallpaper feel.
 // Mirrors the identically-named helper in FakeIncomingCallScreenV2 — kept

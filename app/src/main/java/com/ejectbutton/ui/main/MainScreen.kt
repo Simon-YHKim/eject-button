@@ -977,15 +977,15 @@ private fun HistoryContent(
 
 @Composable
 private fun HistoryEntryCard(entry: String) {
-    // 엔트리 형식: "MM/dd HH:mm · 👤Name · trigger"
-    val parts = entry.split(" · ")
-    val timestamp  = parts.getOrNull(0) ?: ""
-    val callerPart = parts.getOrNull(1) ?: ""
-    val trigger    = parts.getOrNull(2) ?: ""
-
-    // 이모지와 이름 분리
-    val emoji = callerPart.firstOrNull()?.toString() ?: "👤"
-    val name  = if (callerPart.length > 1) callerPart.substring(1).trim() else ""
+    // Parse via the unit-tested helper in ui.util.HistoryEntryParser — the
+    // surrogate-pair emoji split lives there so we can regression-test it.
+    val parsed = com.ejectbutton.ui.util.parseHistoryEntry(entry)
+    val timestamp  = parsed.timestamp
+    val emoji      = parsed.emoji
+    val name       = parsed.name
+    val trigger    = parsed.trigger
+    // Fall back to the raw caller segment only when parser returned no name.
+    val callerPart = if (name.isEmpty()) "$emoji".trim() else name
 
     Row(
         modifier = Modifier
