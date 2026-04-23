@@ -26,6 +26,8 @@ object EjectPrefs {
     private const val KEY_PREMIUM     = "is_premium"
     private const val KEY_SHOW_ONBOARDING = "show_onboarding"
     private const val KEY_BATTERY_OPT_ASKED = "battery_opt_asked"
+    // Round 30 — 사용자가 삭제한 프리셋 ID 집합 (mom/dad). 사용자가 원하면 프리셋도 숨길 수 있게.
+    private const val KEY_DELETED_PRESETS = "deleted_preset_ids"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -34,7 +36,8 @@ object EjectPrefs {
     fun saveScenarios(ctx: Context, scenarios: List<Scenario>) {
         val encoded = scenarios.joinToString(R) { s ->
             listOf(s.id, s.emoji, s.name, s.callerName, s.callerLabel,
-                   s.preSmsText, s.prompterHint, s.urgency.name).joinToString(F)
+                   s.preSmsText, s.prompterHint, s.urgency.name,
+                   s.isRandomPhone.toString()).joinToString(F)
         }
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .edit().putString(KEY_SCENARIOS, encoded).apply()
@@ -49,17 +52,44 @@ object EjectPrefs {
             if (f.size < 8) return@mapNotNull null
             runCatching {
                 Scenario(
-                    id           = f[0],
-                    emoji        = f[1],
-                    name         = f[2],
-                    callerName   = f[3],
-                    callerLabel  = f[4],
-                    preSmsText   = f[5],
-                    prompterHint = f[6],
-                    urgency      = Urgency.valueOf(f[7]),
+                    id             = f[0],
+                    emoji          = f[1],
+                    name           = f[2],
+                    callerName     = f[3],
+                    callerLabel    = f[4],
+                    preSmsText     = f[5],
+                    prompterHint   = f[6],
+                    urgency        = Urgency.valueOf(f[7]),
+                    // Round 30 — 9번째 필드가 없으면 legacy 저장본이므로 false 로 간주.
+                    isRandomPhone  = f.getOrNull(8)?.toBooleanStrictOrNull() ?: false,
                 )
             }.getOrNull()
         }
+    }
+
+    // ── Deleted preset ids (Round 30) ─────────────────────────────────────────
+
+    /**
+     * mom/dad 프리셋을 사용자가 "삭제" 했을 때 그 id 를 저장한다.
+     * 리스트 구성 시 `defaultScenarios` 를 이 set 으로 필터링해서 숨긴다.
+     * Settings 의 "프리셋 복원" 으로 언제든 되돌릴 수 있기 때문에 soft-delete.
+     */
+    fun saveDeletedPresetIds(ctx: Context, ids: Set<String>) {
+        val encoded = ids.joinToString(F)
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_DELETED_PRESETS, encoded).apply()
+    }
+
+    fun loadDeletedPresetIds(ctx: Context): Set<String> {
+        val raw = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_DELETED_PRESETS, "") ?: return emptySet()
+        if (raw.isBlank()) return emptySet()
+        return raw.split(F).filter { it.isNotBlank() }.toSet()
+    }
+
+    fun clearDeletedPresetIds(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().remove(KEY_DELETED_PRESETS).apply()
     }
 
     // ── History ───────────────────────────────────────────────────────────────

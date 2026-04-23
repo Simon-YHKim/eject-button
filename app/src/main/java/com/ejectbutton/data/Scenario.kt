@@ -9,6 +9,15 @@ data class Scenario(
     val preSmsText: String,     // 전화 전 문자 내용
     val prompterHint: String,   // 통화 중 내가 할 말
     val urgency: Urgency,
+    /**
+     * true 이면 표시 시점에 callerLabel 을 무시하고 매번 무작위 전화번호
+     * ("폰 010-XXXX-XXXX") 를 생성해서 보여준다. 기본 프리셋(엄마·아빠) 에
+     * 고정 번호가 박혀 있으면 매번 같은 번호로 떠서 가짜 전화 감수 리얼리티가
+     * 떨어지기 때문에 Round 30 부터 프리셋은 랜덤화한다.
+     *
+     * 사용자가 직접 추가한 커스텀 호출 대상은 입력한 번호를 존중하므로 false 가 기본.
+     */
+    val isRandomPhone: Boolean = false,
 )
 
 enum class Urgency { NORMAL, URGENT, PANIC }
@@ -34,19 +43,21 @@ val defaultScenarios = listOf(
         emoji = "👩",
         name = "엄마",
         callerName = "엄마",
-        callerLabel = "폰 010-2484-1120",
+        callerLabel = "",   // isRandomPhone=true 이므로 표시 시점에 동적 생성
         preSmsText = "",
         prompterHint = "",
         urgency = Urgency.NORMAL,
+        isRandomPhone = true,
     ),
     Scenario(
         id = "dad",
         emoji = "👨",
         name = "아빠",
         callerName = "아빠",
-        callerLabel = "폰 010-1234-5678",
+        callerLabel = "",   // isRandomPhone=true
         preSmsText = "",
         prompterHint = "",
         urgency = Urgency.NORMAL,
+        isRandomPhone = true,
     ),
 )

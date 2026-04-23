@@ -52,6 +52,7 @@ import com.ejectbutton.data.TriggerMode
 import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
+import com.ejectbutton.data.randomKoreanMobileLabel
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.CountdownBus
 import com.ejectbutton.service.FakeCallOverlayService
@@ -207,6 +208,8 @@ fun MainScreen(
     }
 
     var customCallers    by remember { mutableStateOf(EjectPrefs.loadScenarios(ctx)) }
+    // Round 30 — 사용자가 숨긴 프리셋 (mom/dad) id 집합. Settings > "프리셋 복원" 에서 초기화.
+    var deletedPresetIds by remember { mutableStateOf(EjectPrefs.loadDeletedPresetIds(ctx)) }
     var history          by remember { mutableStateOf(EjectPrefs.loadHistory(ctx)) }
     // 탈출 기록 초기화 후 확인 팝업
     var showHistoryClearedDialog by remember { mutableStateOf(false) }
@@ -453,8 +456,10 @@ fun MainScreen(
                     selectedTime     = selectedTime,
                     selectedMode     = selectedMode,
                     customDelaySec   = customDelaySec,
-                    allCallers       = localizedDefaults + customCallers,
-                    customCallerIds  = customCallers.map { it.id }.toSet(),
+                    // Round 30 — 프리셋도 삭제 가능하므로 deletedPresetIds 로 필터링.
+                    // customCallerIds 는 "이름은 그대로지만 **삭제 가능한** id 집합" 의미로 확장 — 모든 표시 caller 포함.
+                    allCallers       = (localizedDefaults.filterNot { it.id in deletedPresetIds } + customCallers),
+                    customCallerIds  = (localizedDefaults.filterNot { it.id in deletedPresetIds } + customCallers).map { it.id }.toSet(),
                     countdown        = countdown,
                     sideButtonCommand = sideButtonCommand,
                     sideButtonStandby = sideButtonStandby,
@@ -468,10 +473,22 @@ fun MainScreen(
                     onOpenSideButtonPicker = { showSideButtonPicker = true },
                     onSelectCaller   = { selectedScenario = it },
                     onDeleteCaller   = { toDelete ->
-                        val updated = customCallers.filter { it.id != toDelete.id }
-                        customCallers = updated
-                        EjectPrefs.saveScenarios(ctx, updated)
-                        if (selectedScenario.id == toDelete.id) selectedScenario = localizedDefaults[0]
+                        // Round 30 — preset(mom/dad) 삭제 = deletedPresetIds 에 soft-delete 저장. Settings 로 복원 가능.
+                        // custom 발신자 삭제 = 기존처럼 customCallers 리스트에서 제거.
+                        val presetIds = defaultScenarios.map { it.id }.toSet()
+                        if (toDelete.id in presetIds) {
+                            val updated = deletedPresetIds + toDelete.id
+                            deletedPresetIds = updated
+                            EjectPrefs.saveDeletedPresetIds(ctx, updated)
+                        } else {
+                            val updated = customCallers.filter { it.id != toDelete.id }
+                            customCallers = updated
+                            EjectPrefs.saveScenarios(ctx, updated)
+                        }
+                        if (selectedScenario.id == toDelete.id) {
+                            val remaining = localizedDefaults.filterNot { it.id in deletedPresetIds || it.id == toDelete.id } + customCallers.filter { it.id != toDelete.id }
+                            selectedScenario = remaining.firstOrNull() ?: localizedDefaults[0]
+                        }
                     },
                     onSelectTime     = { time ->
                         // Round 12 — 프리미엄 게이팅 임시 해제 (사용자 테스트용).
@@ -594,7 +611,12 @@ fun MainScreen(
                         val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
                         EjectPrefs.addHistory(ctx, entry)
                         history = EjectPrefs.loadHistory(ctx)
-                        onEject(selectedScenario, delayMs)
+                        // Round 30 — mom/dad 프리셋은 isRandomPhone = true 이므로 실제 통화 직전에
+                        // 매번 새로운 무작위 번호를 주입한다. 커스텀 발신자는 입력한 번호 유지.
+                        val scenarioToSend = if (selectedScenario.isRandomPhone)
+                            selectedScenario.copy(callerLabel = randomKoreanMobileLabel())
+                        else selectedScenario
+                        onEject(scenarioToSend, delayMs)
                     },
                     onCancel = {
                         // countdown 중이면 진행 중인 가짜 전화 서비스도 함께 종료.
@@ -622,6 +644,11 @@ fun MainScreen(
                         showHistoryClearedDialog = true
                     },
                     onSettingsTap     = { showSettings = true },
+                    onRestorePresets  = {
+                        // Round 30 — 사용자가 삭제한 프리셋(엄마/아빠) 전부 복원
+                        deletedPresetIds = emptySet()
+                        EjectPrefs.clearDeletedPresetIds(ctx)
+                    },
                 )
             }
             }
@@ -1049,6 +1076,7 @@ private fun SystemsContent(
     onUpgradePremium: () -> Unit,
     onClearHistory: () -> Unit,
     onSettingsTap: () -> Unit,
+    onRestorePresets: () -> Unit,   // Round 30 — 프리셋(엄마/아빠) 복원
 ) {
     val strings = LocalAppStrings.current
 
@@ -1180,6 +1208,8 @@ private fun SystemsContent(
         ) {
             SystemsRow(icon = "⚙", label = strings.settingsTitle, onClick = onSettingsTap)
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
+            // Round 30 — 삭제된 프리셋(엄마/아빠) 복원
+            SystemsRow(icon = "↩️", label = strings.settingsRestorePresets, onClick = onRestorePresets)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -1816,7 +1846,9 @@ private fun PremiumUpgradeDialog(
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Text(
-                    String.format(strings.premiumBuyBtn, price ?: localizedFallbackPrice()),
+                    // Round 30 — premiumBuyBtn 에서 "%s" placeholder 를 제거했으므로 (사용자가
+                    // literal %s 가 보이던 버그 리포트) 이제 라벨은 고정. 가격은 별도 점-구분자로 뒤에 붙인다.
+                    "${strings.premiumBuyBtn}  ·  ${price ?: localizedFallbackPrice()}",
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
@@ -1847,7 +1879,9 @@ private fun PremiumFeatureRow(text: String) {
 /**
  * Round 18 — 월 구독 근사치 fallback. Google Play Billing 이 아직 제품을
  * 못 받아왔을 때만 쓰인다 (제품 미등록·오프라인·디버그).
- * premiumBuyBtn 이 "업그레이드 — %s/월" 포맷이므로 여기서는 금액만 반환.
+ *
+ * Round 30 — premiumBuyBtn 은 더 이상 placeholder 를 포함하지 않고 "업그레이드 — 월"
+ * 같은 고정 라벨이다. 가격은 여기서 반환한 금액을 UI 레이어에서 별도 점-구분자로 concat.
  */
 @Composable
 private fun localizedFallbackPrice(): String {
