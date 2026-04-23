@@ -66,6 +66,28 @@ jobs:
           keyPassword=${KEY_PASSWORD}
           EOF
 
+      # Round 28 — the build script now refuses to fall back to AdMob test unit
+      # IDs when a release task runs. Write the production ad unit IDs + Clarity
+      # project ID into secrets.properties from GitHub Actions secrets before
+      # gradle reads them. If any of these are missing in repo settings the
+      # release-aab workflow will fail at compile time with a clear message
+      # rather than silently shipping placeholder values.
+      - name: Write secrets.properties
+        env:
+          ADMOB_NATIVE_ID:       ${{ secrets.ADMOB_NATIVE_ID }}
+          ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+          CLARITY_PROJECT_ID:    ${{ secrets.CLARITY_PROJECT_ID }}
+        run: |
+          if [ -z "$ADMOB_NATIVE_ID" ] || [ -z "$ADMOB_INTERSTITIAL_ID" ] || [ -z "$CLARITY_PROJECT_ID" ]; then
+            echo "::error::One or more release secrets (ADMOB_NATIVE_ID / ADMOB_INTERSTITIAL_ID / CLARITY_PROJECT_ID) are not configured in repo secrets."
+            exit 1
+          fi
+          cat > secrets.properties <<EOF
+          ADMOB_NATIVE_ID=${ADMOB_NATIVE_ID}
+          ADMOB_INTERSTITIAL_ID=${ADMOB_INTERSTITIAL_ID}
+          CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID}
+          EOF
+
       # Play Console rejects any AAB whose versionCode is <= the previously
       # uploaded one. We derive versionCode from GITHUB_RUN_NUMBER with a fixed
       # offset so every release-aab workflow run yields a strictly larger code.
@@ -124,8 +146,9 @@ jobs:
           files: release-assets/*
           fail_on_unmatched_files: true
 
-      # Clean up the decoded keystore so it cannot leak into later steps.
-      - name: Scrub keystore
+      # Clean up the decoded keystore + secrets file so they cannot leak into
+      # later steps or cached workspaces.
+      - name: Scrub keystore and secrets
         if: always()
         run: |
-          rm -f app/release.jks keystore.properties
+          rm -f app/release.jks keystore.properties secrets.properties

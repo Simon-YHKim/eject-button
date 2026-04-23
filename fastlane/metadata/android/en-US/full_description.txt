@@ -2,12 +2,14 @@ Stuck in a meeting that should have ended an hour ago?
 Trapped at a family dinner you can't leave?
 On a date that isn't going anywhere?
 
-Eject Button gives you a clean exit — a fake incoming call that looks and sounds completely real.
+Eject Button gives you a clean exit — a realistic-looking fake incoming call you trigger yourself to leave an uncomfortable situation.
 
 ■ HOW IT WORKS
 Tap EJECT and your phone rings immediately. Or set a timer (10s / 30s / 1 min / custom) so the call comes in at exactly the right moment. Shake your phone secretly to trigger it without anyone noticing.
 
-The incoming call screen looks identical to a real call. Pick it up, say a few words from the built-in script hints, and walk out. No awkward goodbyes. No explanations.
+The call screen is styled to feel familiar so the interaction doesn't look out of place. Pick it up, say a few words from the built-in script hints, and walk out. No awkward goodbyes. No explanations.
+
+Eject Button is for your own self-escape. Don't use it to deceive, defraud, or harm anyone else.
 
 ■ FEATURES
 • Instant, timer, shake, and custom delay triggers
@@ -33,7 +35,8 @@ No prank. No joke. A real tool for real social pressure.
 • Camera — only to blink the flashlight LED on incoming call (no photos or video)
 
 ■ PRIVACY
-Contact and call data stays entirely on your device. Nothing is uploaded.
+Your contacts and call history stay on your device — we never upload them.
+For product improvement the app uses Google AdMob (ad personalization), Firebase Analytics (app-usage events), and Microsoft Clarity (anonymous session recording). No personally identifying information is collected.
 Full policy: https://ejectbutton.pages.dev/privacy-policy.html
 
 ■ SUPPORT

@@ -32,13 +32,38 @@ android {
         versionCode = (project.findProperty("versionCodeOverride") as String?)?.toInt() ?: 1
         versionName = (project.findProperty("versionNameOverride") as String?) ?: "1.0"
 
-        // secrets.properties에서 API 키 주입 (보안: 소스코드에 키 노출 방지)
+        // secrets.properties에서 API 키 주입 (보안: 소스코드에 키 노출 방지).
+        //
+        // Round 28 — the previous fallbacks baked Google's AdMob TEST unit IDs
+        // (ca-app-pub-3940256099942544/…) into any build where secrets.properties
+        // was missing. A release APK that ships with test IDs causes AdMob to
+        // suspend the publisher account. We now fail-fast at configuration time
+        // when a release build can't find the real IDs; debug builds keep the
+        // test IDs as a developer convenience.
+        val isReleaseTask = gradle.startParameter.taskNames.any {
+            it.contains("Release", ignoreCase = true) || it.startsWith(":app:bundle", ignoreCase = true)
+        }
+        fun requireSecret(key: String): String {
+            val value = secretsProps.getProperty(key, "")
+            if (value.isBlank() && isReleaseTask) {
+                error(
+                    "Required secret '$key' is missing from keystore/secrets.properties. " +
+                    "Release builds refuse to fall back to placeholder values. " +
+                    "See SETUP_GUIDE.md → secrets.properties."
+                )
+            }
+            return value
+        }
         buildConfigField("String", "CLARITY_PROJECT_ID",
-            "\"${secretsProps.getProperty("CLARITY_PROJECT_ID", "")}\"")
+            "\"${requireSecret("CLARITY_PROJECT_ID")}\"")
         buildConfigField("String", "ADMOB_NATIVE_ID",
-            "\"${secretsProps.getProperty("ADMOB_NATIVE_ID", "ca-app-pub-3940256099942544/2247696110")}\"")
+            "\"${secretsProps.getProperty("ADMOB_NATIVE_ID")
+                ?: if (isReleaseTask) error("ADMOB_NATIVE_ID missing — release refuses test fallback")
+                   else "ca-app-pub-3940256099942544/2247696110"}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID",
-            "\"${secretsProps.getProperty("ADMOB_INTERSTITIAL_ID", "ca-app-pub-3940256099942544/1033173712")}\"")
+            "\"${secretsProps.getProperty("ADMOB_INTERSTITIAL_ID")
+                ?: if (isReleaseTask) error("ADMOB_INTERSTITIAL_ID missing — release refuses test fallback")
+                   else "ca-app-pub-3940256099942544/1033173712"}\"")
     }
 
     signingConfigs {

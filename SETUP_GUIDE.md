@@ -30,24 +30,33 @@ AAB 위치: `app/build/outputs/bundle/release/app-release.aab`
 ## 2. 보안 설정
 
 ### keystore.properties (릴리즈 서명)
-프로젝트 루트에 `keystore.properties` 생성:
+프로젝트 루트에 `keystore.properties` 생성. **이 파일은 `.gitignore` 로 제외되어
+있으니 실제 값을 그대로 적어도 됩니다.** 예시 값은 placeholder 입니다 — 반드시
+자신의 keystore 에서 발급한 비밀번호로 교체하세요:
 ```properties
 storeFile=eject-upload.jks
-storePassword=ejectbutton2024
+storePassword=REPLACE_WITH_YOUR_STORE_PASSWORD
 keyAlias=eject-upload
-keyPassword=ejectbutton2024
+keyPassword=REPLACE_WITH_YOUR_KEY_PASSWORD
 ```
+
+> ⚠️ 이전 가이드에 샘플 값이 실제 비밀번호처럼 보이는 문자열이었습니다.
+> 만약 그 값을 그대로 쓰고 있다면 **지금 즉시 keystore 비밀번호를 회전** 하세요.
+> CI 에서는 `RELEASE_KEYSTORE_PASSWORD` / `RELEASE_KEY_PASSWORD` 시크릿으로 주입됩니다.
 
 ### secrets.properties (API 키)
-프로젝트 루트에 `secrets.properties` 생성:
+프로젝트 루트에 `secrets.properties` 생성. **release 빌드는 아래 3개 값이
+비어있으면 빌드 실패합니다** (테스트 AdMob ID 로 출시되는 사고 방지용).
 ```properties
-# MS Clarity (선택)
+# MS Clarity (세션 기록)
 CLARITY_PROJECT_ID=
 
-# AdMob (테스트 ID → 출시 전 실제 ID로 교체)
-ADMOB_BANNER_ID=ca-app-pub-3940256099942544/6300978111
-ADMOB_INTERSTITIAL_ID=ca-app-pub-3940256099942544/1033173712
+# AdMob 실제 네이티브/인터스티셜 unit ID (필수)
+ADMOB_NATIVE_ID=ca-app-pub-3230287048532628/XXXXXXXXXX
+ADMOB_INTERSTITIAL_ID=ca-app-pub-3230287048532628/XXXXXXXXXX
 ```
+
+debug 빌드는 미지정 시 Google test unit ID 로 fallback 해서 정상 동작합니다.
 
 ### AdMob 실제 키 발급 방법
 1. https://admob.google.com 접속

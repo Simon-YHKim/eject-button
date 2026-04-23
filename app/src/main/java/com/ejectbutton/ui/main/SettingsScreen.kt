@@ -471,8 +471,12 @@ fun SettingsScreen(
                     icon = "🔒",
                     label = strings.settingsPrivacy,
                     onClick = {
+                        // Round 28 — single canonical privacy URL across the app
+                        // and Play Console store listing. Previously pointed at
+                        // a Cloudflare Workers staging subdomain which would
+                        // break Play review if it ever 404'd.
                         ctx.startActivity(Intent(Intent.ACTION_VIEW,
-                            Uri.parse("https://eject-button.hwanydanh.workers.dev/privacy-policy")))
+                            Uri.parse("https://ejectbutton.pages.dev/privacy-policy.html")))
                     }
                 )
             }

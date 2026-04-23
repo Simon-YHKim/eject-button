@@ -36,7 +36,7 @@
 
     <application
         android:name=".EjectApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -84,7 +84,17 @@
         <service
             android:name=".service.ShakeDetectionService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <!-- Round 28 — required by Play policy for every specialUse FGS on
+                 API 34+: name the subtype so the Play Console declaration can
+                 reference it. Justification for Play Console → Advanced
+                 settings → Foreground services: "Detects user-configured shake
+                 gesture while the screen is off to deliver a scheduled fake
+                 call; no other shake/accelerometer API can run in Doze." -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="shake_gesture_pattern_detection" />
+        </service>
 
         <service
             android:name=".service.ButtonWatchService"
