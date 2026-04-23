@@ -1,0 +1,27 @@
+/**
+ * Cloudflare Workers configuration — static assets deploy
+ *
+ * Serves `docs/` as the site root for https://eject-button.hwanydanh.workers.dev/.
+ * Cloudflare auto-deploys on push to the default branch (Eject_Button_app)
+ * via its GitHub integration; this file tells wrangler which directory
+ * to upload as static assets.
+ *
+ * Why this file exists: Cloudflare's auto-deploy pipeline runs
+ * `npx wrangler versions upload`, which requires either a Worker entry-point
+ * or an assets directory — otherwise it fails with
+ * "Missing entry-point to Worker script or to assets directory".
+ * We have no Worker code, only static HTML under docs/, so we configure
+ * the `assets.directory` pointer.
+ *
+ * Docs: https://developers.cloudflare.com/workers/static-assets/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eject-button",
+  "compatibility_date": "2026-04-23",
+  "assets": {
+    "directory": "./docs",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
