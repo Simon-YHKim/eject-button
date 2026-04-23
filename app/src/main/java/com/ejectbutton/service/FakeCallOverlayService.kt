@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.RingtoneManager
@@ -43,6 +44,9 @@ class FakeCallOverlayService : Service() {
         const val EXTRA_CALLER_LABEL = "caller_label"
         const val EXTRA_PROMPTER     = "prompter_hint"
         const val EXTRA_DELAY_MS     = "delay_ms"
+        // Debug-only: start overlay directly in in-call state (skips incoming ring UI).
+        // Used by UI screenshot tests via adb am start-service.
+        const val EXTRA_START_IN_CALL = "debug_start_in_call"
         private const val NOTIF_CHANNEL = "eject_call"
         private const val NOTIF_ID      = 1001
 
@@ -111,6 +115,8 @@ class FakeCallOverlayService : Service() {
         val callerLabel = intent?.getStringExtra(EXTRA_CALLER_LABEL) ?: "Mobile"
         val prompter    = intent?.getStringExtra(EXTRA_PROMPTER)     ?: ""
         val delayMs     = intent?.getLongExtra(EXTRA_DELAY_MS, 0L)   ?: 0L
+        val startInCall = intent?.getBooleanExtra(EXTRA_START_IN_CALL, false) ?: false
+        callState.value = startInCall
 
         try { startForeground(NOTIF_ID, buildNotif(delayMs)) } catch (_: Exception) {}
         try { listenRealCall() } catch (_: Exception) {}
@@ -292,7 +298,7 @@ class FakeCallOverlayService : Service() {
                                 elapsedSeconds      = elapsed,
                                 isRecording         = true,
                                 statusSubtext       = strings.transcribing,
-                                bluetoothDeviceName = null,
+                                bluetoothDeviceName = resolveBluetoothDeviceName(),
                                 onMute              = {},
                                 onRecordingToggle   = {},
                                 onSpeaker           = {},
@@ -330,6 +336,32 @@ class FakeCallOverlayService : Service() {
                 or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
             )
+        }
+    }
+
+    /**
+     * Returns the product name of the currently-routed Bluetooth audio output
+     * (e.g. "Galaxy Watch3 (36A1)"), or null when no BT audio device is
+     * connected. Uses AudioManager.getDevices which requires NO runtime
+     * permission — safe for all supported API levels. Newlines are inserted
+     * before any parenthetical suffix so the two-line One-UI label layout
+     * lines up with the Bluetooth tile.
+     */
+    private fun resolveBluetoothDeviceName(): String? {
+        return try {
+            val am = getSystemService(AUDIO_SERVICE) as? AudioManager ?: return null
+            val devices = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            val bt = devices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    it.type == AudioDeviceInfo.TYPE_BLE_HEADSET)
+            } ?: return null
+            val name = bt.productName?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) null
+            else name.replaceFirst(" (", "\n(", ignoreCase = false)
+        } catch (_: Exception) {
+            null
         }
     }
 
