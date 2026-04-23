@@ -1,6 +1,5 @@
 package com.ejectbutton.ui.call
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -388,11 +387,15 @@ private fun RowScope.RecordingTile(
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            // Cassette / record icon — project's rec-icon-green drawable.
-            Image(
+            // Cassette glyph — the rec_icon_green vector (merged from
+            // feat/vector-drawable) is authored with white strokes/fills so
+            // the Icon tint recolors it. Use Icon+tint=RecGreen to keep the
+            // Recording tile's green cassette look identical to the prior PNG.
+            Icon(
                 painter = painterResource(id = R.drawable.rec_icon_green),
                 contentDescription = null,
-                modifier = Modifier.size(32.dp)                        // ↑ from 26dp
+                tint = RecGreen,
+                modifier = Modifier.size(32.dp)
             )
         }
         Text(
