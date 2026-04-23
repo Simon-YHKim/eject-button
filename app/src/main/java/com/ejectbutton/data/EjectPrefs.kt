@@ -28,6 +28,9 @@ object EjectPrefs {
     private const val KEY_BATTERY_OPT_ASKED = "battery_opt_asked"
     // Round 30 — 사용자가 삭제한 프리셋 ID 집합 (mom/dad). 사용자가 원하면 프리셋도 숨길 수 있게.
     private const val KEY_DELETED_PRESETS = "deleted_preset_ids"
+    // Round 31 — Play Store in-app review 팝업을 이미 요청했는지 여부.
+    // 한 번 프롬프트가 뜨고 나면 (사용자가 별을 남겼든 그냥 닫았든) 다시 띄우지 않는다.
+    private const val KEY_REVIEW_REQUESTED  = "review_requested"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -91,6 +94,25 @@ object EjectPrefs {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .edit().remove(KEY_DELETED_PRESETS).apply()
     }
+
+    // ── Review prompt (Round 31) ──────────────────────────────────────────────
+
+    /**
+     * Play In-App Review 프롬프트를 이미 사용자에게 띄웠는지 여부.
+     *
+     * ※ Google Play 의 API 는 자체 쿼터로 동일 사용자에게 너무 자주 안 띄우므로
+     *   이 플래그가 true 여도 실제 UI 가 뜨는 것은 보장되지 않는다 (그게 API 의 의도).
+     *   우리는 그저 "앱 내부 조건 (예: eject 3회 이상) 은 만족했으니 한 번은 호출했다"
+     *   를 표시하는 용도로만 쓴다. 계정 초기화(= 앱 데이터 삭제) 시 리셋된다.
+     */
+    fun saveReviewRequested(ctx: Context, requested: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_REVIEW_REQUESTED, requested).apply()
+    }
+
+    fun loadReviewRequested(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_REVIEW_REQUESTED, false)
 
     // ── History ───────────────────────────────────────────────────────────────
 

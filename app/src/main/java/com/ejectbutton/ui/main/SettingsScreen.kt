@@ -48,6 +48,9 @@ fun SettingsScreen(
     onPurchasePremium: () -> Unit,
     onRestorePurchase: () -> Unit,
     premiumPrice: String?,
+    // Round 31 — 사용자가 삭제한 mom/dad 프리셋을 복구. MainScreen 의 deletedPresetIds state
+    // 와 EjectPrefs 양쪽을 같이 초기화해야 하므로 callback 으로 주입받는다.
+    onRestorePresets: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
@@ -425,6 +428,19 @@ fun SettingsScreen(
                     },
                 )
             }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ── Callers: restore default presets (Round 31) ────────────────────
+        // 사용자가 메인 화면에서 mom/dad 칩의 X 를 눌러 soft-delete 한 프리셋을 한 번에 복원한다.
+        item {
+            EjectSectionHeader(strings.settingsRestorePresets)
+            Spacer(Modifier.height(8.dp))
+            EjectLinkCard(
+                icon = "↩️",
+                label = strings.settingsRestorePresets,
+                onClick = onRestorePresets,
+            )
             Spacer(Modifier.height(24.dp))
         }
 

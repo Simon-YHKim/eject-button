@@ -387,6 +387,11 @@ fun MainScreen(
             onPurchasePremium = onPurchasePremium,
             onRestorePurchase = onRestorePurchase,
             premiumPrice      = premiumPrice,
+            // Round 31 — 프리셋 복원 callback. MainScreen 의 state 와 EjectPrefs 동기화.
+            onRestorePresets  = {
+                deletedPresetIds = emptySet()
+                EjectPrefs.clearDeletedPresetIds(ctx)
+            },
             onDismiss         = {
                 showSettings = false
                 // 설정에서 사이드 버튼 트리거를 켜고/끈 결과 반영
@@ -644,11 +649,6 @@ fun MainScreen(
                         showHistoryClearedDialog = true
                     },
                     onSettingsTap     = { showSettings = true },
-                    onRestorePresets  = {
-                        // Round 30 — 사용자가 삭제한 프리셋(엄마/아빠) 전부 복원
-                        deletedPresetIds = emptySet()
-                        EjectPrefs.clearDeletedPresetIds(ctx)
-                    },
                 )
             }
             }
@@ -1076,8 +1076,9 @@ private fun SystemsContent(
     onUpgradePremium: () -> Unit,
     onClearHistory: () -> Unit,
     onSettingsTap: () -> Unit,
-    onRestorePresets: () -> Unit,   // Round 30 — 프리셋(엄마/아빠) 복원
 ) {
+    // Round 31 — "프리셋 복원" 행은 SettingsScreen (톱니바퀴) 으로 이동했음.
+    // 사용자 피드백에 따르면 이 탭에서는 안 보였고 "설정" 위치가 기대됨.
     val strings = LocalAppStrings.current
 
     Column(
@@ -1208,8 +1209,7 @@ private fun SystemsContent(
         ) {
             SystemsRow(icon = "⚙", label = strings.settingsTitle, onClick = onSettingsTap)
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
-            // Round 30 — 삭제된 프리셋(엄마/아빠) 복원
-            SystemsRow(icon = "↩️", label = strings.settingsRestorePresets, onClick = onRestorePresets)
+            // Round 31 — "프리셋 복원" 은 SettingsScreen 쪽으로 이동.
         }
 
         Spacer(Modifier.height(16.dp))
@@ -1591,12 +1591,23 @@ private fun CustomDelayDialog(initial: Int, onDismiss: () -> Unit, onConfirm: (I
 }
 
 @Composable
+// Round 31 — 연락처 항목을 이름+번호 쌍으로 들고 있어야 (1) 리스트에서 "이름 / 번호" 둘 다 보이고
+// (2) 선택 시 가짜 수신 화면 callerLabel 에 실제 번호를 박을 수 있다.
+// 예전 구현은 이름만 읽고 callerLabel 을 "휴대전화" 리터럴로 채워 버그.
+private data class ContactEntry(val name: String, val phone: String)
+
+private fun String.isKoreanMobilePattern(): Boolean =
+    this.matches(Regex("""^\+?\d[\d\-\s()]*$"""))
+
+@Composable
 private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit) {
     val strings = LocalAppStrings.current
     val ctx = LocalContext.current
     var callerName    by remember { mutableStateOf("") }
+    // Round 31 — 연락처에서 고른 실제 번호. 수동 입력시에는 빈 문자열 → fallback "휴대전화" 유지.
+    var selectedPhone by remember { mutableStateOf("") }
     var searchQuery   by remember { mutableStateOf("") }
-    var contacts      by remember { mutableStateOf(listOf<String>()) }
+    var contacts      by remember { mutableStateOf(listOf<ContactEntry>()) }
     var searchGranted by remember {
         mutableStateOf(ctx.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED)
     }
@@ -1614,23 +1625,31 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
     LaunchedEffect(searchGranted, searchQuery) {
         if (!searchGranted) return@LaunchedEffect
         contacts = withContext(Dispatchers.IO) {
-            val result = mutableListOf<String>()
+            val result = mutableListOf<ContactEntry>()
             val cursor = ctx.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME),
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ),
                 if (searchQuery.isNotBlank()) "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?" else null,
                 if (searchQuery.isNotBlank()) arrayOf("%$searchQuery%") else null,
                 "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC",
             )
             cursor?.use {
-                val idx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx  = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                 val seen = mutableSetOf<String>()
                 // Round 14 — 전체 연락처 표시. 과거엔 50개에서 잘라 "스크롤 해도
                 // 더 없음" 처럼 보였던 UX 버그를 수정. LazyColumn 이 viewport
                 // 바깥 아이템을 지연 렌더링하므로 수천 개도 부드럽게 처리된다.
+                //
+                // Round 31 — 이름+번호 쌍으로 중복 제거 (같은 이름에 번호 여러 개 있는 케이스 지원).
                 while (it.moveToNext()) {
-                    val name = it.getString(idx) ?: continue
-                    if (seen.add(name)) result.add(name)
+                    val name  = it.getString(nameIdx) ?: continue
+                    val phone = it.getString(numIdx)?.trim().orEmpty()
+                    val key = "$name|$phone"
+                    if (seen.add(key)) result.add(ContactEntry(name, phone))
                 }
             }
             result
@@ -1659,18 +1678,32 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    // 연락처 리스트 — 처음부터 표시
+                    // 연락처 리스트 — 처음부터 표시. Round 31 — 이름 밑에 번호도 보여서 사용자가
+                    // 어느 번호가 가짜 수신 화면에 뜰지 미리 확인 가능.
                     LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
-                        items(contacts) { name ->
-                            Text(
-                                text = name,
-                                fontSize = 14.sp,
+                        items(contacts) { entry ->
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { callerName = name }
+                                    .clickable {
+                                        callerName = entry.name
+                                        selectedPhone = entry.phone
+                                    }
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
-                                color = EjectOnSurface,
-                            )
+                            ) {
+                                Text(
+                                    text = entry.name,
+                                    fontSize = 14.sp,
+                                    color = EjectOnSurface,
+                                )
+                                if (entry.phone.isNotBlank()) {
+                                    Text(
+                                        text = entry.phone,
+                                        fontSize = 12.sp,
+                                        color = EjectSecondary,
+                                    )
+                                }
+                            }
                             HorizontalDivider(color = EjectSurfaceMid)
                         }
                     }
@@ -1680,12 +1713,19 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
         confirmButton = {
             TextButton(onClick = {
                 if (callerName.isNotBlank()) {
+                    // Round 31 — 사용자가 주소록 항목을 탭해서 `selectedPhone` 이 채워졌다면
+                    // 실제 번호를 "폰 010-XXXX-XXXX" 형태로 가짜 수신 화면에 박는다.
+                    // 비어 있으면(이름만 직접 입력한 경우) 기존 fallback "휴대전화" 라벨.
+                    val label = if (selectedPhone.isNotBlank())
+                        "폰 $selectedPhone"
+                    else
+                        strings.callerMobile
                     onConfirm(Scenario(
                         id           = "custom_${System.currentTimeMillis()}",
                         emoji        = "👤",
                         name         = callerName,
                         callerName   = callerName,
-                        callerLabel  = strings.callerMobile,
+                        callerLabel  = label,
                         preSmsText   = "",
                         prompterHint = "",
                         urgency      = Urgency.NORMAL,

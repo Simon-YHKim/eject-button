@@ -124,14 +124,20 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {}
     }
 
-    // 3번째 EJECT 사용 시 Play Store 리뷰 요청 (ASO 핵심 지표)
+    // EJECT 3회 이상 사용했고 아직 요청하지 않았을 때 Play Store 리뷰 요청 (ASO 핵심 지표).
+    // Round 31 — 기존엔 count==3 정확 일치라 한 번 지나면 영원히 안 떴다. 이제 count>=3
+    // + KEY_REVIEW_REQUESTED 플래그로 제어 → 3회째 이후 아무 때나 한 번은 트리거되며
+    // 트리거 후 flag 로 재요청을 막는다. launchReviewFlow 는 Play 의 쿼터 정책에 따라
+    // 실제 UI 를 띄울지 결정하지만 내부에서는 "시도했다" 를 기록하는 게 핵심.
     private fun maybeRequestReview(ejectCount: Int) {
-        if (ejectCount != 3) return
+        if (ejectCount < 3) return
+        if (EjectPrefs.loadReviewRequested(this)) return
         try {
             val manager = ReviewManagerFactory.create(this)
             manager.requestReviewFlow().addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     manager.launchReviewFlow(this, task.result)
+                    EjectPrefs.saveReviewRequested(this, true)
                 }
             }
         } catch (_: Exception) {}
