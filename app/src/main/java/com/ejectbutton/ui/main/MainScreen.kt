@@ -1590,14 +1590,10 @@ private fun CustomDelayDialog(initial: Int, onDismiss: () -> Unit, onConfirm: (I
     )
 }
 
-@Composable
 // Round 31 — 연락처 항목을 이름+번호 쌍으로 들고 있어야 (1) 리스트에서 "이름 / 번호" 둘 다 보이고
 // (2) 선택 시 가짜 수신 화면 callerLabel 에 실제 번호를 박을 수 있다.
 // 예전 구현은 이름만 읽고 callerLabel 을 "휴대전화" 리터럴로 채워 버그.
 private data class ContactEntry(val name: String, val phone: String)
-
-private fun String.isKoreanMobilePattern(): Boolean =
-    this.matches(Regex("""^\+?\d[\d\-\s()]*$"""))
 
 @Composable
 private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit) {
