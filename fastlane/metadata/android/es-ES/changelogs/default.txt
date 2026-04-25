@@ -1,0 +1,7 @@
+Primer lanzamiento.
+
+• Diseño moderno de pantalla de llamada entrante
+• Disparadores: instantáneo, temporizador, sacudida y botón de volumen
+• 7 idiomas compatibles
+• Pistas de guion durante la llamada
+• Mejora Premium (sin anuncios + pistas ilimitadas)

@@ -1,0 +1,43 @@
+¿Atrapado en una reunión que debería haber terminado hace una hora?
+¿Encerrado en una cena familiar de la que no puedes salir?
+¿En una cita que no va a ninguna parte?
+
+Eject Button te da una salida digna — una llamada entrante falsa que se ve y suena completamente real, activada por ti mismo.
+
+■ CÓMO FUNCIONA
+Pulsa EJECT y tu teléfono sonará al instante. O configura un temporizador (10 s / 30 s / 1 min / personalizado) para que la llamada llegue en el momento exacto. Sacude tu teléfono discretamente en el bolsillo para activarlo sin que nadie lo note.
+
+La pantalla de llamada se ve igual que una llamada real. Contesta, di unas frases con la ayuda de las pistas integradas y márchate. Sin despedidas incómodas. Sin explicaciones.
+
+Eject Button es para tu propio escape personal. No lo uses para engañar, defraudar o dañar a nadie más.
+
+■ FUNCIONES
+• Disparadores: instantáneo, temporizador, sacudida y retraso personalizado
+• Tono y vibración reales (usa los predeterminados del teléfono)
+• Nombre del contacto personalizable — ponlo como Mamá, Jefe, o quien quieras
+• Pistas de guion durante la llamada para saber qué decir
+• Historial de llamadas
+• 7 idiomas: Español, English, 한국어, 日本語, 中文, हिन्दी
+
+■ CUÁNDO LA GENTE LO USA
+→ Cenas de trabajo sin salida educada
+→ Primeras citas que necesitan terminar
+→ Llamadas de ventas que se alargan demasiado
+→ Reuniones familiares incómodas
+→ Encuentros uno-a-uno tensos
+
+Sin bromas. Sin chistes. Una herramienta real para presión social real.
+
+■ PERMISOS
+• Mostrar sobre otras apps — muestra la pantalla de llamada falsa encima de cualquier aplicación (función principal)
+• Estado del teléfono — oculta la llamada falsa si llega una real
+• Contactos — opcional; permite elegir un contacto real como remitente
+• Cámara — solo para parpadear el flash LED al recibir la llamada (sin fotos ni vídeo)
+
+■ PRIVACIDAD
+Tus contactos y el historial de llamadas se quedan en tu dispositivo — nunca los subimos.
+Para mejorar el producto, la app utiliza Google AdMob (personalización de anuncios), Firebase Analytics (eventos de uso) y Microsoft Clarity (grabación anónima de sesiones). No recogemos información que identifique personalmente.
+Política completa: https://eject-button.hwanydanh.workers.dev/privacy-policy
+
+■ SOPORTE
+simonykim@gmail.com
