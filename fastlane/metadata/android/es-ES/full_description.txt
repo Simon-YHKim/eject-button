@@ -40,4 +40,4 @@ Para mejorar el producto, la app utiliza Google AdMob (personalización de anunc
 Política completa: https://eject-button.hwanydanh.workers.dev/privacy-policy
 
 ■ SOPORTE
-simonykim@gmail.com
+simonkim250405@gmail.com

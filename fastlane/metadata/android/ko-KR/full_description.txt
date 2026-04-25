@@ -40,4 +40,4 @@ Eject Button은 본인의 자발적 탈출을 위한 도구입니다. 타인을 
 전체 정책: https://eject-button.hwanydanh.workers.dev/privacy-policy
 
 ■ 문의
-simonykim@gmail.com
+simonkim250405@gmail.com

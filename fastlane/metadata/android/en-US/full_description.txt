@@ -40,4 +40,4 @@ For product improvement the app uses Google AdMob (ad personalization), Firebase
 Full policy: https://eject-button.hwanydanh.workers.dev/privacy-policy
 
 ■ SUPPORT
-simonykim@gmail.com
+simonkim250405@gmail.com

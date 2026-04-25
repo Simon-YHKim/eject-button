@@ -112,7 +112,7 @@ SDK 동봉 목록:
 - 앱 삭제 시 로컬 SharedPreferences 자동 삭제.
 - Firebase Analytics / AdMob 측 익명 식별자 삭제는 사용자가 직접
   기기 설정 → "광고 ID 재설정" 으로 수행 가능.
-- 추가 삭제 요청은 `simonykim@gmail.com`.
+- 추가 삭제 요청은 `simonkim250405@gmail.com`.
 
 ---
 
