@@ -37,3 +37,10 @@
 
 # Billing Manager
 -keep class com.ejectbutton.billing.** { *; }
+
+# Firebase Analytics — measurement-api 가 리플렉션으로 접근하는 클래스 보호.
+# v1.0.9 — 이전에 keep 누락으로 release 빌드에서 silent failure 위험 있던 것 명시 추가.
+-keep class com.google.firebase.analytics.** { *; }
+-keep class com.google.android.gms.measurement.** { *; }
+-dontwarn com.google.firebase.analytics.**
+-dontwarn com.google.android.gms.measurement.**

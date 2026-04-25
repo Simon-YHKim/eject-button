@@ -145,19 +145,30 @@
 
 ---
 
-## 🟢 4단계 — In-app products 등록 ($2.99 프리미엄)
+## 🟢 4단계 — Subscription 등록 (월 구독, ₩1,900 / $1.99)
 
-좌측 → **Monetize** → **Products** → **In-app products** → **Create product**
+⚠️ **중요**: Round 12에 일회성 → **월 구독**으로 전환됨. 반드시 Subscriptions 메뉴로 등록.
+
+좌측 → **Monetize** → **Products** → **Subscriptions** → **Create subscription**
 
 | 필드 | 값 |
 |---|---|
-| Product ID | `eject_premium` |
-| Name | `Eject Premium` |
-| Description | `광고 제거 + 통화 중 스크립트 힌트 무제한` |
-| Status | **Active** |
-| Price | `$2.99` (자동으로 한국 ₩3,900 / 일본 ¥400 등 변환) |
+| Product ID | `eject_premium_monthly` |
+| Name | `Eject Premium (Monthly)` |
+| Description | `광고 제거 + 통화 중 스크립트 힌트 무제한 — 월 구독` |
+| Benefits | `광고 없음`, `통화 스크립트 힌트 무제한` |
 
-→ **Save** → **Activate**
+**Base plan 추가**:
+| 필드 | 값 |
+|---|---|
+| Base plan ID | `monthly` |
+| Billing period | **1 month** (Auto-renewing) |
+| Price | `$1.99` (자동으로 한국 ₩1,900 / 일본 ¥250 등 변환) |
+| Free trial (선택) | 7일 권장 — Play Console에서 "Add offer" → Free trial |
+
+→ **Save** → **Activate** (subscription + base plan 모두 활성화 필수)
+
+> 🚨 코드는 SUBS ProductType으로만 조회합니다. In-app products로 등록하면 `queryProductDetailsAsync` 결과가 빈 배열 → 결제 버튼 무반응.
 
 ---
 

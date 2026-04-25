@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import com.ejectbutton.BuildConfig
+import com.ejectbutton.data.EjectPrefs
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
@@ -21,6 +22,14 @@ object AdManager {
      * 을 지키기 위한 frequency cap.
      */
     private const val INTERSTITIAL_MIN_INTERVAL_MS = 60_000L
+
+    /**
+     * v1.0.9 — 전면 광고 일별 상한.
+     * SystemClock 기반 60초 cap 만 있으면 사용자가 1시간 동안 60번 광고에 노출될 수 있다.
+     * 일별 cap 으로 사용자 경험과 AdMob 정책 (과도한 노출 시 계정 경고) 양쪽을 보호.
+     * 카운터는 UTC epoch day 기준이며 EjectPrefs 에 저장 → 앱 재시작 후에도 유지.
+     */
+    private const val MAX_INTERSTITIALS_PER_DAY = 10
 
     private var interstitialAd: InterstitialAd? = null
     private var isInitialized = false
@@ -120,6 +129,12 @@ object AdManager {
             onDismissed()
             return
         }
+        // v1.0.9 — 일별 cap (UTC epoch day 기준).
+        // 60초 cap 만으론 1시간 60회 노출 가능 → 일 10회 이하로 보호.
+        if (!EjectPrefs.canShowInterstitialToday(activity, MAX_INTERSTITIALS_PER_DAY)) {
+            onDismissed()
+            return
+        }
         // Frequency cap: 직전에 띄운 지 INTERSTITIAL_MIN_INTERVAL_MS 이내이면 skip.
         val now = SystemClock.elapsedRealtime()
         if (lastInterstitialShownMs != 0L &&
@@ -142,6 +157,7 @@ object AdManager {
                 }
             }
             lastInterstitialShownMs = now
+            EjectPrefs.recordInterstitialShown(activity) // v1.0.9 — 일별 카운터 +1
             ad.show(activity)
         } else {
             loadInterstitial(activity)

@@ -31,6 +31,9 @@ object EjectPrefs {
     // Round 31 — Play Store in-app review 팝업을 이미 요청했는지 여부.
     // 한 번 프롬프트가 뜨고 나면 (사용자가 별을 남겼든 그냥 닫았든) 다시 띄우지 않는다.
     private const val KEY_REVIEW_REQUESTED  = "review_requested"
+    // v1.0.9 — 전면 광고 일별 cap 추적용 (AdManager 가 사용).
+    private const val KEY_INTER_DAY_BUCKET  = "ad_inter_day_bucket"
+    private const val KEY_INTER_DAY_COUNT   = "ad_inter_day_count"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -294,6 +297,36 @@ object EjectPrefs {
     fun getEjectCount(ctx: Context): Int =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getInt(KEY_EJECT_COUNT, 0)
+
+    // ── Interstitial day cap (v1.0.9) ────────────────────────────────────────
+    //
+    // AdMob 정책 + UX 보호를 위해 전면 광고를 하루에 일정 횟수 이하로만 보여준다.
+    // bucket 은 UTC epoch day (System.currentTimeMillis() / 86_400_000).
+    // 새 날이 되면 자동으로 카운터가 0 으로 리셋되는 효과.
+
+    private fun currentEpochDay(): Long =
+        System.currentTimeMillis() / (24L * 60L * 60L * 1000L)
+
+    /** 오늘 (UTC) 전면 광고를 maxPerDay 회 미만으로 보여줬는지 여부. */
+    fun canShowInterstitialToday(ctx: Context, maxPerDay: Int): Boolean {
+        val today = currentEpochDay()
+        val prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val bucket = prefs.getLong(KEY_INTER_DAY_BUCKET, -1L)
+        val count = if (bucket == today) prefs.getInt(KEY_INTER_DAY_COUNT, 0) else 0
+        return count < maxPerDay
+    }
+
+    /** 전면 광고 노출 시 호출. bucket 갱신 + count +1. */
+    fun recordInterstitialShown(ctx: Context) {
+        val today = currentEpochDay()
+        val prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val bucket = prefs.getLong(KEY_INTER_DAY_BUCKET, -1L)
+        val newCount = if (bucket == today) prefs.getInt(KEY_INTER_DAY_COUNT, 0) + 1 else 1
+        prefs.edit()
+            .putLong(KEY_INTER_DAY_BUCKET, today)
+            .putInt(KEY_INTER_DAY_COUNT, newCount)
+            .apply()
+    }
 
     // ── Premium ──────────────────────────────────────────────────────────────
 

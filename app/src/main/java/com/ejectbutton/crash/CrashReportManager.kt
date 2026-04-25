@@ -23,7 +23,9 @@ import java.util.Locale
 object CrashReportManager {
 
     private const val CRASH_DIR = "crash_reports"
-    private const val DEV_EMAIL = "hwanydanh@gmail.com"
+    // v1.0.9 — 모든 사용자 향 이메일을 simonkim250405@gmail.com 으로 통일
+    // (피드백 페이지 / fastlane 풀 디스크립션 / Play Console 연락처와 동일).
+    private const val DEV_EMAIL = "simonkim250405@gmail.com"
 
     private var defaultHandler: Thread.UncaughtExceptionHandler? = null
 

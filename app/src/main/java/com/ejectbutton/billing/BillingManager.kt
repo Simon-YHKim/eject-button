@@ -83,7 +83,18 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                     val ackParams = AcknowledgePurchaseParams.newBuilder()
                         .setPurchaseToken(purchase.purchaseToken)
                         .build()
-                    billingClient.acknowledgePurchase(ackParams) {}
+                    // v1.0.9 — 콜백의 BillingResult 검증.
+                    // ack 실패 시 다음 connect() → restorePurchases() 가 다시 시도하므로
+                    // 자동 회복이 가능하지만, Play 서버는 3일 안에 ack 안 된 구매를
+                    // 자동 환불한다. 그 안에 connect 가 한 번이라도 성공하면 회복.
+                    billingClient.acknowledgePurchase(ackParams) { ackResult ->
+                        if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                            android.util.Log.w(
+                                "BillingManager",
+                                "ackPurchase(restore) failed: code=${ackResult.responseCode}"
+                            )
+                        }
+                    }
                 }
             } else {
                 // 구독이 만료/취소되면 프리미엄 상태도 내린다.
@@ -142,7 +153,16 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                         val ackParams = AcknowledgePurchaseParams.newBuilder()
                             .setPurchaseToken(purchase.purchaseToken)
                             .build()
-                        billingClient.acknowledgePurchase(ackParams) {}
+                        // v1.0.9 — BillingResult OK 검증. 실패해도 premium 은 이미
+                        // 저장되어 있고, 다음 실행 시 restorePurchases() 가 ack 를 재시도.
+                        billingClient.acknowledgePurchase(ackParams) { ackResult ->
+                            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                                android.util.Log.w(
+                                    "BillingManager",
+                                    "ackPurchase(new) failed: code=${ackResult.responseCode}"
+                                )
+                            }
+                        }
                     }
                 }
             }

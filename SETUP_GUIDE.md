@@ -83,7 +83,7 @@ debug 빌드는 미지정 시 Google test unit ID 로 fallback 해서 정상 동
 ### 주간 이메일 리포트 설정:
 1. Clarity 대시보드 → Settings → Email Reports
 2. "Weekly digest" 활성화
-3. 수신 이메일: hwanydanh@gmail.com
+3. 수신 이메일: simonkim250405@gmail.com
 4. 매주 월요일에 지난 주 세션/히트맵/인사이트 요약 수신
 
 ---
@@ -126,12 +126,12 @@ dependencies {
 
 ### 4-4. Crashlytics 이메일 알림
 1. Firebase Console → Crashlytics → Settings
-2. Email alerts 활성화 → hwanydanh@gmail.com
+2. Email alerts 활성화 → simonkim250405@gmail.com
 3. 크래시 발생 시 자동으로 이메일 수신
 
 ### 4-5. 주간 분석 리포트
 1. Firebase Console → Analytics → Reports
-2. "Schedule email" → Weekly → hwanydanh@gmail.com
+2. "Schedule email" → Weekly → simonkim250405@gmail.com
 3. 또는 https://analytics.google.com 에서 보고서 예약
 
 ---
@@ -140,7 +140,7 @@ dependencies {
 
 현재 앱에 내장된 크래시 리포터:
 - 크래시 발생 → `crash_reports/` 폴더에 로그 자동 저장
-- 다음 앱 실행 시 → 이메일 전송 화면 자동 오픈 (hwanydanh@gmail.com)
+- 다음 앱 실행 시 → 이메일 전송 화면 자동 오픈 (simonkim250405@gmail.com)
 - 포함 정보: 디바이스, Android 버전, 스택 트레이스, cause chain
 
 Firebase Crashlytics 설정 후에는 두 시스템이 병행됨:

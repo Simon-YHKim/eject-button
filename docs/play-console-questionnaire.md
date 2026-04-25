@@ -47,7 +47,7 @@ IARC 설문 기반 예상 등급:
 | 사용자 생성 콘텐츠 / 사용자 간 메시지 | **No** |
 | 사용자 위치 공유 | **No** |
 | 디지털 화폐/실물 화폐 매매 | **No** |
-| 인앱 결제 (디지털 상품) | **Yes** — `eject_premium` ($2.99 일회성) |
+| 인앱 결제 (디지털 상품) | **Yes** — `eject_premium_monthly` ($1.99 월 구독, Round 12부터) |
 | 사용자에게 광고 표시 | **Yes** — AdMob 배너+전면 |
 | 무서운 / 끔찍한 콘텐츠 | **No** |
 | 공포·잔인 묘사 | **No** |
@@ -125,7 +125,7 @@ IARC 설문 기반 예상 등급:
 | 항목 | 답변 |
 |---|---|
 | 앱 자체 | **무료 (Free)** |
-| 인앱 상품 | **있음** — `eject_premium` ($2.99) |
+| 구독 상품 | **있음** — `eject_premium_monthly` ($1.99/월 자동 갱신) |
 
 ### 2-2. Countries / regions
 **1차 출시 국가** (PLAY_STORE_ASO.md 권장):
@@ -217,20 +217,25 @@ IARC 설문 기반 예상 등급:
 ## 5. Monetization
 
 ### 5-1. Subscriptions
-| 답변 | **No** — 구독 상품 없음. 일회성 인앱 상품만 사용. |
+| 항목 | 값 |
 |---|---|
+| Product ID | `eject_premium_monthly` |
+| Name | Eject Premium (Monthly) |
+| 유형 | **Auto-renewing subscription** |
+| Base plan ID | `monthly` |
+| Billing period | 1 month |
+| 기본 가격 | $1.99 / 월 |
+| Free trial (권장) | 7 days |
+
+지역별 자동 변환 가격 (수동 조정 권장):
+- 한국 ₩1,900 / 월
+- 일본 ¥250 / 월
+- 인도 ₹99 / 월
+- 스페인/멕시코 €1.99 / MX$39 / 월
 
 ### 5-2. In-app products
-| ID | 가격 | 유형 | 설명 |
-|---|---|---|---|
-| `eject_premium` | $2.99 | Managed (one-time) | 광고 제거 + 통화 중 스크립트 힌트 무제한 |
-
-지역별 가격 (자동 변환 + 수동 보정 권장):
-- 한국 ₩3,900
-- 일본 ¥400
-- 인도 ₹199
-- 스페인/멕시코 €2.99 / MX$59
-- 중국(미배포)
+| 답변 | **No** — Round 12 부터 구독 모델로 전환. 일회성 상품 미사용. |
+|---|---|
 
 ---
 
