@@ -54,13 +54,30 @@ class FakeCallOverlayService : Service() {
         var showInterstitialOnNextResume = false
             internal set
 
-        fun start(ctx: Context, callerName: String, callerLabel: String, prompter: String, delayMs: Long = 0L) {
+        /**
+         * v1.2 — scenarioId / mode 매개변수 추가 (호출부 호환성).
+         *
+         * MainActivity 가 EJECT 발사 시 ShakeDetectionService.start 와 시그니처를
+         * 일치시키기 위해 받지만 현재는 Intent extras 로만 저장하고 서비스 동작엔
+         * 영향 X. v1.3 에서 분석 funnel 보강 예정.
+         */
+        fun start(
+            ctx: Context,
+            callerName: String,
+            callerLabel: String,
+            prompter: String,
+            delayMs: Long = 0L,
+            scenarioId: String = "",
+            mode: String = "button_now",
+        ) {
             ctx.startForegroundService(
                 Intent(ctx, FakeCallOverlayService::class.java).apply {
                     putExtra(EXTRA_CALLER_NAME,  callerName)
                     putExtra(EXTRA_CALLER_LABEL, callerLabel)
                     putExtra(EXTRA_PROMPTER,     prompter)
                     putExtra(EXTRA_DELAY_MS,     delayMs)
+                    putExtra("scenario_id",      scenarioId)
+                    putExtra("mode",             mode)
                 }
             )
         }

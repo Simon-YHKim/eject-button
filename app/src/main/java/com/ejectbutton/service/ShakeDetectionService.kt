@@ -21,12 +21,22 @@ class ShakeDetectionService : Service(), SensorEventListener {
         private const val SHAKE_THRESHOLD = 11f   // m/s² (중력 제외)
         private const val SHAKE_COOLDOWN  = 1500L // ms
 
+        /**
+         * v1.2 — scenarioId / mode 매개변수 추가.
+         *
+         * 호출부 (MainActivity) 가 conversion event 발사 시 같은 스코프에서 첨부할
+         * 컨텍스트를 서비스 시작 시점에 기록하기 위함. 현재는 디버그 로깅 목적으로만
+         * Intent extras 에 저장하고 Service 동작에는 영향 X. v1.3 에서 Crashlytics
+         * setCustomKey 로 흔들기 트리거 도달률 분석에 활용 예정.
+         */
         fun start(
             ctx: Context,
             callerName: String,
             callerLabel: String,
             prompter: String,
             delayMs: Long = 0L,
+            scenarioId: String = "",
+            mode: String = "shake",
         ) {
             ctx.startForegroundService(
                 Intent(ctx, ShakeDetectionService::class.java).apply {
@@ -34,6 +44,8 @@ class ShakeDetectionService : Service(), SensorEventListener {
                     putExtra("caller_label", callerLabel)
                     putExtra("prompter",     prompter)
                     putExtra("delay_ms",     delayMs)
+                    putExtra("scenario_id",  scenarioId)
+                    putExtra("mode",         mode)
                 }
             )
         }

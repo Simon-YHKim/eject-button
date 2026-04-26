@@ -70,11 +70,18 @@ object EjectClarity {
         }
     }
 
-    /** 가짜 통화 시작 — overlay/incall service 진입 시점 */
-    fun fakeCallStarted(scenarioId: String, callerName: String, mode: String) {
+    /**
+     * 가짜 통화 시작 — overlay/incall service 진입 시점.
+     *
+     * v1.2 — PII 보호 강화. 호출부에서 발신자 이름 존재 여부만 Boolean 으로 전달
+     * (실제 이름 텍스트는 Clarity 로 보내지 않음). 이전 시그니처는 callerName: String
+     * 을 받아서 내부에서 isNotBlank() 로 판정했지만, 위기 사용자 보호 차원에서
+     * 분석 레이어에 발신자 이름 자체가 도달하지 않도록 Boolean 으로 변경.
+     */
+    fun fakeCallStarted(scenarioId: String, callerNamePresent: Boolean, mode: String) {
         runCatching {
             Clarity.setCustomTag("scenario_id", scenarioId)
-            Clarity.setCustomTag("caller_name_present", if (callerName.isNotBlank()) "yes" else "no")
+            Clarity.setCustomTag("caller_name_present", if (callerNamePresent) "yes" else "no")
             Clarity.setCustomTag("call_mode", mode)
             Clarity.sendCustomEvent("fake_call_started")
         }

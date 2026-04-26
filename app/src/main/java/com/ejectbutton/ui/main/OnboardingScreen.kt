@@ -59,15 +59,17 @@ import com.ejectbutton.ui.theme.EjectSurfaceMid
  * 4 페이지 (Welcome / Command / Trigger / Systems) + 마지막 "Mayday" 확인 페이지.
  *
  * 마지막 페이지의 두 버튼:
- *  - [onDoneNoMore]  — 다시 보지 않음 (EjectPrefs.saveShowOnboarding(false))
- *  - [onDoneOnceMore] — 다음 실행 시 또 띄움 (pref 유지)
+ *  - [onDoneNoMore]  — 다시 보지 않음 (EjectPrefs.saveShowOnboarding(false)).
+ *                      v1.2: stepCount 인자로 사용자가 도달한 페이지 수 (1..totalSteps)
+ *                      를 함께 전달 → onboarding funnel 분석.
+ *  - [onDoneOnceMore] — 다음 실행 시 또 띄움 (pref 유지). 호출부가 생략하면 no-op.
  *
  * 설정에서 "사용 설명 보기" 토글을 다시 켜면 재활성화된다.
  */
 @Composable
 fun OnboardingScreen(
-    onDoneNoMore: () -> Unit,
-    onDoneOnceMore: () -> Unit,
+    onDoneNoMore: (stepCount: Int) -> Unit,
+    onDoneOnceMore: () -> Unit = {},
 ) {
     val strings = LocalAppStrings.current
 
@@ -169,8 +171,11 @@ fun OnboardingScreen(
                     if (i < pages.size) {
                         OnboardingPageContent(pages[i])
                     } else {
+                        // v1.2 — 외부 onDoneNoMore 가 (Int) -> Unit 이므로 totalSteps
+                        // 를 캡처해서 () -> Unit 으로 wrap. OnboardingFinalContent 의
+                        // 내부 시그니처는 () -> Unit 유지 (UI Button onClick 직결용).
                         OnboardingFinalContent(
-                            onDoneNoMore   = onDoneNoMore,
+                            onDoneNoMore   = { onDoneNoMore(totalSteps) },
                             onDoneOnceMore = onDoneOnceMore,
                         )
                     }
