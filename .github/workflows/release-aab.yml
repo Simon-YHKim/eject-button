@@ -76,15 +76,19 @@ jobs:
         env:
           ADMOB_NATIVE_ID:       ${{ secrets.ADMOB_NATIVE_ID }}
           ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+          # v1.1.0 — Rewarded Ad 유닛 추가 (RewardedAdDialog → AdManager.showRewarded).
+          # build.gradle.kts 가 release task 에서 fail-fast 하므로 반드시 등록.
+          ADMOB_REWARDED_ID:     ${{ secrets.ADMOB_REWARDED_ID }}
           CLARITY_PROJECT_ID:    ${{ secrets.CLARITY_PROJECT_ID }}
         run: |
-          if [ -z "$ADMOB_NATIVE_ID" ] || [ -z "$ADMOB_INTERSTITIAL_ID" ] || [ -z "$CLARITY_PROJECT_ID" ]; then
-            echo "::error::One or more release secrets (ADMOB_NATIVE_ID / ADMOB_INTERSTITIAL_ID / CLARITY_PROJECT_ID) are not configured in repo secrets."
+          if [ -z "$ADMOB_NATIVE_ID" ] || [ -z "$ADMOB_INTERSTITIAL_ID" ] || [ -z "$ADMOB_REWARDED_ID" ] || [ -z "$CLARITY_PROJECT_ID" ]; then
+            echo "::error::One or more release secrets (ADMOB_NATIVE_ID / ADMOB_INTERSTITIAL_ID / ADMOB_REWARDED_ID / CLARITY_PROJECT_ID) are not configured in repo secrets."
             exit 1
           fi
           cat > secrets.properties <<EOF
           ADMOB_NATIVE_ID=${ADMOB_NATIVE_ID}
           ADMOB_INTERSTITIAL_ID=${ADMOB_INTERSTITIAL_ID}
+          ADMOB_REWARDED_ID=${ADMOB_REWARDED_ID}
           CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID}
           EOF
 
