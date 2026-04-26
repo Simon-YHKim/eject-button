@@ -767,7 +767,10 @@ private fun CommandContent(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    String.format(strings.countdownFmt, countdown),
+                    // v1.0.10 — Locale.US 명시. 미지정 시 기본 로케일이 적용되어
+                    // 일부 언어 (AR/HI/FA 등) 에서 숫자 표기가 예상과 다르게 출력될 수 있다.
+                    // 카운트다운 숫자는 의도상 항상 0-9 ASCII 로 표시되어야 한다.
+                    String.format(java.util.Locale.US, strings.countdownFmt, countdown),
                     fontSize = 14.sp, color = EjectCoral, fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                 )

@@ -34,6 +34,8 @@ object EjectPrefs {
     // v1.0.9 — 전면 광고 일별 cap 추적용 (AdManager 가 사용).
     private const val KEY_INTER_DAY_BUCKET  = "ad_inter_day_bucket"
     private const val KEY_INTER_DAY_COUNT   = "ad_inter_day_count"
+    // v1.0.10 — 권한 최초 요청 여부 (이전엔 MainActivity 가 raw SharedPreferences 호출).
+    private const val KEY_PERMS_REQUESTED   = "perms_requested"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -338,6 +340,21 @@ object EjectPrefs {
     fun loadPremium(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_PREMIUM, false)
+
+    // ── Initial permissions request flag (v1.0.10) ───────────────────────────
+    //
+    // 첫 실행에서 런타임 퍼미션 + 오버레이 퍼미션을 요청한 적이 있는지 여부.
+    // true 면 다시 묻지 않는다. 키 이름은 v1.0.9 이전 raw 호출과 동일해서
+    // 기존 사용자 마이그레이션 부담 없음.
+
+    fun savePermsRequested(ctx: Context, requested: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_PERMS_REQUESTED, requested).apply()
+    }
+
+    fun loadPermsRequested(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_PERMS_REQUESTED, false)
 
     // ── Onboarding ───────────────────────────────────────────────────────────
 

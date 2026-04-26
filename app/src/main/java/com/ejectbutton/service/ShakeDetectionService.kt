@@ -100,7 +100,12 @@ class ShakeDetectionService : Service(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onDestroy() {
-        sensorManager.unregisterListener(this)
+        // v1.0.10 — onCreate 에서 sensorManager 초기화가 실패한 (혹은 onCreate 가
+        // 호출되지 않고 곧장 onDestroy 가 호출되는) edge case 에서 lateinit
+        // UninitializedPropertyAccessException 으로 죽는 것을 방지.
+        if (::sensorManager.isInitialized) {
+            sensorManager.unregisterListener(this)
+        }
         super.onDestroy()
     }
 

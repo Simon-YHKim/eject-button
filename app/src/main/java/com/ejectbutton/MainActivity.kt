@@ -94,9 +94,10 @@ class MainActivity : ComponentActivity() {
      * pref "perms_requested" 로 재요청을 막는다.
      */
     private fun requestInitialPermissionsIfNeeded() {
-        val prefs = getSharedPreferences("eject_prefs", MODE_PRIVATE)
-        if (prefs.getBoolean("perms_requested", false)) return
-        prefs.edit().putBoolean("perms_requested", true).apply()
+        // v1.0.10 — raw SharedPreferences 호출에서 EjectPrefs 함수로 이관.
+        // PREF 이름·키 이름 동일하므로 기존 사용자 데이터 그대로 호환.
+        if (EjectPrefs.loadPermsRequested(this)) return
+        EjectPrefs.savePermsRequested(this, true)
 
         val runtimePerms = buildList {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
