@@ -1906,6 +1906,15 @@ private fun PremiumUpgradeDialog(
                 PremiumFeatureRow(strings.premiumFeature1)
                 PremiumFeatureRow(strings.premiumFeature2)
                 PremiumFeatureRow(strings.premiumFeature3)
+                Spacer(Modifier.height(8.dp))
+                // v1.0.10 — Google Play 구독 정책 준수.
+                // 결제 버튼 누르기 전에 자동 갱신·취소 방법 명시 필수.
+                Text(
+                    strings.premiumDisclosure,
+                    color = EjectSecondary,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
             }
         },
         confirmButton = {

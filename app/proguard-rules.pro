@@ -44,3 +44,10 @@
 -keep class com.google.android.gms.measurement.** { *; }
 -dontwarn com.google.firebase.analytics.**
 -dontwarn com.google.android.gms.measurement.**
+
+# v1.0.10 — Firebase Crashlytics: 스택 trace deobfuscation 위해 SourceFile + LineNumber 보존.
+# Crashlytics gradle plugin 이 mapping.txt 를 자동 업로드해 콘솔에서 deobfuscate.
+-keepattributes SourceFile,LineNumberTable
+-keep public class * extends java.lang.Exception
+-keep class com.google.firebase.crashlytics.** { *; }
+-dontwarn com.google.firebase.crashlytics.**

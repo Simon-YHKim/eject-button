@@ -333,8 +333,14 @@ object EjectPrefs {
     // ── Premium ──────────────────────────────────────────────────────────────
 
     fun savePremium(ctx: Context, premium: Boolean) {
+        // v1.0.10 — apply() 가 아닌 commit() 사용.
+        // BillingManager.onPurchasesUpdated 콜백 직후에 앱이 크래시 되면
+        // apply() 의 비동기 disk write 가 유실되어 사용자가 결제했는데도
+        // is_premium=false 로 남는 사고가 가능. 단일 키 commit() 은 main
+        // thread 에서 보통 1-5ms 라 ANR 임계 (5초) 와 비교하면 안전.
+        // 다른 키들은 critical 하지 않아 apply() 유지.
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_PREMIUM, premium).apply()
+            .edit().putBoolean(KEY_PREMIUM, premium).commit()
     }
 
     fun loadPremium(ctx: Context): Boolean =

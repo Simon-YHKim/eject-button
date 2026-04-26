@@ -9,6 +9,7 @@ playBilling = "7.0.0"
 admob = "23.2.0"
 firebaseBom = "33.5.1"
 googleServices = "4.4.2"
+firebaseCrashlyticsPlugin = "3.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,9 +31,13 @@ google-admob = { group = "com.google.android.gms", name = "play-services-ads", v
 ms-clarity = { group = "com.microsoft.clarity", name = "clarity", version = "3.1.2" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
+# v1.0.10 — Crashlytics: 자체 CrashReportManager (메일 의존) 보완. 자동 클라우드 수집.
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+# v1.0.10 — Crashlytics gradle plugin: ProGuard mapping 자동 업로드 (난독화 스택 trace 자동 deobfuscate).
+google-firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }

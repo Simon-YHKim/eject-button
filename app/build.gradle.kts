@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.google.firebase.crashlytics)
 }
 
 // keystore.properties 로드 (없으면 릴리즈 서명 스킵)
@@ -128,6 +129,9 @@ dependencies {
     // Firebase — BoM 으로 모든 Firebase 라이브러리 버전을 한 번에 통일.
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
+    // v1.0.10 — Crashlytics 추가. 자체 CrashReportManager (사용자 메일 전송 의존, 보고율 1-5%)
+    // 와 병행 운영. Crashlytics 는 100% 자동 클라우드 수집 → 미발견 크래시 즉시 인지.
+    implementation(libs.firebase.crashlytics)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Unit tests — JVM only, no Android runtime required.
