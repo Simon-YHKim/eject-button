@@ -111,6 +111,7 @@ private fun composeTrigger(time: TimeChoice, mode: ModeChoice): TriggerMode = wh
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     currentLanguage: AppLanguage,
@@ -130,6 +131,12 @@ fun MainScreen(
     var currentScreen    by remember { mutableStateOf(AppScreen.COMMAND) }
     var showSettings     by remember { mutableStateOf(false) }
     var showPremiumSheet by remember { mutableStateOf(false) }
+    // v1.1.0 — Rewarded Ad sheet. 비-Premium 사용자가 잠긴 기능을 누르면 띄운다.
+    // [pendingRewardedAction] 은 광고 시청 완료(또는 Premium) 시 실행할 후속 동작.
+    var showRewardedSheet by remember { mutableStateOf(false) }
+    var pendingRewardedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // v1.1.0 — SYSTEMS 탭 인라인 Language picker.
+    var showSystemsLangPicker by remember { mutableStateOf(false) }
 
     // 언어에 따라 기본 발신자 이름 로컬화
     val localizedDefaults = remember(strings) {
@@ -256,23 +263,15 @@ fun MainScreen(
 
     if (showAddCaller) {
         if (!isPremium && customCallers.size >= 1) {
-            // 무료 사용자는 커스텀 발신자 1명까지만
-            AlertDialog(
-                onDismissRequest = { showAddCaller = false },
-                title = { Text(strings.premiumTitle) },
-                text = { Text(strings.premiumMaxCallersMsg, color = EjectSecondary) },
-                confirmButton = {
-                    TextButton(onClick = { showAddCaller = false; showPremiumSheet = true }) {
-                        Text(strings.premiumBadge, color = EjectCoral, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showAddCaller = false }) {
-                        Text(strings.dialogCancel)
-                    }
-                },
-                containerColor = EjectSurface,
-            )
+            // v1.1.0 — 무료 사용자가 발신자 1명을 초과하려 하면 RewardedAdDialog
+            // 로 두 가지 옵션 제시 (광고 1회 / Premium 영구). 기존 AlertDialog 의
+            // 단방향 "Upgrade only" CTA 대비 사용자 옵션 폭이 넓어진다.
+            showAddCaller = false
+            pendingRewardedAction = {
+                // 광고 시청 보상으로 1회 발신자 추가 권한이 부여되면 다시 다이얼로그를 띄운다.
+                showAddCaller = true
+            }
+            showRewardedSheet = true
         } else {
             AddCallerDialog(
                 onDismiss = { showAddCaller = false },
@@ -395,6 +394,8 @@ fun MainScreen(
             showExitConfirmDialog    -> showExitConfirmDialog = false
             showHistoryClearedDialog -> showHistoryClearedDialog = false
             showSideVolumeHint       -> showSideVolumeHint = false
+            showSystemsLangPicker    -> showSystemsLangPicker = false
+            showRewardedSheet        -> { showRewardedSheet = false; pendingRewardedAction = null }
             showPremiumSheet         -> showPremiumSheet = false
             showAddCaller            -> showAddCaller = false
             showCustomDialog         -> showCustomDialog = false
@@ -412,6 +413,55 @@ fun MainScreen(
             onBuy     = { onPurchasePremium(); showPremiumSheet = false },
             onRestore = { onRestorePurchase(); showPremiumSheet = false },
             onDismiss = { showPremiumSheet = false },
+        )
+    }
+
+    // v1.1.0 — SYSTEMS 인라인 Language picker. SettingsScreen 의 LanguagePickerDialog 를 재사용.
+    if (showSystemsLangPicker) {
+        LanguagePickerDialog(
+            current = currentLanguage,
+            onSelect = { lang ->
+                EjectPrefs.saveLanguage(ctx, lang.code)
+                onLanguageChange(lang)
+                showSystemsLangPicker = false
+            },
+            onDismiss = { showSystemsLangPicker = false },
+        )
+    }
+
+    // v1.1.0 — Rewarded Ad / Premium 선택 시트.
+    if (showRewardedSheet) {
+        RewardedAdDialog(
+            onWatchAd = {
+                showRewardedSheet = false
+                val activity = ctx as? android.app.Activity
+                val action = pendingRewardedAction
+                if (activity != null) {
+                    AdManager.showRewarded(
+                        activity = activity,
+                        onRewarded = {
+                            // 광고 끝까지 시청 → pendingAction 실행 (예: AddCallerDialog 재오픈)
+                            action?.invoke()
+                            pendingRewardedAction = null
+                        },
+                        onDismissed = {
+                            // 보상 없이 끝났을 때만 pending 정리. 보상 받은 경우 onRewarded 가 먼저 정리.
+                            if (pendingRewardedAction === action) pendingRewardedAction = null
+                        },
+                    )
+                } else {
+                    pendingRewardedAction = null
+                }
+            },
+            onUpgradePremium = {
+                showRewardedSheet = false
+                pendingRewardedAction = null
+                showPremiumSheet = true
+            },
+            onDismiss = {
+                showRewardedSheet = false
+                pendingRewardedAction = null
+            },
         )
     }
 
@@ -667,13 +717,19 @@ fun MainScreen(
                 AppScreen.SYSTEMS -> SystemsContent(
                     isPremium         = isPremium,
                     premiumPrice      = premiumPrice,
+                    currentLanguage   = currentLanguage,
+                    themeMode         = themeMode,
                     onUpgradePremium  = { showPremiumSheet = true },
                     onClearHistory    = {
                         EjectPrefs.clearHistory(ctx)
                         history = emptyList()
                         showHistoryClearedDialog = true
                     },
-                    onSettingsTap     = { showSettings = true },
+                    onPickLanguage          = { showSystemsLangPicker = true },
+                    onThemeModeChange       = { mode ->
+                        onThemeModeChange(mode)
+                    },
+                    onAdvancedSettingsTap   = { showSettings = true },
                 )
             }
             }
@@ -1101,12 +1157,17 @@ private fun HistoryEntryCard(entry: String) {
 private fun SystemsContent(
     isPremium: Boolean,
     premiumPrice: String?,
+    currentLanguage: AppLanguage,
+    themeMode: com.ejectbutton.data.ThemeMode,
     onUpgradePremium: () -> Unit,
     onClearHistory: () -> Unit,
-    onSettingsTap: () -> Unit,
+    onPickLanguage: () -> Unit,
+    onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
+    onAdvancedSettingsTap: () -> Unit,
 ) {
-    // Round 31 — "프리셋 복원" 행은 SettingsScreen (톱니바퀴) 으로 이동했음.
-    // 사용자 피드백에 따르면 이 탭에서는 안 보였고 "설정" 위치가 기대됨.
+    // v1.1.0 — Settings 진입 1-탭 단축. 가장 자주 쓰는 Language / Theme 를 SYSTEMS 탭
+    // 안에 인라인 카드로 배치. 그 외 (알림 토글, 사이드 버튼, 사용법, 프리셋 복원 등) 은
+    // "Advanced" 진입으로 보존 (SettingsScreen 자체는 1055줄 → 전부 인라인은 risk too high).
     val strings = LocalAppStrings.current
 
     Column(
@@ -1116,7 +1177,7 @@ private fun SystemsContent(
             .padding(horizontal = 24.dp),
     ) {
         Spacer(Modifier.height(14.dp))
-        StitchTopBar(onSettingsTap = onSettingsTap)
+        StitchTopBar(onSettingsTap = onAdvancedSettingsTap)
         Spacer(Modifier.height(24.dp))
         Text(
             text          = strings.systemsTitle.uppercase(),
@@ -1226,7 +1287,25 @@ private fun SystemsContent(
             Spacer(Modifier.height(20.dp))
         }
 
-        // 그룹 1: 빠른 작업
+        // v1.1.0 — 인라인 Language 행 (가장 자주 쓰는 설정 → 1-탭 단축).
+        InlineLanguageRow(
+            currentLanguage = currentLanguage,
+            onClick = onPickLanguage,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        // v1.1.0 — 인라인 Theme 세그먼트 (LIGHT / SYSTEM / DARK).
+        InlineThemeCard(
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
+            label = strings.settingsTheme,
+            lightLabel = strings.themeLight,
+            systemLabel = strings.themeSystem,
+            darkLabel = strings.themeDark,
+        )
+        Spacer(Modifier.height(16.dp))
+
+        // 그룹: 빠른 작업 (히스토리 정리 + Advanced 진입)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1235,9 +1314,8 @@ private fun SystemsContent(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SystemsRow(icon = "⚙", label = strings.settingsTitle, onClick = onSettingsTap)
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
-            // Round 31 — "프리셋 복원" 은 SettingsScreen 쪽으로 이동.
+            SystemsRow(icon = "⚙", label = strings.settingsTitle, onClick = onAdvancedSettingsTap)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -1311,6 +1389,131 @@ private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
             modifier   = Modifier.weight(1f),
         )
         Text("›", fontSize = 22.sp, color = EjectSecondary, fontWeight = FontWeight.Bold)
+    }
+}
+
+// v1.1.0 — SYSTEMS 탭 인라인 Language picker.
+// 탭 시 LanguagePickerDialog (SettingsScreen.kt 정의) 가 뜨도록 callback 으로 위임.
+@Composable
+private fun InlineLanguageRow(
+    currentLanguage: AppLanguage,
+    onClick: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EjectSurfaceMid),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("🌐", fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    strings.settingsLanguage,
+                    fontSize = 15.sp,
+                    color = EjectOnSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    currentLanguage.nativeName,
+                    fontSize = 14.sp,
+                    color = EjectSecondary,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("›", fontSize = 20.sp, color = EjectSecondary)
+            }
+        }
+    }
+}
+
+// v1.1.0 — SYSTEMS 탭 인라인 Theme 세그먼트 (LIGHT / SYSTEM / DARK).
+@Composable
+private fun InlineThemeCard(
+    themeMode: com.ejectbutton.data.ThemeMode,
+    onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
+    label: String,
+    lightLabel: String,
+    systemLabel: String,
+    darkLabel: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(EjectSurfaceMid),
+                contentAlignment = Alignment.Center,
+            ) {
+                val icon = when (themeMode) {
+                    com.ejectbutton.data.ThemeMode.LIGHT  -> "☀"
+                    com.ejectbutton.data.ThemeMode.DARK   -> "🌙"
+                    com.ejectbutton.data.ThemeMode.SYSTEM -> "⚙"
+                }
+                Text(icon, fontSize = 18.sp)
+            }
+            Spacer(Modifier.width(14.dp))
+            Text(
+                label,
+                fontSize = 15.sp,
+                color = EjectOnSurface,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val opts = listOf(
+                com.ejectbutton.data.ThemeMode.LIGHT  to lightLabel,
+                com.ejectbutton.data.ThemeMode.SYSTEM to systemLabel,
+                com.ejectbutton.data.ThemeMode.DARK   to darkLabel,
+            )
+            opts.forEach { (mode, optLabel) ->
+                val isSel = themeMode == mode
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSel) EjectCoral else EjectSurfaceMid)
+                        .clickable { onThemeModeChange(mode) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        optLabel,
+                        fontSize = 12.sp,
+                        color = if (isSel) Color.White else EjectOnSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1875,84 +2078,9 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
 }
 
 // ─── 프리미엄 업그레이드 다이얼로그 ─────────────────────────────────────────
-
-@Composable
-private fun PremiumUpgradeDialog(
-    price: String?,
-    onBuy: () -> Unit,
-    onRestore: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val strings = LocalAppStrings.current
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint = EjectCoral,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(strings.premiumTitle, fontWeight = FontWeight.Bold)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(strings.premiumSubtitle, color = EjectSecondary, fontSize = 14.sp)
-                Spacer(Modifier.height(4.dp))
-                PremiumFeatureRow(strings.premiumFeature1)
-                PremiumFeatureRow(strings.premiumFeature2)
-                PremiumFeatureRow(strings.premiumFeature3)
-                Spacer(Modifier.height(8.dp))
-                // v1.0.10 — Google Play 구독 정책 준수.
-                // 결제 버튼 누르기 전에 자동 갱신·취소 방법 명시 필수.
-                Text(
-                    strings.premiumDisclosure,
-                    color = EjectSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onBuy,
-                colors = ButtonDefaults.buttonColors(containerColor = EjectCoral),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Text(
-                    // Round 30 — premiumBuyBtn 에서 "%s" placeholder 를 제거했으므로 (사용자가
-                    // literal %s 가 보이던 버그 리포트) 이제 라벨은 고정. 가격은 별도 점-구분자로 뒤에 붙인다.
-                    "${strings.premiumBuyBtn}  ·  ${price ?: localizedFallbackPrice()}",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onRestore) {
-                Text(strings.premiumRestoreBtn, color = EjectSecondary, fontSize = 13.sp)
-            }
-        },
-        containerColor = EjectSurface,
-    )
-}
-
-@Composable
-private fun PremiumFeatureRow(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .background(EjectCoral, CircleShape),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(text, fontSize = 15.sp, color = EjectOnSurface)
-    }
-}
+// v1.1.0 — PremiumUpgradeDialog 는 PremiumUpgradeDialog.kt 로 이전.
+// 듀얼 플랜 (월/연) ModalBottomSheet 로 교체됨.
+// PremiumFeatureRow 는 더 이상 사용되지 않아 제거 (Round 30 까지의 단일 플랜 잔재).
 
 /**
  * Round 18 — 월 구독 근사치 fallback. Google Play Billing 이 아직 제품을

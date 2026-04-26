@@ -546,7 +546,7 @@ fun SettingsScreen(
 // ── Language picker dialog ──────────────────────────────────────────────────
 
 @Composable
-private fun LanguagePickerDialog(
+internal fun LanguagePickerDialog(
     current: AppLanguage,
     onSelect: (AppLanguage) -> Unit,
     onDismiss: () -> Unit,

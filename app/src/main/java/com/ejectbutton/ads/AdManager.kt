@@ -11,6 +11,8 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -32,8 +34,10 @@ object AdManager {
     private const val MAX_INTERSTITIALS_PER_DAY = 10
 
     private var interstitialAd: InterstitialAd? = null
+    private var rewardedAd: RewardedAd? = null
     private var isInitialized = false
     private var lastInterstitialShownMs: Long = 0L
+    @Volatile private var rewardedLoading: Boolean = false
 
     /**
      * 프리미엄(광고 제거) 사용자 여부. true 이면 네이티브/전면 모두 로드하지 않고
@@ -58,6 +62,9 @@ object AdManager {
         if (interstitialAd == null) {
             loadInterstitial(context)
         }
+        if (rewardedAd == null) {
+            loadRewarded(context)
+        }
     }
 
     /**
@@ -72,9 +79,11 @@ object AdManager {
             _nativeAd.value?.destroy()
             _nativeAd.value = null
             interstitialAd = null
+            rewardedAd = null
         } else if (isInitialized) {
             if (_nativeAd.value == null) loadNativeAd(context)
             if (interstitialAd == null) loadInterstitial(context)
+            if (rewardedAd == null) loadRewarded(context)
         }
     }
 
@@ -162,6 +171,84 @@ object AdManager {
         } else {
             loadInterstitial(activity)
             onDismissed()
+        }
+    }
+
+    // ── 보상형 광고 (Rewarded) — v1.1.0 ────────────────────────────────────
+    //
+    // RewardedAdDialog 에서 "광고 보기" 선택 시 30초 영상 광고 노출 후 onRewarded
+    // 콜백으로 1회 사용 권한을 부여한다. AdMob 정책상 사용자가 명시적으로 옵트인
+    // 한 경우에만 표시 가능 (=> RewardedAdDialog 의 "광고 보기" 라디오 선택 + Continue).
+    //
+    // load 는 멱등하게 동작하되 동시 다중 load 를 막기 위해 [rewardedLoading] 플래그
+    // 로 in-flight 가드. 실패해도 사용자가 다시 RewardedAdDialog 를 띄우면 자동 재시도.
+
+    fun loadRewarded(context: Context) {
+        if (isPremium) return
+        if (rewardedAd != null || rewardedLoading) return
+        rewardedLoading = true
+        val adRequest = AdRequest.Builder().build()
+        RewardedAd.load(
+            context,
+            BuildConfig.ADMOB_REWARDED_ID,
+            adRequest,
+            object : RewardedAdLoadCallback() {
+                override fun onAdLoaded(ad: RewardedAd) {
+                    rewardedLoading = false
+                    if (isPremium) return
+                    rewardedAd = ad
+                }
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    rewardedLoading = false
+                    rewardedAd = null
+                    Log.d("AdManager", "Rewarded failed: ${error.message}")
+                }
+            }
+        )
+    }
+
+    /**
+     * 보상형 광고 표시.
+     *  @param onRewarded 사용자가 광고를 끝까지 시청하고 보상 조건을 만족했을 때 호출.
+     *  @param onDismissed 광고 종료(보상 여부 무관) 또는 표시 실패 시 호출. UI 후속 처리용.
+     *
+     * Premium 사용자는 광고 시청 없이 즉시 onRewarded + onDismissed 양쪽 호출 (잠긴
+     * 기능을 그냥 통과). 광고가 아직 로드 안 돼 있으면 onDismissed 만 호출하고 다음 회차
+     * 를 위해 백그라운드에서 재로드 시작.
+     */
+    fun showRewarded(
+        activity: Activity,
+        onRewarded: () -> Unit,
+        onDismissed: () -> Unit = {},
+    ) {
+        if (isPremium) {
+            onRewarded()
+            onDismissed()
+            return
+        }
+        val ad = rewardedAd
+        if (ad == null) {
+            loadRewarded(activity)
+            onDismissed()
+            return
+        }
+        var rewarded = false
+        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                rewardedAd = null
+                loadRewarded(activity)
+                if (rewarded) onRewarded()
+                onDismissed()
+            }
+            override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                rewardedAd = null
+                loadRewarded(activity)
+                onDismissed()
+            }
+        }
+        ad.show(activity) { _ ->
+            // RewardItem 의 amount/type 은 우리 모델에서 무의미 (1회 = 잠금 해제 1회).
+            rewarded = true
         }
     }
 
