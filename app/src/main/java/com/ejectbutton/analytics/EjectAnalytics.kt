@@ -5,6 +5,9 @@ import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.ktx.Firebase
+// v1.1.0 — Clarity 헬퍼는 별도 object 로 두고 여기서 콜만 위임.
+// 이렇게 하면 analytics 레이어가 Firebase + Clarity 양쪽을 한 곳에서 부르고
+// 호출부 (MainActivity, BillingManager 등) 는 단일 import 로 충분.
 
 /**
  * Firebase Analytics 헬퍼.
@@ -34,6 +37,8 @@ object EjectAnalytics {
             putLong("delay_sec", delaySec.toLong())
             putString("scenario_id", scenarioId)
         })
+        // v1.1.0 — Clarity 정성 funnel: 같은 이벤트를 세션 녹화 위에 마커로 남김.
+        EjectClarity.ejectButtonTap(mode, scenarioId)
     }
 
     /** 사용자가 트리거 모드를 바꿨을 때 — funnel 분석에 사용 */
@@ -48,6 +53,7 @@ object EjectAnalytics {
         instance?.logEvent("premium_viewed", Bundle().apply {
             putString("reason", reason)   // gate_mode / gate_time / cta_settings 등
         })
+        EjectClarity.premiumPaywallShown(reason)
     }
 
     /** 프리미엄 구매 성공 (BillingManager 의 PURCHASED 콜백에서) */
@@ -55,6 +61,8 @@ object EjectAnalytics {
         instance?.logEvent("premium_purchased", Bundle().apply {
             putString("product_id", productId)
         })
+        EjectClarity.premiumPurchaseSuccess(productId)
+        EjectClarity.setUserTier("premium") // 구매 직후 user_tier 갱신 → 이후 세션 필터 가능
     }
 
     /** 온보딩 완료 — "다시 안 봄" / "다음에 또 봄" 분기 */
@@ -62,5 +70,6 @@ object EjectAnalytics {
         instance?.logEvent("onboarding_done", Bundle().apply {
             putString("choice", if (skipFurther) "no_more" else "show_again")
         })
+        EjectClarity.onboardingCompleted(stepCount = 0, skipFurther = skipFurther)
     }
 }

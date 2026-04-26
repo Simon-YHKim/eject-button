@@ -197,7 +197,16 @@ private fun PremiumUpgradeBody(
 
         // CTA: 구독 시작
         Button(
-            onClick = onBuy,
+            onClick = {
+                // v1.1.0 — Clarity 마커: 실제 결제 launch 직전 (BillingManager.launchPurchase
+                // 보다 한 단계 위 — 사용자가 명시적으로 결제 의향을 표시한 시점).
+                // selectAnnual 분기로 sku 추정 — BillingManager 가 실제로는 monthly 단일 상품만
+                // 지원하므로 양쪽 모두 monthly 로 fallback (yearly 상품 추가 시 분기 변경).
+                com.ejectbutton.analytics.EjectClarity.premiumUpgradeClicked(
+                    sku = if (selectAnnual) "eject_premium_annual" else "eject_premium_monthly"
+                )
+                onBuy()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),

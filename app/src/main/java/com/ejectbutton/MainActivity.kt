@@ -336,6 +336,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                     val delaySec = if (delayMs > 0) (delayMs / 1000).toInt() else 0
                                     EjectAnalytics.logEjectFired(mode, delaySec, scenario.id)
+                                    // v1.1.0 — Clarity 정성 funnel: 가짜 통화 화면이
+                                    // 실제로 뜨는 시점에 별도 이벤트 발사 (logEjectFired 는
+                                    // "버튼 탭" 시점이라 둘 다 분리해서 마커로 남김).
+                                    com.ejectbutton.analytics.EjectClarity.fakeCallStarted(
+                                        scenarioId  = scenario.id,
+                                        callerName  = scenario.callerName,
+                                        mode        = mode,
+                                    )
                                     maybeRequestReview(count)
                                 }
                             )

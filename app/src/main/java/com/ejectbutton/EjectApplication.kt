@@ -1,8 +1,11 @@
 package com.ejectbutton
 
 import android.app.Application
+import com.ejectbutton.analytics.EjectClarity
 import com.ejectbutton.crash.CrashReportManager
+import com.ejectbutton.data.EjectPrefs
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import java.util.Locale
 
 class EjectApplication : Application() {
 
@@ -18,5 +21,14 @@ class EjectApplication : Application() {
         // debug 빌드는 개발자 디버그 노이즈 방지로 비활성화.
         FirebaseCrashlytics.getInstance()
             .setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+
+        // v1.1.0 — Microsoft Clarity 세션 녹화 + Custom Tag.
+        // Firebase Analytics 의 정량 funnel 을 정성 세션 녹화로 보강.
+        // CLARITY_PROJECT_ID 가 비어 있으면 (debug fallback 미설정) init 자체가 no-op.
+        EjectClarity.init(this)
+        EjectClarity.setSessionTags(
+            locale  = Locale.getDefault().toLanguageTag(),
+            userTier = if (EjectPrefs.loadPremium(this)) "premium" else "free",
+        )
     }
 }
