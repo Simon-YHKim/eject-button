@@ -25,14 +25,6 @@
     <!-- 인터넷 (Clarity 분석, 크래시 리포트) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!--
-      v1.0.9 — 카메라 권한 완전 제거.
-      플래시 LED 깜박임은 CameraManager.setTorchMode() 로 구현되어 있으며,
-      이 API 는 API 23 (Android 6.0) 부터 권한 없이 호출 가능하다.
-      CAMERA 권한이 manifest 에 있으면 Play 리뷰가 카메라 사용 정당화를 요구해
-      등록이 지연되는 사유였다. <uses-feature camera*> 도 함께 제거하여
-      Play Store 의 device-filter 가 카메라 없는 기기를 잘못 배제하지 않도록 한다.
-    -->
 
     <application
         android:name=".EjectApplication"

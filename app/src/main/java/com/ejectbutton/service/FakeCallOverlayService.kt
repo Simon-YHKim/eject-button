@@ -4,7 +4,6 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
@@ -84,10 +83,9 @@ class FakeCallOverlayService : Service() {
     private val callState = mutableStateOf(false)
     private var pendingHandler: Handler? = null
     private var isDismissing = false
+    // v1.1.5 — Clarity fakeCallEnded 이벤트의 duration 계산용. callState=true 진입 시점 기록.
+    private var callStartedAtMs: Long = 0L
     private var wakeLock: PowerManager.WakeLock? = null
-    private var flashHandler: Handler? = null
-    private var flashCameraId: String? = null
-    private var flashOn = false
 
     @Suppress("DEPRECATION")
     private var phoneListener: PhoneStateListener? = null
@@ -113,7 +111,6 @@ class FakeCallOverlayService : Service() {
         isDismissing = false
         callState.value = false
         stopRing()
-        stopFlashBlink()
         releaseWake()
 
         val callerName  = intent?.getStringExtra(EXTRA_CALLER_NAME)  ?: "Mom"
@@ -133,29 +130,26 @@ class FakeCallOverlayService : Service() {
                 pendingHandler = null
                 try { acquireWake() } catch (_: Exception) {}
                 try { ring() } catch (_: Exception) {}
-                try { startFlashBlink() } catch (_: Exception) {}
                 tryShowOverlayOrAbort(callerName, callerLabel, prompter)
             }, delayMs)
         } else {
             try { acquireWake() } catch (_: Exception) {}
             try { ring() } catch (_: Exception) {}
-            try { startFlashBlink() } catch (_: Exception) {}
             tryShowOverlayOrAbort(callerName, callerLabel, prompter)
         }
         return START_NOT_STICKY
     }
 
     /**
-     * 오버레이 표시 시도. 실패 시(권한 철회, BadTokenException 등) 링/플래시/진동
+     * 오버레이 표시 시도. 실패 시(권한 철회, BadTokenException 등) 링/진동
      * 을 모두 중단하고 사용자에게 토스트로 원인 안내 → silent fail 방지.
      */
     private fun tryShowOverlayOrAbort(callerName: String, callerLabel: String, prompter: String) {
         try {
             showOverlay(callerName, callerLabel, prompter)
         } catch (e: Exception) {
-            // 링/플래시/진동 정리
+            // 링/진동 정리
             stopRing()
-            stopFlashBlink()
             releaseWake()
             // 사용자 피드백
             try {
@@ -191,53 +185,6 @@ class FakeCallOverlayService : Service() {
         wakeLock = null
     }
 
-    /**
-     * 카메라 LED 플래시를 500ms 간격으로 깜박임.
-     * 사용자가 설정에서 활성화한 경우에만 동작.
-     * Android 6.0+ (API 23) 의 CameraManager.setTorchMode 사용.
-     */
-    private fun startFlashBlink() {
-        if (!EjectPrefs.loadFlash(this)) return
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-        val cm = getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
-        val cameraId = try {
-            cm.cameraIdList.firstOrNull { id ->
-                cm.getCameraCharacteristics(id)
-                    .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-            }
-        } catch (_: Exception) { null } ?: return
-
-        flashCameraId = cameraId
-        flashOn = false
-        val handler = Handler(Looper.getMainLooper())
-        flashHandler = handler
-
-        val tick = object : Runnable {
-            override fun run() {
-                try {
-                    flashOn = !flashOn
-                    cm.setTorchMode(cameraId, flashOn)
-                } catch (_: Exception) {}
-                handler.postDelayed(this, 500L)
-            }
-        }
-        handler.post(tick)
-    }
-
-    private fun stopFlashBlink() {
-        flashHandler?.removeCallbacksAndMessages(null)
-        flashHandler = null
-        val cameraId = flashCameraId ?: return
-        flashCameraId = null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                val cm = getSystemService(Context.CAMERA_SERVICE) as? CameraManager
-                cm?.setTorchMode(cameraId, false)
-            } catch (_: Exception) {}
-        }
-        flashOn = false
-    }
-
     @Suppress("DEPRECATION")
     private fun showOverlay(callerName: String, callerLabel: String, prompter: String) {
         val params = WindowManager.LayoutParams(
@@ -249,7 +196,11 @@ class FakeCallOverlayService : Service() {
                     or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                     or WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED    // API 27+ 대안 없음 (Service context)
                     or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD    // API 27+ 대안 없음 (Service context)
-                    or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,    // API 27+ 대안 없음 (Service context)
+                    or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON     // API 27+ 대안 없음 (Service context)
+                    // v1.1.5 — 가짜 통화 화면이 Recents/스크린샷/화면녹화에 안 잡히게 차단.
+                    // 위기 사용자가 가해자 옆에서 사용 시 시스템 multitasking 화면이나 외부
+                    // 도구로 가짜 통화 사용 흔적이 남지 않도록 보호.
+                    or WindowManager.LayoutParams.FLAG_SECURE,
             PixelFormat.TRANSLUCENT,
         ).also {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -288,8 +239,9 @@ class FakeCallOverlayService : Service() {
                                 onDecline   = { dismiss() },
                                 onAccept    = {
                                     stopRing()
-                                    stopFlashBlink()
                                     callState.value = true
+                                    // v1.1.5 — Clarity duration tracking 시작점.
+                                    callStartedAtMs = System.currentTimeMillis()
                                 },
                             )
                         } else {
@@ -374,15 +326,23 @@ class FakeCallOverlayService : Service() {
         if (isDismissing) return
         isDismissing = true
 
+        // v1.1.5 — Clarity 정성 funnel: 가짜 통화 종료 이벤트 (duration + reason).
+        // callState=true 였으면 user_hangup (통화 후 종료), 아니면 ringing 단계 종료.
+        val wasInCall = callState.value
+        val durationSec = if (wasInCall && callStartedAtMs > 0L) {
+            ((System.currentTimeMillis() - callStartedAtMs) / 1000L).coerceAtLeast(0L)
+        } else 0L
+        val endReason = if (wasInCall) "user_hangup" else "ringing_dismiss"
+        com.ejectbutton.analytics.EjectClarity.fakeCallEnded(durationSec, endReason)
+
         // 통화 중 상태에서 종료 → 전면 광고 플래그 설정 (무료 사용자만)
-        if (callState.value && !EjectPrefs.loadPremium(this)) {
+        if (wasInCall && !EjectPrefs.loadPremium(this)) {
             showInterstitialOnNextResume = true
         }
 
         val view = overlay
         overlay = null
         stopRing()
-        stopFlashBlink()
         releaseWake()
         Handler(Looper.getMainLooper()).post {
             try { wm?.removeView(view) } catch (_: Exception) {}
@@ -397,7 +357,7 @@ class FakeCallOverlayService : Service() {
         val am   = getSystemService(AUDIO_SERVICE) as AudioManager
         val mode = am.ringerMode  // SILENT / VIBRATE / NORMAL
 
-        // 시스템 무음 모드 → 소리/진동 모두 생략. 화면 + 플래시만 동작.
+        // 시스템 무음 모드 → 소리/진동 모두 생략하고 화면만 표시.
         if (mode == AudioManager.RINGER_MODE_SILENT) return
 
         val ringtoneAttrs = AudioAttributes.Builder()
@@ -497,16 +457,18 @@ class FakeCallOverlayService : Service() {
     }
 
     private fun createChannel() {
-        val ch = NotificationChannel(NOTIF_CHANNEL, "Eject 실행 중", NotificationManager.IMPORTANCE_LOW)
+        val strings = EjectPrefs.loadLanguage(this).strings()
+        val ch = NotificationChannel(NOTIF_CHANNEL, strings.serviceChannelName, NotificationManager.IMPORTANCE_LOW)
             .apply { setSound(null, null) }
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
     }
 
     private fun buildNotif(delayMs: Long = 0L): Notification {
-        val title = if (delayMs > 0L) "⏏ ${delayMs / 1000}s..." else "⏏ Eject Button"
+        val strings = EjectPrefs.loadLanguage(this).strings()
         return Notification.Builder(this, NOTIF_CHANNEL)
-            .setContentTitle(title)
-            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .setContentTitle(strings.serviceNotifTitle)
+            .setContentText(strings.serviceNotifText)
+            .setSmallIcon(android.R.drawable.ic_menu_manage)
             .build()
     }
 
@@ -516,7 +478,6 @@ class FakeCallOverlayService : Service() {
             overlay?.let { try { wm?.removeView(it) } catch (_: Exception) {} }
         }
         stopRing()
-        stopFlashBlink()
         releaseWake()
         serviceLifecycle?.stop()
         // Symmetric teardown — same API-level split as listenRealCall.

@@ -113,6 +113,9 @@ jobs:
           echo "versionCode=${VERSION_CODE}"  | tee -a "$GITHUB_OUTPUT"
           echo "versionName=${VERSION_NAME}" | tee -a "$GITHUB_OUTPUT"
 
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
       - name: Assemble release AAB (Play Store)
         run: |
           ./gradlew bundleRelease --no-daemon --stacktrace \

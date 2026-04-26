@@ -32,7 +32,6 @@ Sin bromas. Sin chistes. Una herramienta real para presión social real.
 • Mostrar sobre otras apps — muestra la pantalla de llamada falsa encima de cualquier aplicación (función principal)
 • Estado del teléfono — oculta la llamada falsa si llega una real
 • Contactos — opcional; permite elegir un contacto real como remitente
-• Cámara — solo para parpadear el flash LED al recibir la llamada (sin fotos ni vídeo)
 
 ■ PRIVACIDAD
 Tus contactos y el historial de llamadas se quedan en tu dispositivo — nunca los subimos.

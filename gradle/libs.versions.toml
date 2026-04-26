@@ -28,7 +28,7 @@ androidx-lifecycle-common = { group = "androidx.lifecycle", name = "lifecycle-co
 play-review = { group = "com.google.android.play", name = "review-ktx", version = "2.0.2" }
 play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
 google-admob = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "admob" }
-ms-clarity = { group = "com.microsoft.clarity", name = "clarity", version = "3.1.2" }
+ms-clarity = { group = "com.microsoft.clarity", name = "clarity-compose", version = "3.1.2" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
 # v1.0.10 — Crashlytics: 자체 CrashReportManager (메일 의존) 보완. 자동 클라우드 수집.

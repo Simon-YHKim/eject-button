@@ -1,7 +1,9 @@
-First release.
+v1.1.5
 
-• Modern incoming-call screen design
-• Instant / timer / shake / volume-button triggers
-• 7 languages supported
-• In-call script hints
-• Premium upgrade (removes ads + unlimited hints)
+• Settings unified into one SETTINGS tab — language, theme, notifications, side button all in one place
+• Privacy: app blocks Recents preview and screenshots to protect crisis users from being seen
+• Premium dual plan UI (Annual coming soon)
+• Watch-Ad-or-Premium prompt for locked features
+• Billing reliability improved (handles all purchase states)
+• Microsoft Clarity analytics for product improvement (input fields auto-masked)
+• Stability and performance improvements

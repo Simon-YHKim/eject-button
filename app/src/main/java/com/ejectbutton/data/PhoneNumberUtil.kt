@@ -39,9 +39,14 @@ internal fun randomKoreanMobileLabel(random: Random = Random.Default): String {
  */
 fun formatPhoneWithHyphens(raw: String, country: String = "KR"): String {
     if (raw.isBlank()) return raw
-    val digits = raw.filter { it.isDigit() }
-    if (digits.isEmpty()) return raw.trim()
+    val rawDigits = raw.filter { it.isDigit() }
     val c = country.uppercase()
+    val digits = when {
+        c == "KR" && rawDigits.startsWith("82") && rawDigits.length in 11..12 ->
+            "0" + rawDigits.drop(2)
+        else -> rawDigits
+    }
+    if (digits.isEmpty()) return raw.trim()
     return when (c) {
         "KR" -> when (digits.length) {
             11 -> "${digits.take(3)}-${digits.substring(3, 7)}-${digits.substring(7)}"

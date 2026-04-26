@@ -143,28 +143,59 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
-        if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
-            purchases.forEach { purchase ->
-                if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                    EjectPrefs.savePremium(context, true)
-                    _isPremium.value = true
-                    EjectAnalytics.logPremiumPurchased(PRODUCT_PREMIUM)
-                    if (!purchase.isAcknowledged) {
-                        val ackParams = AcknowledgePurchaseParams.newBuilder()
-                            .setPurchaseToken(purchase.purchaseToken)
-                            .build()
-                        // v1.0.9 — BillingResult OK 검증. 실패해도 premium 은 이미
-                        // 저장되어 있고, 다음 실행 시 restorePurchases() 가 ack 를 재시도.
-                        billingClient.acknowledgePurchase(ackParams) { ackResult ->
-                            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                                android.util.Log.w(
-                                    "BillingManager",
-                                    "ackPurchase(new) failed: code=${ackResult.responseCode}"
-                                )
+        // v1.1.5 — 결제 응답 모든 분기 처리 (이전엔 OK + PURCHASED 만 처리, 나머지 묵음 → 환불 요청 risk).
+        when (result.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                purchases?.forEach { purchase ->
+                    when (purchase.purchaseState) {
+                        Purchase.PurchaseState.PURCHASED -> {
+                            EjectPrefs.savePremium(context, true)
+                            _isPremium.value = true
+                            EjectAnalytics.logPremiumPurchased(PRODUCT_PREMIUM)
+                            if (!purchase.isAcknowledged) {
+                                val ackParams = AcknowledgePurchaseParams.newBuilder()
+                                    .setPurchaseToken(purchase.purchaseToken)
+                                    .build()
+                                // v1.0.9 — BillingResult OK 검증. 실패해도 premium 은 이미 저장되어
+                                // 있고 다음 실행 시 restorePurchases() 가 ack 를 재시도.
+                                billingClient.acknowledgePurchase(ackParams) { ackResult ->
+                                    if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                                        android.util.Log.w(
+                                            "BillingManager",
+                                            "ackPurchase(new) failed: code=${ackResult.responseCode}"
+                                        )
+                                    }
+                                }
                             }
+                        }
+                        Purchase.PurchaseState.PENDING -> {
+                            // SEPA / 슬립 결제 등 비동기 결제. 일정 시간 후 PURCHASED 로 다시 콜백 옴.
+                            // 사용자에게는 "결제 진행 중" 토스트가 도움 되지만 BillingManager 는 Service 컨텍스트가 아니라
+                            // 토스트는 호출부 (MainActivity) 에서 처리. 여기선 로깅만.
+                            android.util.Log.i("BillingManager", "purchase pending: ${purchase.products}")
+                        }
+                        Purchase.PurchaseState.UNSPECIFIED_STATE -> {
+                            android.util.Log.w("BillingManager", "purchase state unspecified: ${purchase.products}")
                         }
                     }
                 }
+            }
+            BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
+                // 사용자가 이미 구매한 상품을 다시 결제 시도 (디바이스 변경, 재설치 등). 자동 복원.
+                android.util.Log.i("BillingManager", "ITEM_ALREADY_OWNED → restorePurchases() 자동 트리거")
+                restorePurchases()
+            }
+            BillingClient.BillingResponseCode.USER_CANCELED -> {
+                // 사용자가 결제 다이얼로그를 닫음 — 일반적이고 예상된 흐름. 로깅만.
+                android.util.Log.d("BillingManager", "purchase canceled by user")
+            }
+            BillingClient.BillingResponseCode.NETWORK_ERROR,
+            BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
+            BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE -> {
+                android.util.Log.w("BillingManager", "purchase failed (network): code=${result.responseCode}, msg=${result.debugMessage}")
+            }
+            else -> {
+                android.util.Log.w("BillingManager", "purchase failed: code=${result.responseCode}, msg=${result.debugMessage}")
             }
         }
     }

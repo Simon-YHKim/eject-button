@@ -181,14 +181,16 @@ private fun PremiumUpgradeBody(
         )
         Spacer(Modifier.height(12.dp))
 
-        // 플랜 카드 2 — 연간 (기본)
+        // 플랜 카드 2 — 연간 (v1.1.5: Play Console 미등록 → "Coming Soon" 라벨, 클릭 비활성화)
+        // BLOCK-4: 이전 버전은 "7-day free trial · Auto-renews yearly" 가 카드에 노출되어
+        // Play 정책상 광고 사기로 분류될 위험. Annual 미출시 동안은 plain "Available soon" 으로 교체.
         PlanCard(
-            selected = selectAnnual,
+            selected = false,
             onSelect = { /* v1.1.3 hotfix: Annual disabled */ },
             label = annualLabel,
             price = annualPrice,
             per = annualPer,
-            note = "$annualAvg · $annualNote",
+            note = annualAvg, // free-trial 약속 제거 — 단순 월평균 가격만
             saveBadge = null,
             popularBadge = "Coming Soon",
         )

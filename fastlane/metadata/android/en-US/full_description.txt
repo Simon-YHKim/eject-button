@@ -32,7 +32,6 @@ No prank. No joke. A real tool for real social pressure.
 • Display over other apps — shows the fake call UI on top of whatever you're in (core function)
 • Phone state — hides the fake call if a real one arrives
 • Contacts — optional, lets you pick a real contact as the fake caller
-• Camera — only to blink the flashlight LED on incoming call (no photos or video)
 
 ■ PRIVACY
 Your contacts and call history stay on your device — we never upload them.

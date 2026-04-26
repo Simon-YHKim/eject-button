@@ -62,6 +62,7 @@ import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
+import com.microsoft.clarity.modifiers.clarityMask
 import android.content.res.ColorStateList
 import android.util.TypedValue
 import android.view.Gravity
@@ -534,7 +535,12 @@ fun MainScreen(
                         currentScreen = AppScreen.SYSTEMS
                     },
                     onOpenSideButtonPicker = { showSideButtonPicker = true },
-                    onSelectCaller   = { selectedScenario = it },
+                    onSelectCaller   = { scenario ->
+                        selectedScenario = scenario
+                        // v1.1.5 — Clarity funnel: 시나리오 선택 이벤트 (custom vs preset 구분).
+                        val type = if (scenario.id in setOf("mom", "dad")) "preset" else "custom"
+                        com.ejectbutton.analytics.EjectClarity.scenarioSelected(type)
+                    },
                     onDeleteCaller   = { toDelete ->
                         // Round 32 — 즉시 삭제하지 않고 확인 다이얼로그 표시. 실제 삭제는 "예" 버튼 onClick.
                         pendingDeleteCaller = toDelete
@@ -933,7 +939,10 @@ private fun CommandContent(
 }
 
 @Composable
-private fun StitchTopBar(onSettingsTap: () -> Unit) {
+private fun StitchTopBar(
+    onSettingsTap: () -> Unit,
+    showSettingsIcon: Boolean = true,
+) {
     val strings = LocalAppStrings.current
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -955,13 +964,17 @@ private fun StitchTopBar(onSettingsTap: () -> Unit) {
                 color    = EjectSecondary,
             )
         }
-        IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
-            Icon(
-                Icons.Default.Settings,
-                contentDescription = strings.settingsTitle,
-                tint               = EjectOnSurface,
-                modifier           = Modifier.size(24.dp),
-            )
+        // v1.1.5 — SETTINGS 탭에서는 톱니바퀴를 숨김 (이미 SETTINGS 안이라 의미 X).
+        // COMMAND/HISTORY 탭에서만 톱니바퀴를 보여 SETTINGS 로 점프 가능하게.
+        if (showSettingsIcon) {
+            IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = strings.settingsTitle,
+                    tint               = EjectOnSurface,
+                    modifier           = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
@@ -975,6 +988,7 @@ private fun SideButtonModeCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clarityMask()
             .clip(RoundedCornerShape(18.dp))
             .background(EjectSurface)
             .border(1.dp, EjectOutlineVar, RoundedCornerShape(18.dp))
@@ -1155,7 +1169,8 @@ private fun SystemsContent(
     ) {
         Spacer(Modifier.height(14.dp))
         // 톱니 아이콘은 이 화면 자체가 SETTINGS 이므로 의미 없음 → no-op.
-        StitchTopBar(onSettingsTap = { /* SETTINGS 탭 내부에서는 no-op */ })
+        // v1.1.5 — SETTINGS 탭 자체에서는 톱니바퀴 숨김 (이미 여기 있는데 의미 X).
+        StitchTopBar(onSettingsTap = {}, showSettingsIcon = false)
         Spacer(Modifier.height(24.dp))
         Text(
             text          = strings.systemsTitle.uppercase(),
@@ -1741,7 +1756,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                     onValueChange = { callerName = it },
                     label = { Text(strings.dialogCallerName) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().clarityMask(),
                 )
                 if (searchGranted) {
                     // 연락처 검색
@@ -1750,7 +1765,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                         onValueChange = { searchQuery = it },
                         label = { Text(strings.dialogSearch) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().clarityMask(),
                     )
                     // 연락처 리스트 — 처음부터 표시. Round 31 — 이름 밑에 번호도 보여서 사용자가
                     // 어느 번호가 가짜 수신 화면에 뜰지 미리 확인 가능.
@@ -1764,6 +1779,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clarityMask()
                                     .clickable {
                                         callerName = entry.name
                                         selectedPhone = formatted

@@ -14,7 +14,6 @@ object EjectPrefs {
     private const val KEY_RINGTONE    = "setting_ringtone"
     private const val KEY_VIBRATION   = "setting_vibration"
     private const val KEY_HAPTIC      = "setting_haptic"
-    private const val KEY_FLASH       = "setting_flash"
     private const val KEY_SIDE_BUTTON = "setting_side_button_command"
     private const val KEY_SIDE_BUTTON_CUSTOM_SEQUENCE = "setting_side_button_custom"
     private const val KEY_SELECTED_SCENARIO = "selected_scenario_id"
@@ -206,15 +205,6 @@ object EjectPrefs {
     fun loadHaptic(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_HAPTIC, true)
-
-    fun saveFlash(ctx: Context, enabled: Boolean) {
-        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_FLASH, enabled).apply()
-    }
-
-    fun loadFlash(ctx: Context): Boolean =
-        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-            .getBoolean(KEY_FLASH, false)
 
     // ── Side button trigger ──────────────────────────────────────────────────
 

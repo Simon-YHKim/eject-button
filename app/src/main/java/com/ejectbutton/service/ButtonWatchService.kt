@@ -309,7 +309,7 @@ class ButtonWatchService : Service() {
         val strings = lang.strings()
         val ch = NotificationChannel(
             NOTIF_CHANNEL,
-            strings.settingSideButton,
+            strings.sideButtonChannelName,
             NotificationManager.IMPORTANCE_MIN,
         ).apply { setSound(null, null) }
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
@@ -319,9 +319,9 @@ class ButtonWatchService : Service() {
         val lang = EjectPrefs.loadLanguage(this)
         val strings = lang.strings()
         return Notification.Builder(this, NOTIF_CHANNEL)
-            .setContentTitle(strings.settingSideButtonArmed)
-            .setContentText(strings.settingSideButtonDesc)
-            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .setContentTitle(strings.sideButtonNotifTitle)
+            .setContentText(strings.sideButtonNotifText)
+            .setSmallIcon(android.R.drawable.ic_menu_manage)
             .setOngoing(true)
             .build()
     }

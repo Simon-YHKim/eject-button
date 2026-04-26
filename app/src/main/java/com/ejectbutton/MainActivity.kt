@@ -82,7 +82,14 @@ class MainActivity : ComponentActivity() {
 
     private val multiPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) {}
+    ) { results ->
+        // v1.1.5 — Clarity funnel: 각 권한 grant/deny 결과를 개별 이벤트로 발사.
+        // permission name 이 너무 길어 키로 쓰기 어려우니 마지막 dot 이후만 잘라서 사용.
+        results.forEach { (permission, granted) ->
+            val shortName = permission.substringAfterLast('.').lowercase()
+            com.ejectbutton.analytics.EjectClarity.permissionResult(shortName, granted)
+        }
+    }
 
     private val overlayPermLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -169,6 +176,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // v1.1.5 — FLAG_SECURE: Eject Button 핵심 가치는 "옆사람에게 들키지 않는 탈출".
+        // 이 플래그가 없으면 가해자가 Recents (최근 앱) 멀티태스킹 화면에서 시나리오/
+        // 발신자 이름/SETTINGS 내용을 다 볼 수 있음 → 위기 사용자 안전 직격.
+        // 또한 스크린샷·화면녹화도 시스템에서 차단되어 의도치 않은 PII 유출 방지.
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
+
         // 상태표시줄/네비게이션바 색상은 아래 setContent 안에서 themeMode 에
         // 반응해 [applySystemBars] 로 동적으로 설정한다. 여기서는 edge-to-edge
         // 모드로 진입만 시키고, 실제 색상은 Compose 가 그려지기 직전에 적용.

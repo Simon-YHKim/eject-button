@@ -59,7 +59,6 @@ fun SettingsScreen(
     var ringtone   by remember { mutableStateOf(EjectPrefs.loadRingtone(ctx)) }
     var vibration  by remember { mutableStateOf(EjectPrefs.loadVibration(ctx)) }
     var haptic     by remember { mutableStateOf(EjectPrefs.loadHaptic(ctx)) }
-    var flash      by remember { mutableStateOf(EjectPrefs.loadFlash(ctx)) }
     // Round 9 — 다음 실행 시 튜토리얼을 다시 보여줄지 여부. 사용자가 끄면 OnboardingScreen 은
     // 더 이상 뜨지 않고, 여기서 다시 켜면 다음 앱 실행 때 튜토리얼이 되살아난다.
     var showManualNext by remember { mutableStateOf(EjectPrefs.loadShowOnboarding(ctx)) }
@@ -317,17 +316,6 @@ fun SettingsScreen(
                     onCheckedChange = {
                         haptic = it
                         EjectPrefs.saveHaptic(ctx, it)
-                    },
-                )
-                // Flash Alert
-                EjectToggleCard(
-                    icon = "💡",
-                    label = strings.settingsFlash,
-                    desc = strings.settingsFlashDesc,
-                    checked = flash,
-                    onCheckedChange = {
-                        flash = it
-                        EjectPrefs.saveFlash(ctx, it)
                     },
                 )
             }
@@ -1052,7 +1040,6 @@ fun ColumnScope.SettingsBodyInline(
     var ringtone   by remember { mutableStateOf(EjectPrefs.loadRingtone(ctx)) }
     var vibration  by remember { mutableStateOf(EjectPrefs.loadVibration(ctx)) }
     var haptic     by remember { mutableStateOf(EjectPrefs.loadHaptic(ctx)) }
-    var flash      by remember { mutableStateOf(EjectPrefs.loadFlash(ctx)) }
     var showManualNext by remember { mutableStateOf(EjectPrefs.loadShowOnboarding(ctx)) }
     var sideButtonCommand by remember {
         mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
@@ -1257,16 +1244,6 @@ fun ColumnScope.SettingsBodyInline(
             onCheckedChange = {
                 haptic = it
                 EjectPrefs.saveHaptic(ctx, it)
-            },
-        )
-        EjectToggleCard(
-            icon = "💡",
-            label = strings.settingsFlash,
-            desc = strings.settingsFlashDesc,
-            checked = flash,
-            onCheckedChange = {
-                flash = it
-                EjectPrefs.saveFlash(ctx, it)
             },
         )
     }

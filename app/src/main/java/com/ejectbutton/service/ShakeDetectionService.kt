@@ -123,7 +123,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
         return Notification.Builder(this, NOTIF_CHANNEL)
             .setContentTitle(strings.shakeNotifTitle)
             .setContentText(strings.shakeNotifText)
-            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .setSmallIcon(android.R.drawable.ic_menu_manage)
             .build()
     }
 }
