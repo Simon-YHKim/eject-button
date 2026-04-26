@@ -46,8 +46,6 @@ import com.ejectbutton.service.ButtonPatternDetector
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.FakeCallOverlayService
 import com.ejectbutton.service.SideButtonTrigger
-import com.microsoft.clarity.Clarity
-import com.microsoft.clarity.ClarityConfig
 import com.ejectbutton.analytics.EjectAnalytics
 import com.ejectbutton.service.ShakeDetectionService
 import com.ejectbutton.ui.main.MainScreen
@@ -123,15 +121,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun initClarity() {
-        try {
-            val projectId = BuildConfig.CLARITY_PROJECT_ID
-            if (projectId.isNotBlank()) {
-                Clarity.initialize(this, ClarityConfig(projectId))
-            }
-        } catch (_: Exception) {}
-    }
-
     // EJECT 3회 이상 사용했고 아직 요청하지 않았을 때 Play Store 리뷰 요청 (ASO 핵심 지표).
     // Round 31 — 기존엔 count==3 정확 일치라 한 번 지나면 영원히 안 떴다. 이제 count>=3
     // + KEY_REVIEW_REQUESTED 플래그로 제어 → 3회째 이후 아무 때나 한 번은 트리거되며
@@ -195,14 +184,20 @@ class MainActivity : ComponentActivity() {
             CrashReportManager.sendPendingReport(this)
         }
 
-        // MS Clarity 초기화 (프로젝트 ID가 설정된 경우에만)
-        initClarity()
-
         // Firebase Analytics 초기화 — 이벤트 트래킹은 EjectAnalytics 헬퍼를 통해 호출.
         EjectAnalytics.init(this)
 
-        // AdMob 초기화
-        AdManager.initialize(this)
+        // v1.2 — UMP (GDPR) consent 흐름 먼저, 그 후 AdMob 초기화.
+        //   - EEA 사용자: consent 다이얼로그 → 동의/거부 결과에 따라 광고 personalize 결정.
+        //   - non-EEA 사용자: 즉시 canRequestAds=true → AdMob 초기화.
+        //   - consent 거부해도 non-personalized 광고는 송출 가능.
+        com.ejectbutton.consent.ConsentManager.gather(this) { canRequestAds ->
+            if (canRequestAds) {
+                AdManager.initialize(this)
+            } else {
+                android.util.Log.w("MainActivity", "Consent not granted — AdMob not initialized this session")
+            }
+        }
 
         // 인앱 결제 초기화
         billingManager = BillingManager(this)
@@ -283,15 +278,12 @@ class MainActivity : ComponentActivity() {
                             exit    = fadeOut(tween(250)),
                         ) {
                             OnboardingScreen(
-                                onDoneNoMore   = {
+                                onDoneNoMore = { stepCount ->
                                     EjectPrefs.saveShowOnboarding(this@MainActivity, false)
-                                    EjectAnalytics.logOnboardingDone(skipFurther = true)
-                                    showOnboarding = false
-                                },
-                                onDoneOnceMore = {
-                                    // pref 유지 — 다음 실행에 다시 표시
-                                    EjectPrefs.saveShowOnboarding(this@MainActivity, true)
-                                    EjectAnalytics.logOnboardingDone(skipFurther = false)
+                                    EjectAnalytics.logOnboardingDone(
+                                        skipFurther = true,
+                                        stepCount = stepCount,
+                                    )
                                     showOnboarding = false
                                 },
                             )
@@ -334,6 +326,8 @@ class MainActivity : ComponentActivity() {
                                             scenario.callerName,
                                             scenario.callerLabel,
                                             scenario.prompterHint,
+                                            scenarioId = scenario.id,
+                                            mode = "shake",
                                         )
                                     } else {
                                         FakeCallOverlayService.start(
@@ -342,6 +336,8 @@ class MainActivity : ComponentActivity() {
                                             scenario.callerLabel,
                                             scenario.prompterHint,
                                             delayMs,
+                                            scenario.id,
+                                            if (delayMs == 0L) "button_now" else "button_delayed",
                                         )
                                     }
                                     val count = EjectPrefs.incrementEjectCount(this@MainActivity)
@@ -352,14 +348,15 @@ class MainActivity : ComponentActivity() {
                                     }
                                     val delaySec = if (delayMs > 0) (delayMs / 1000).toInt() else 0
                                     EjectAnalytics.logEjectFired(mode, delaySec, scenario.id)
-                                    // v1.1.0 — Clarity 정성 funnel: 가짜 통화 화면이
-                                    // 실제로 뜨는 시점에 별도 이벤트 발사 (logEjectFired 는
-                                    // "버튼 탭" 시점이라 둘 다 분리해서 마커로 남김).
-                                    com.ejectbutton.analytics.EjectClarity.fakeCallStarted(
-                                        scenarioId  = scenario.id,
-                                        callerName  = scenario.callerName,
-                                        mode        = mode,
-                                    )
+                                    // v1.2 — Conversion event: 첫 EJECT/시나리오 사용 1회만 발사.
+                                    if (!EjectPrefs.isFirstEjectLogged(this@MainActivity)) {
+                                        EjectAnalytics.logFirstEjectFired(mode, scenario.id)
+                                        EjectPrefs.markFirstEjectLogged(this@MainActivity)
+                                    }
+                                    if (!EjectPrefs.isFirstScenarioLogged(this@MainActivity)) {
+                                        EjectAnalytics.logScenarioFirstUse(scenario.id)
+                                        EjectPrefs.markFirstScenarioLogged(this@MainActivity)
+                                    }
                                     maybeRequestReview(count)
                                 }
                             )

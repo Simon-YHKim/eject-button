@@ -39,3 +39,10 @@ stop
 
 # Crash dumps
 *.hprof
+
+# v1.2 cleanup
+*.apk
+*.aab
+dist/
+.agents/
+HANDOFF_*.md

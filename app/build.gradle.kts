@@ -131,6 +131,8 @@ dependencies {
     implementation(libs.play.review)
     implementation(libs.play.billing)
     implementation(libs.google.admob)
+    // v1.2 — UMP SDK. GDPR consent flow. ConsentManager가 wrapping.
+    implementation(libs.google.ump)
     implementation(libs.ms.clarity)
     // Firebase — BoM 으로 모든 Firebase 라이브러리 버전을 한 번에 통일.
     implementation(platform(libs.firebase.bom))

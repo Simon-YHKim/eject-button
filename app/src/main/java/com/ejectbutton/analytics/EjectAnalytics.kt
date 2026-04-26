@@ -41,6 +41,20 @@ object EjectAnalytics {
         EjectClarity.ejectButtonTap(mode, scenarioId)
     }
 
+    /** Actual fake-call overlay display point. No caller name or phone number is uploaded. */
+    fun logFakeCallStarted(mode: String, scenarioId: String, callerNamePresent: Boolean) {
+        instance?.logEvent("fake_call_started", Bundle().apply {
+            putString("mode", mode)
+            putString("scenario_id", scenarioId)
+            putString("caller_name_present", if (callerNamePresent) "yes" else "no")
+        })
+        EjectClarity.fakeCallStarted(
+            scenarioId = scenarioId,
+            callerNamePresent = callerNamePresent,
+            mode = mode,
+        )
+    }
+
     /** 사용자가 트리거 모드를 바꿨을 때 — funnel 분석에 사용 */
     fun logModeChanged(mode: String) {
         instance?.logEvent("mode_changed", Bundle().apply {
@@ -65,11 +79,34 @@ object EjectAnalytics {
         EjectClarity.setUserTier("premium") // 구매 직후 user_tier 갱신 → 이후 세션 필터 가능
     }
 
-    /** 온보딩 완료 — "다시 안 봄" / "다음에 또 봄" 분기 */
-    fun logOnboardingDone(skipFurther: Boolean) {
+    /**
+     * v1.2 — Conversion event: 사용자가 처음으로 EJECT 를 발사한 순간.
+     * Firebase 콘솔에서 'Mark as conversion' 으로 등록 → AdMob 광고 ROI 측정 가능.
+     * 한 디바이스에서 1회만 발사 (KEY_FIRST_EJECT_LOGGED 플래그로 dedupe).
+     */
+    fun logFirstEjectFired(mode: String, scenarioId: String) {
+        instance?.logEvent("first_eject_fired", Bundle().apply {
+            putString("mode", mode)
+            putString("scenario_id", scenarioId)
+        })
+    }
+
+    /**
+     * v1.2 — Conversion event: 첫 시나리오 추가/사용 (활성화 깊이 측정).
+     * 가짜 통화 첫 1회 시작 시 logFirstEjectFired 와 함께 발사.
+     */
+    fun logScenarioFirstUse(scenarioId: String) {
+        instance?.logEvent("scenario_first_use", Bundle().apply {
+            putString("scenario_id", scenarioId)
+        })
+    }
+
+    /** 온보딩 완료 — 사용자가 마지막 확인까지 끝내고 다시 보지 않음을 선택한 시점 */
+    fun logOnboardingDone(skipFurther: Boolean, stepCount: Int) {
         instance?.logEvent("onboarding_done", Bundle().apply {
             putString("choice", if (skipFurther) "no_more" else "show_again")
+            putLong("step_count", stepCount.toLong())
         })
-        EjectClarity.onboardingCompleted(stepCount = 0, skipFurther = skipFurther)
+        EjectClarity.onboardingCompleted(stepCount = stepCount, skipFurther = skipFurther)
     }
 }

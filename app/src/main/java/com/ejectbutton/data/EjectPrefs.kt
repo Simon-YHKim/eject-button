@@ -35,6 +35,9 @@ object EjectPrefs {
     private const val KEY_INTER_DAY_COUNT   = "ad_inter_day_count"
     // v1.0.10 — 권한 최초 요청 여부 (이전엔 MainActivity 가 raw SharedPreferences 호출).
     private const val KEY_PERMS_REQUESTED   = "perms_requested"
+    // v1.2 — Conversion event 1회 발사용 dedupe 플래그.
+    private const val KEY_FIRST_EJECT_LOGGED = "first_eject_logged"
+    private const val KEY_FIRST_SCENARIO_LOGGED = "first_scenario_logged"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -373,6 +376,29 @@ object EjectPrefs {
     fun loadBatteryOptAsked(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_BATTERY_OPT_ASKED, false)
+
+    // ── Conversion event dedupe (v1.2) ───────────────────────────────────────
+    //
+    // Firebase Analytics conversion 이벤트는 동일 디바이스에서 평생 1회만 발사해야
+    // 정확한 funnel 측정이 됨. 아래 플래그로 dedupe.
+
+    fun isFirstEjectLogged(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_FIRST_EJECT_LOGGED, false)
+
+    fun markFirstEjectLogged(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_FIRST_EJECT_LOGGED, true).apply()
+    }
+
+    fun isFirstScenarioLogged(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_FIRST_SCENARIO_LOGGED, false)
+
+    fun markFirstScenarioLogged(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_FIRST_SCENARIO_LOGGED, true).apply()
+    }
 
     // ── Theme mode ───────────────────────────────────────────────────────────
 
