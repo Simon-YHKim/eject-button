@@ -129,14 +129,11 @@ fun MainScreen(
     val haptic  = LocalHapticFeedback.current
 
     var currentScreen    by remember { mutableStateOf(AppScreen.COMMAND) }
-    var showSettings     by remember { mutableStateOf(false) }
     var showPremiumSheet by remember { mutableStateOf(false) }
     // v1.1.0 — Rewarded Ad sheet. 비-Premium 사용자가 잠긴 기능을 누르면 띄운다.
     // [pendingRewardedAction] 은 광고 시청 완료(또는 Premium) 시 실행할 후속 동작.
     var showRewardedSheet by remember { mutableStateOf(false) }
     var pendingRewardedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    // v1.1.0 — SYSTEMS 탭 인라인 Language picker.
-    var showSystemsLangPicker by remember { mutableStateOf(false) }
 
     // 언어에 따라 기본 발신자 이름 로컬화
     val localizedDefaults = remember(strings) {
@@ -187,6 +184,14 @@ fun MainScreen(
     // 사이드 버튼 트리거 명령 — 메인 화면 카드에서도 변경 가능
     var sideButtonCommand by remember {
         mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
+    }
+    // v1.1.4 — SETTINGS 탭 안 SettingsBodyInline 에서 sideButtonCommand 가 변경되면
+    // EjectPrefs 에는 즉시 저장되지만 MainScreen 의 state 는 동기화되지 않는다.
+    // 사용자가 다시 COMMAND 탭으로 이동할 때 prefs 값을 다시 읽어 메인 카드 표시를 맞춘다.
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == AppScreen.COMMAND) {
+            sideButtonCommand = EjectPrefs.loadSideButtonCommand(ctx)
+        }
     }
     var showSideButtonPicker by remember { mutableStateOf(false) }
     var showCustomDialog by remember { mutableStateOf(false) }
@@ -394,13 +399,11 @@ fun MainScreen(
             showExitConfirmDialog    -> showExitConfirmDialog = false
             showHistoryClearedDialog -> showHistoryClearedDialog = false
             showSideVolumeHint       -> showSideVolumeHint = false
-            showSystemsLangPicker    -> showSystemsLangPicker = false
             showRewardedSheet        -> { showRewardedSheet = false; pendingRewardedAction = null }
             showPremiumSheet         -> showPremiumSheet = false
             showAddCaller            -> showAddCaller = false
             showCustomDialog         -> showCustomDialog = false
             showSideButtonPicker     -> showSideButtonPicker = false
-            showSettings             -> showSettings = false
             currentScreen != AppScreen.COMMAND -> currentScreen = AppScreen.COMMAND
             else                     -> showExitConfirmDialog = true
         }
@@ -413,19 +416,6 @@ fun MainScreen(
             onBuy     = { onPurchasePremium(); showPremiumSheet = false },
             onRestore = { onRestorePurchase(); showPremiumSheet = false },
             onDismiss = { showPremiumSheet = false },
-        )
-    }
-
-    // v1.1.0 — SYSTEMS 인라인 Language picker. SettingsScreen 의 LanguagePickerDialog 를 재사용.
-    if (showSystemsLangPicker) {
-        LanguagePickerDialog(
-            current = currentLanguage,
-            onSelect = { lang ->
-                EjectPrefs.saveLanguage(ctx, lang.code)
-                onLanguageChange(lang)
-                showSystemsLangPicker = false
-            },
-            onDismiss = { showSystemsLangPicker = false },
         )
     }
 
@@ -465,30 +455,9 @@ fun MainScreen(
         )
     }
 
-    // 설정 화면
-    if (showSettings) {
-        SettingsScreen(
-            currentLanguage   = currentLanguage,
-            isPremium         = isPremium,
-            themeMode         = themeMode,
-            onThemeModeChange = onThemeModeChange,
-            onLanguageChange  = onLanguageChange,
-            onPurchasePremium = onPurchasePremium,
-            onRestorePurchase = onRestorePurchase,
-            premiumPrice      = premiumPrice,
-            // Round 31 — 프리셋 복원 callback. MainScreen 의 state 와 EjectPrefs 동기화.
-            onRestorePresets  = {
-                deletedPresetIds = emptySet()
-                EjectPrefs.clearDeletedPresetIds(ctx)
-            },
-            onDismiss         = {
-                showSettings = false
-                // 설정에서 사이드 버튼 트리거를 켜고/끈 결과 반영
-                sideButtonCommand = EjectPrefs.loadSideButtonCommand(ctx)
-            },
-        )
-        return
-    }
+    // v1.1.4 — SettingsScreen 별도 진입 제거. SETTINGS 탭으로 이동하면 본문이
+    // 직접 SettingsBodyInline 을 emit. SettingsScreen() composable 자체는
+    // 호환을 위해 SettingsScreen.kt 에 남아있지만 더 이상 호출되지 않는다.
 
     Box(
         modifier = Modifier
@@ -562,7 +531,7 @@ fun MainScreen(
                     onDismissNotice   = { sideButtonNotice = false },
                     onOpenSettingsForSideButton = {
                         sideButtonNotice = false
-                        showSettings = true
+                        currentScreen = AppScreen.SYSTEMS
                     },
                     onOpenSideButtonPicker = { showSideButtonPicker = true },
                     onSelectCaller   = { selectedScenario = it },
@@ -582,7 +551,7 @@ fun MainScreen(
                         com.ejectbutton.analytics.EjectAnalytics.logModeChanged(mode.name)
                     },
                     onAddCaller      = { showAddCaller = true },
-                    onSettingsTap    = { showSettings = true },
+                    onSettingsTap    = { currentScreen = AppScreen.SYSTEMS },
                     onEject          = handleEject@{
                         // Round 12 — 프리미엄 게이팅 임시 해제 (사용자 테스트용).
 
@@ -712,7 +681,7 @@ fun MainScreen(
                 )
                 AppScreen.HISTORY -> HistoryContent(
                     history = history,
-                    onSettingsTap = { showSettings = true },
+                    onSettingsTap = { currentScreen = AppScreen.SYSTEMS },
                 )
                 AppScreen.SYSTEMS -> SystemsContent(
                     isPremium         = isPremium,
@@ -725,11 +694,18 @@ fun MainScreen(
                         history = emptyList()
                         showHistoryClearedDialog = true
                     },
-                    onPickLanguage          = { showSystemsLangPicker = true },
-                    onThemeModeChange       = { mode ->
-                        onThemeModeChange(mode)
+                    onLanguageChange  = { lang ->
+                        // Round 31 → v1.1.4 — 인라인 Language 선택. EjectPrefs 저장은
+                        // SettingsBodyInline 내부 LanguagePickerDialog 가 책임지고,
+                        // 여기서는 MainScreen 의 currentLanguage state 만 갱신.
+                        onLanguageChange(lang)
                     },
-                    onAdvancedSettingsTap   = { showSettings = true },
+                    onThemeModeChange = { mode -> onThemeModeChange(mode) },
+                    // Round 31 — 프리셋 복원 callback. MainScreen 의 state 와 EjectPrefs 동기화.
+                    onRestorePresets  = {
+                        deletedPresetIds = emptySet()
+                        EjectPrefs.clearDeletedPresetIds(ctx)
+                    },
                 )
             }
             }
@@ -1161,13 +1137,14 @@ private fun SystemsContent(
     themeMode: com.ejectbutton.data.ThemeMode,
     onUpgradePremium: () -> Unit,
     onClearHistory: () -> Unit,
-    onPickLanguage: () -> Unit,
+    onLanguageChange: (AppLanguage) -> Unit,
     onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
-    onAdvancedSettingsTap: () -> Unit,
+    onRestorePresets: () -> Unit,
 ) {
-    // v1.1.0 — Settings 진입 1-탭 단축. 가장 자주 쓰는 Language / Theme 를 SYSTEMS 탭
-    // 안에 인라인 카드로 배치. 그 외 (알림 토글, 사이드 버튼, 사용법, 프리셋 복원 등) 은
-    // "Advanced" 진입으로 보존 (SettingsScreen 자체는 1055줄 → 전부 인라인은 risk too high).
+    // v1.1.4 — SETTINGS 탭. 별도 SettingsScreen 진입 제거.
+    // SettingsScreen 본문 전체 (Language / Theme / Notifications / SideButton /
+    // Tutorial / RestorePresets / About) 를 SettingsBodyInline 으로 인라인 표시.
+    // Premium card + Quick Actions(Wipe Mission Log) + Version 카드는 그대로 유지.
     val strings = LocalAppStrings.current
 
     Column(
@@ -1177,7 +1154,8 @@ private fun SystemsContent(
             .padding(horizontal = 24.dp),
     ) {
         Spacer(Modifier.height(14.dp))
-        StitchTopBar(onSettingsTap = onAdvancedSettingsTap)
+        // 톱니 아이콘은 이 화면 자체가 SETTINGS 이므로 의미 없음 → no-op.
+        StitchTopBar(onSettingsTap = { /* SETTINGS 탭 내부에서는 no-op */ })
         Spacer(Modifier.height(24.dp))
         Text(
             text          = strings.systemsTitle.uppercase(),
@@ -1287,25 +1265,17 @@ private fun SystemsContent(
             Spacer(Modifier.height(20.dp))
         }
 
-        // v1.1.0 — 인라인 Language 행 (가장 자주 쓰는 설정 → 1-탭 단축).
-        InlineLanguageRow(
-            currentLanguage = currentLanguage,
-            onClick = onPickLanguage,
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // v1.1.0 — 인라인 Theme 세그먼트 (LIGHT / SYSTEM / DARK).
-        InlineThemeCard(
-            themeMode = themeMode,
+        // v1.1.4 — SettingsScreen 본문 inline. (Language / Theme / Notifications /
+        // SideButton / Tutorial / RestorePresets / About 7개 섹션)
+        SettingsBodyInline(
+            currentLanguage   = currentLanguage,
+            themeMode         = themeMode,
             onThemeModeChange = onThemeModeChange,
-            label = strings.settingsTheme,
-            lightLabel = strings.themeLight,
-            systemLabel = strings.themeSystem,
-            darkLabel = strings.themeDark,
+            onLanguageChange  = onLanguageChange,
+            onRestorePresets  = onRestorePresets,
         )
-        Spacer(Modifier.height(16.dp))
 
-        // 그룹: 빠른 작업 (히스토리 정리 + Advanced 진입)
+        // 빠른 작업: 히스토리 정리. (Advanced 진입은 더 이상 없음 — 본문 자체가 settings)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1315,7 +1285,6 @@ private fun SystemsContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
-            SystemsRow(icon = "⚙", label = strings.settingsTitle, onClick = onAdvancedSettingsTap)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -1392,130 +1361,8 @@ private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
     }
 }
 
-// v1.1.0 — SYSTEMS 탭 인라인 Language picker.
-// 탭 시 LanguagePickerDialog (SettingsScreen.kt 정의) 가 뜨도록 callback 으로 위임.
-@Composable
-private fun InlineLanguageRow(
-    currentLanguage: AppLanguage,
-    onClick: () -> Unit,
-) {
-    val strings = LocalAppStrings.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(EjectSurface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(EjectSurfaceMid),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("🌐", fontSize = 18.sp)
-                }
-                Spacer(Modifier.width(14.dp))
-                Text(
-                    strings.settingsLanguage,
-                    fontSize = 15.sp,
-                    color = EjectOnSurface,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    currentLanguage.nativeName,
-                    fontSize = 14.sp,
-                    color = EjectSecondary,
-                )
-                Spacer(Modifier.width(6.dp))
-                Text("›", fontSize = 20.sp, color = EjectSecondary)
-            }
-        }
-    }
-}
-
-// v1.1.0 — SYSTEMS 탭 인라인 Theme 세그먼트 (LIGHT / SYSTEM / DARK).
-@Composable
-private fun InlineThemeCard(
-    themeMode: com.ejectbutton.data.ThemeMode,
-    onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
-    label: String,
-    lightLabel: String,
-    systemLabel: String,
-    darkLabel: String,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(EjectSurface)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(EjectSurfaceMid),
-                contentAlignment = Alignment.Center,
-            ) {
-                val icon = when (themeMode) {
-                    com.ejectbutton.data.ThemeMode.LIGHT  -> "☀"
-                    com.ejectbutton.data.ThemeMode.DARK   -> "🌙"
-                    com.ejectbutton.data.ThemeMode.SYSTEM -> "⚙"
-                }
-                Text(icon, fontSize = 18.sp)
-            }
-            Spacer(Modifier.width(14.dp))
-            Text(
-                label,
-                fontSize = 15.sp,
-                color = EjectOnSurface,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val opts = listOf(
-                com.ejectbutton.data.ThemeMode.LIGHT  to lightLabel,
-                com.ejectbutton.data.ThemeMode.SYSTEM to systemLabel,
-                com.ejectbutton.data.ThemeMode.DARK   to darkLabel,
-            )
-            opts.forEach { (mode, optLabel) ->
-                val isSel = themeMode == mode
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSel) EjectCoral else EjectSurfaceMid)
-                        .clickable { onThemeModeChange(mode) }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        optLabel,
-                        fontSize = 12.sp,
-                        color = if (isSel) Color.White else EjectOnSurface,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-    }
-}
+// v1.1.4 — InlineLanguageRow / InlineThemeCard 는 SettingsBodyInline (SettingsScreen.kt)
+// 안에 동일 디자인이 들어갔으므로 제거됨.
 
 // ─── 공통 컴포넌트 ────────────────────────────────────────────────────────────
 

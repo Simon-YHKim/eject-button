@@ -1029,6 +1029,421 @@ internal fun CustomCommandRecordingDialog(
 }
 
 /**
+ * v1.1.4 — SettingsScreen 본문을 SystemsContent 에서 inline 호출 가능하도록 추출.
+ * ColumnScope 에서 자식 항목들을 직접 emit. 부모 Column 이 verticalScroll 제공.
+ * Header (← + "SYSTEMS") 와 Version 카드는 포함하지 않음 — SystemsContent 가
+ * 자체 헤더와 Version 카드를 가지고 있다.
+ *
+ * 본문은 기존 SettingsScreen() 의 9개 LazyColumn item 중 Language / Theme /
+ * Notifications / SideButton / Tutorial / RestorePresets / About 7개를
+ * Column 항목으로 그대로 옮긴 것. dialog state + dialog emit 도 함께 이동.
+ */
+@Composable
+fun ColumnScope.SettingsBodyInline(
+    currentLanguage: AppLanguage,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onLanguageChange: (AppLanguage) -> Unit,
+    onRestorePresets: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    val ctx = LocalContext.current
+
+    var ringtone   by remember { mutableStateOf(EjectPrefs.loadRingtone(ctx)) }
+    var vibration  by remember { mutableStateOf(EjectPrefs.loadVibration(ctx)) }
+    var haptic     by remember { mutableStateOf(EjectPrefs.loadHaptic(ctx)) }
+    var flash      by remember { mutableStateOf(EjectPrefs.loadFlash(ctx)) }
+    var showManualNext by remember { mutableStateOf(EjectPrefs.loadShowOnboarding(ctx)) }
+    var sideButtonCommand by remember {
+        mutableStateOf(EjectPrefs.loadSideButtonCommand(ctx))
+    }
+    var showSideButtonPicker by remember { mutableStateOf(false) }
+    var showHowToUse by remember { mutableStateOf(false) }
+    var showLangPicker by remember { mutableStateOf(false) }
+    var showRestoreDoneDialog by remember { mutableStateOf(false) }
+
+    if (showSideButtonPicker) {
+        SideButtonCommandPickerDialog(
+            current   = sideButtonCommand,
+            onSelect  = { cmd ->
+                sideButtonCommand = cmd
+                EjectPrefs.saveSideButtonCommand(ctx, cmd)
+                ButtonWatchService.reconcile(ctx)
+                showSideButtonPicker = false
+            },
+            onDismiss = { showSideButtonPicker = false },
+        )
+    }
+
+    if (showHowToUse) {
+        HowToUseDialog(onDismiss = { showHowToUse = false })
+    }
+
+    if (showLangPicker) {
+        LanguagePickerDialog(
+            current  = currentLanguage,
+            onSelect = { lang ->
+                EjectPrefs.saveLanguage(ctx, lang.code)
+                onLanguageChange(lang)
+                showLangPicker = false
+            },
+            onDismiss = { showLangPicker = false },
+        )
+    }
+
+    if (showRestoreDoneDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDoneDialog = false },
+            title = { Text(strings.restoreDoneTitle, fontWeight = FontWeight.Bold) },
+            text  = { Text(strings.restoreDoneMsg) },
+            confirmButton = {
+                TextButton(onClick = { showRestoreDoneDialog = false }) {
+                    Text(
+                        strings.dialogConfirm,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
+    // ── Language ────────────────────────────────────────────────────────
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
+            .clickable { showLangPicker = true }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EjectSurfaceMid),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("🌐", fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    strings.settingsLanguage,
+                    fontSize = 15.sp,
+                    color = EjectOnSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    currentLanguage.nativeName,
+                    fontSize = 14.sp,
+                    color = EjectSecondary,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("›", fontSize = 20.sp, color = EjectSecondary)
+            }
+        }
+    }
+    Spacer(Modifier.height(24.dp))
+
+    // ── Theme mode (3-way segmented picker: LIGHT / SYSTEM / DARK) ──────
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EjectSurface)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(EjectSurfaceMid),
+                contentAlignment = Alignment.Center,
+            ) {
+                val icon = when (themeMode) {
+                    ThemeMode.LIGHT  -> "☀"
+                    ThemeMode.DARK   -> "🌙"
+                    ThemeMode.SYSTEM -> "⚙"
+                }
+                Text(icon, fontSize = 18.sp)
+            }
+            Spacer(Modifier.width(14.dp))
+            Text(
+                strings.settingsTheme,
+                fontSize = 15.sp,
+                color = EjectOnSurface,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val opts = listOf(
+                ThemeMode.LIGHT  to strings.themeLight,
+                ThemeMode.SYSTEM to strings.themeSystem,
+                ThemeMode.DARK   to strings.themeDark,
+            )
+            opts.forEach { (mode, label) ->
+                val isSel = themeMode == mode
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSel) EjectCoral else EjectSurfaceMid)
+                        .clickable { onThemeModeChange(mode) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        label,
+                        fontSize = 12.sp,
+                        color = if (isSel) Color.White else EjectOnSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(24.dp))
+
+    // ── Notifications & Sound ───────────────────────────────────────────
+    EjectSectionHeader(strings.settingsNotifications)
+    Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(EjectSurfaceLow)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EjectToggleCard(
+            icon = "🔔",
+            label = strings.settingsRingtone,
+            desc = strings.settingsRingtoneDesc,
+            checked = ringtone,
+            onCheckedChange = {
+                ringtone = it
+                EjectPrefs.saveRingtone(ctx, it)
+            },
+        )
+        EjectToggleCard(
+            icon = "📳",
+            label = strings.settingsVibration,
+            desc = null,
+            checked = vibration,
+            onCheckedChange = {
+                vibration = it
+                EjectPrefs.saveVibration(ctx, it)
+            },
+        )
+        EjectToggleCard(
+            icon = "✋",
+            label = strings.settingsHaptic,
+            desc = null,
+            checked = haptic,
+            onCheckedChange = {
+                haptic = it
+                EjectPrefs.saveHaptic(ctx, it)
+            },
+        )
+        EjectToggleCard(
+            icon = "💡",
+            label = strings.settingsFlash,
+            desc = strings.settingsFlashDesc,
+            checked = flash,
+            onCheckedChange = {
+                flash = it
+                EjectPrefs.saveFlash(ctx, it)
+            },
+        )
+    }
+    Spacer(Modifier.height(24.dp))
+
+    // ── Side Button Trigger ─────────────────────────────────────────────
+    EjectSectionHeader(strings.settingSideButton)
+    Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(EjectSurfaceLow)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(EjectSurface)
+                .clickable { showSideButtonPicker = true }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(EjectSurfaceMid),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("🎚️", fontSize = 18.sp)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(
+                            strings.settingSideButton,
+                            fontSize = 15.sp,
+                            color = EjectOnSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            strings.settingSideButtonDesc,
+                            fontSize = 12.sp,
+                            color = EjectSecondary,
+                        )
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        sideButtonCommand.label(strings),
+                        fontSize = 13.sp,
+                        color = if (sideButtonCommand.isEnabled) EjectCoral else EjectSecondary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("›", fontSize = 20.sp, color = EjectSecondary)
+                }
+            }
+        }
+        if (sideButtonCommand.isEnabled) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(EjectCoral.copy(alpha = 0.10f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    strings.settingSideButtonWarning,
+                    fontSize = 11.sp,
+                    color = EjectCoral,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        EjectLinkCard(
+            icon = "📘",
+            label = strings.howToUseTitle,
+            onClick = { showHowToUse = true },
+        )
+    }
+    Spacer(Modifier.height(24.dp))
+
+    // ── Tutorial (re-enable onboarding for next launch) ─────────────────
+    EjectSectionHeader(strings.howToUseTitle)
+    Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(EjectSurfaceLow)
+            .padding(8.dp),
+    ) {
+        EjectToggleCard(
+            icon  = "📖",
+            label = strings.settingsShowManual,
+            desc  = strings.settingsShowManualDesc,
+            checked = showManualNext,
+            onCheckedChange = {
+                showManualNext = it
+                EjectPrefs.saveShowOnboarding(ctx, it)
+            },
+        )
+    }
+    Spacer(Modifier.height(24.dp))
+
+    // ── Callers: restore default presets ───────────────────────────────
+    EjectSectionHeader(strings.settingsRestorePresets)
+    Spacer(Modifier.height(8.dp))
+    EjectLinkCard(
+        icon = "↩️",
+        label = strings.settingsRestorePresets,
+        onClick = {
+            onRestorePresets()
+            showRestoreDoneDialog = true
+        },
+    )
+    Spacer(Modifier.height(24.dp))
+
+    // ── About ───────────────────────────────────────────────────────────
+    EjectSectionHeader(strings.settingsAbout)
+    Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(EjectSurfaceLow)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EjectLinkCard(
+            icon = "📤",
+            label = strings.settingsShare,
+            onClick = {
+                val i = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, "Eject Button — ${strings.catchphrase}\nhttps://play.google.com/store/apps/details?id=com.ejectbutton")
+                }
+                ctx.startActivity(Intent.createChooser(i, strings.settingsShare))
+            }
+        )
+        EjectLinkCard(
+            icon = "⭐",
+            label = strings.settingsRate,
+            onClick = {
+                runCatching {
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW,
+                        Uri.parse("market://details?id=com.ejectbutton")))
+                }.onFailure {
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW,
+                        Uri.parse("https://play.google.com/store/apps/details?id=com.ejectbutton")))
+                }
+            }
+        )
+        EjectLinkCard(
+            icon = "🔒",
+            label = strings.settingsPrivacy,
+            onClick = {
+                ctx.startActivity(Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://eject-button.hwanydanh.workers.dev/privacy-policy")))
+            }
+        )
+    }
+    Spacer(Modifier.height(24.dp))
+}
+
+/**
  * Google Play Billing 에서 가격을 못 가져왔을 때 (제품 미등록·디버그 빌드·오프라인)
  * 기기 로케일 기반으로 월 구독 근사치 가격을 표시한다.
  *
