@@ -71,7 +71,7 @@ fun PremiumUpgradeDialog(
 ) {
     val strings = LocalAppStrings.current
     // 기본 선택 = ANNUAL (가장 인기). 사용자가 가장 자주 선택하길 기대.
-    var selectAnnual by rememberSaveable { mutableStateOf(true) }
+    var selectAnnual by rememberSaveable { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -184,13 +184,13 @@ private fun PremiumUpgradeBody(
         // 플랜 카드 2 — 연간 (기본)
         PlanCard(
             selected = selectAnnual,
-            onSelect = onSelectAnnual,
+            onSelect = { /* v1.1.3 hotfix: Annual disabled */ },
             label = annualLabel,
             price = annualPrice,
             per = annualPer,
             note = "$annualAvg · $annualNote",
-            saveBadge = saveLabel,
-            popularBadge = bestLabel,
+            saveBadge = null,
+            popularBadge = "Coming Soon",
         )
 
         Spacer(Modifier.height(20.dp))
