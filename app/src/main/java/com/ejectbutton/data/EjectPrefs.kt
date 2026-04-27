@@ -38,6 +38,9 @@ object EjectPrefs {
     // v1.2 — Conversion event 1회 발사용 dedupe 플래그.
     private const val KEY_FIRST_EJECT_LOGGED = "first_eject_logged"
     private const val KEY_FIRST_SCENARIO_LOGGED = "first_scenario_logged"
+    // v1.2.0 — 위장 launcher 아이콘 (Decoy) 선택값.
+    // 값은 DecoyManager.Decoy enum 의 name (e.g. "DEFAULT", "CALCULATOR")
+    private const val KEY_DECOY = "decoy_alias"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -398,6 +401,22 @@ object EjectPrefs {
     fun markFirstScenarioLogged(ctx: Context) {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_FIRST_SCENARIO_LOGGED, true).apply()
+    }
+
+    // ── Decoy launcher icon (v1.2.0) ─────────────────────────────────────────
+    //
+    // 사용자가 설정 → 위장 아이콘 에서 선택한 Decoy enum 의 name 을 저장.
+    // DecoyManager.setActive() 가 PackageManager 토글 후 이 함수로 prefs 도 sync.
+
+    fun saveDecoy(ctx: Context, decoy: DecoyManager.Decoy) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_DECOY, decoy.name).apply()
+    }
+
+    fun loadDecoy(ctx: Context): DecoyManager.Decoy {
+        val raw = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_DECOY, null)
+        return DecoyManager.Decoy.fromName(raw)
     }
 
     // ── Theme mode ───────────────────────────────────────────────────────────

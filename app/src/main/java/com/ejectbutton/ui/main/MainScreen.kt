@@ -43,8 +43,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.res.stringResource
+import com.ejectbutton.R
 import com.ejectbutton.ads.AdManager
 import com.ejectbutton.data.AppLanguage
+import com.ejectbutton.data.DecoyManager
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.Scenario
@@ -1162,6 +1165,10 @@ private fun SystemsContent(
     // Tutorial / RestorePresets / About) 를 SettingsBodyInline 으로 인라인 표시.
     // Premium card + Quick Actions(Wipe Mission Log) + Version 카드는 그대로 유지.
     val strings = LocalAppStrings.current
+    val ctx = LocalContext.current
+    // v1.2.0 — 위장 아이콘 다이얼로그 상태.
+    var showDecoyDialog by remember { mutableStateOf(false) }
+    var currentDecoy by remember { mutableStateOf(EjectPrefs.loadDecoy(ctx)) }
 
     Column(
         modifier = Modifier
@@ -1305,6 +1312,11 @@ private fun SystemsContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
+            // v1.2.0 — 위장 아이콘 토글. 다이얼로그에서 5개 옵션 중 선택.
+            SystemsRow(icon = "🎭", label = strings.settingsDecoy, onClick = {
+                currentDecoy = EjectPrefs.loadDecoy(ctx)
+                showDecoyDialog = true
+            })
             SystemsRow(icon = "💬", label = strings.settingsShare, onClick = {
                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "text/plain"
@@ -1319,6 +1331,61 @@ private fun SystemsContent(
                     )
                 }
             })
+        }
+
+        // v1.2.0 — 위장 아이콘 선택 다이얼로그.
+        // 5 개 옵션 (Eject Button / 계산기 / 메모장 / 날씨 / 시계) 라디오 선택.
+        // 선택 즉시 DecoyManager.setActive() 가 PackageManager 토글 + EjectPrefs 저장.
+        if (showDecoyDialog) {
+            AlertDialog(
+                onDismissRequest = { showDecoyDialog = false },
+                title = {
+                    Text(strings.settingsDecoy, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Column {
+                        Text(
+                            strings.settingsDecoyDesc,
+                            fontSize = 13.sp,
+                            color = EjectSecondary,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        val options = listOf(
+                            DecoyManager.Decoy.DEFAULT to strings.settingsDecoyDefault,
+                            DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
+                            DecoyManager.Decoy.MEMO to stringResource(R.string.decoy_label_memo),
+                            DecoyManager.Decoy.WEATHER to stringResource(R.string.decoy_label_weather),
+                            DecoyManager.Decoy.CLOCK to stringResource(R.string.decoy_label_clock),
+                        )
+                        options.forEach { (decoy, label) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        currentDecoy = decoy
+                                        DecoyManager.setActive(ctx, decoy)
+                                        showDecoyDialog = false
+                                    }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = currentDecoy == decoy,
+                                    onClick = null,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(label, fontSize = 15.sp)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showDecoyDialog = false }) {
+                        Text(strings.dialogCancel)
+                    }
+                },
+                containerColor = EjectSurface,
+            )
         }
 
         Spacer(Modifier.height(16.dp))
