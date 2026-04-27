@@ -4,7 +4,9 @@ import android.content.Context
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.Scenario
 import com.ejectbutton.data.TriggerMode
-import com.ejectbutton.data.defaultScenarios
+import com.ejectbutton.data.localizedDefaultScenarios
+import com.ejectbutton.data.strings
+import com.ejectbutton.data.withRuntimeCallerLabel
 
 /**
  * 사이드 버튼(또는 향후 다른 외부 트리거)이 발동했을 때
@@ -16,7 +18,7 @@ import com.ejectbutton.data.defaultScenarios
 object SideButtonTrigger {
 
     fun fire(ctx: Context) {
-        val scenario = resolveScenario(ctx)
+        val scenario = resolveScenario(ctx).withRuntimeCallerLabel()
         val delayMs = resolveDelayMs(ctx, scenario).coerceAtLeast(0L)
 
         CountdownBus.start(delayMs)
@@ -26,12 +28,18 @@ object SideButtonTrigger {
             scenario.callerLabel,
             scenario.prompterHint,
             delayMs,
+            scenario.id,
+            "side_button",
         )
     }
 
     private fun resolveScenario(ctx: Context): Scenario {
         val savedId = EjectPrefs.loadSelectedScenarioId(ctx)
-        val all: List<Scenario> = defaultScenarios + EjectPrefs.loadScenarios(ctx)
+        // v1.2 — 백그라운드 트리거에서도 다국어 mom/dad 프리셋을 사용. 이전엔 raw
+        // defaultScenarios 를 합쳤기 때문에 영어 사용자도 "엄마"/"아빠" 가 떴다.
+        val strings = EjectPrefs.loadLanguage(ctx).strings()
+        val presets = localizedDefaultScenarios(strings)
+        val all: List<Scenario> = presets + EjectPrefs.loadScenarios(ctx)
         return savedId
             ?.let { id -> all.firstOrNull { it.id == id } }
             ?: all.first()

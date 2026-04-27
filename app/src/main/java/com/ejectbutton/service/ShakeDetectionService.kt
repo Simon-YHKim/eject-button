@@ -61,6 +61,15 @@ class ShakeDetectionService : Service(), SensorEventListener {
     private var prompter    = ""
     private var delayMs     = 0L
     private var lastShakeMs = 0L
+    // v1.2 — 호출부 (MainActivity) 가 EJECT 발사 컨텍스트로 함께 넘기는 메타.
+    private var scenarioId  = ""
+    private var mode        = "shake"
+    /**
+     * v1.2 — 한 번 armed 가 한 번만 발사되도록 보장. SHAKE_COOLDOWN 만으로는
+     * 동일 셰이크 중 여러 SensorEvent 가 임계값을 넘기면 multi-trigger 가 가능했음.
+     * 사용자가 SHAKE 모드를 다시 활성화 (start) 하면 onStartCommand 에서 reset.
+     */
+    private var hasTriggered = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -75,6 +84,9 @@ class ShakeDetectionService : Service(), SensorEventListener {
         callerLabel = intent?.getStringExtra("caller_label") ?: "휴대전화"
         prompter    = intent?.getStringExtra("prompter")     ?: ""
         delayMs     = intent?.getLongExtra("delay_ms", 0L)    ?: 0L
+        scenarioId  = intent?.getStringExtra("scenario_id")  ?: ""
+        mode        = intent?.getStringExtra("mode")         ?: "shake"
+        hasTriggered = false
 
         try { startForeground(NOTIF_ID, buildNotif()) } catch (_: Exception) {}
 
@@ -83,7 +95,9 @@ class ShakeDetectionService : Service(), SensorEventListener {
             sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
         } else {
             // 센서 없으면 즉시 발신
-            FakeCallOverlayService.start(this, callerName, callerLabel, prompter, delayMs)
+            FakeCallOverlayService.start(
+                this, callerName, callerLabel, prompter, delayMs, scenarioId, mode,
+            )
             stopSelf()
         }
         return START_STICKY
@@ -91,6 +105,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
+        if (hasTriggered) return
         val x = event.values[0]
         val y = event.values[1]
         val z = event.values[2]
@@ -100,11 +115,14 @@ class ShakeDetectionService : Service(), SensorEventListener {
             val now = SystemClock.elapsedRealtime()
             if (now - lastShakeMs > SHAKE_COOLDOWN) {
                 lastShakeMs = now
+                hasTriggered = true
                 CountdownBus.start(delayMs)
-                FakeCallOverlayService.start(this, callerName, callerLabel, prompter, delayMs)
+                FakeCallOverlayService.start(
+                    this, callerName, callerLabel, prompter, delayMs, scenarioId, mode,
+                )
                 // stopSelf() 를 호출하지 않는다 — 서비스가 죽으면 두 번째 흔들기가
                 // 감지되지 않아 모드를 껐다 켜야 재트리거가 되는 버그가 있었다.
-                // 센서 리스너를 유지하고 SHAKE_COOLDOWN 으로 중복 발화만 방지한다.
+                // 센서 리스너를 유지하고 hasTriggered + SHAKE_COOLDOWN 으로 중복 발화만 방지한다.
             }
         }
     }

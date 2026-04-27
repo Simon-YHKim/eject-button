@@ -61,3 +61,43 @@ val defaultScenarios = listOf(
         isRandomPhone = true,
     ),
 )
+
+/**
+ * v1.2 — 다국어 프리셋 시나리오. 현재 앱 언어에 맞춰 mom/dad 프리셋의 callerName/name 을
+ * 매핑한다. defaultScenarios 의 mom/dad 프리셋은 한국어 "엄마"/"아빠" 가 하드코딩되어
+ * 영어/일본어/스페인어 사용자에게 어색함. UI 레이어 (MainScreen, SideButtonTrigger)
+ * 가 이 함수를 호출해 현재 strings 의 callerMom/callerDad 를 적용.
+ *
+ * 기존 inline 매핑 (`when (id) { "mom" -> ...; "dad" -> ... }`) 을 헬퍼로 추출 →
+ * 같은 로직이 두세 곳에 흩어지던 중복 제거 + ScenarioRuntimeTest 로 단위 테스트 가능.
+ */
+fun localizedDefaultScenarios(strings: AppStrings): List<Scenario> {
+    return defaultScenarios.map { scenario ->
+        when (scenario.id) {
+            "mom" -> scenario.copy(
+                callerName = strings.callerMom,
+                name       = strings.callerMom,
+            )
+            "dad" -> scenario.copy(
+                callerName = strings.callerDad,
+                name       = strings.callerDad,
+            )
+            else -> scenario
+        }
+    }
+}
+
+/**
+ * v1.2 — 가짜 통화 시작 시점에 callerLabel 을 동적으로 결정.
+ *
+ * isRandomPhone=true (mom/dad 프리셋) 이면 매번 새 한국식 모바일 라벨을 생성해서
+ * 동일 발신자라도 호출마다 다른 번호로 떠 가짜 통화 리얼리티를 유지.
+ * 그 외 (사용자 정의 시나리오) 는 입력한 callerLabel 그대로 유지.
+ */
+fun Scenario.withRuntimeCallerLabel(): Scenario {
+    return if (isRandomPhone) {
+        copy(callerLabel = randomKoreanMobileLabel())
+    } else {
+        this
+    }
+}

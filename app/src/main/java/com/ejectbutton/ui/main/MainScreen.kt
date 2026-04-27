@@ -53,7 +53,9 @@ import com.ejectbutton.data.SideButtonCommand
 import com.ejectbutton.data.Urgency
 import com.ejectbutton.data.defaultScenarios
 import com.ejectbutton.data.formatPhoneWithHyphens
+import com.ejectbutton.data.localizedDefaultScenarios
 import com.ejectbutton.data.randomKoreanMobileLabel
+import com.ejectbutton.data.withRuntimeCallerLabel
 import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.CountdownBus
 import com.ejectbutton.service.FakeCallOverlayService
@@ -136,15 +138,10 @@ fun MainScreen(
     var showRewardedSheet by remember { mutableStateOf(false) }
     var pendingRewardedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    // 언어에 따라 기본 발신자 이름 로컬화
+    // v1.2 — 언어별 mom/dad 매핑은 Scenario.kt 의 localizedDefaultScenarios 헬퍼로 통일.
+    // 같은 로직이 SideButtonTrigger / MainScreen 두 곳에 중복돼 있던 것을 단일 출처로 리팩터.
     val localizedDefaults = remember(strings) {
-        defaultScenarios.map { s ->
-            when (s.id) {
-                "mom" -> s.copy(name = strings.callerMom, callerName = strings.callerMom)
-                "dad" -> s.copy(name = strings.callerDad, callerName = strings.callerDad)
-                else  -> s
-            }
-        }
+        localizedDefaultScenarios(strings)
     }
 
     // 사이드 버튼 트리거가 백그라운드에서 발동될 때도 같은 선택을 사용하기 위해
@@ -625,12 +622,18 @@ fun MainScreen(
                                 TimeChoice.AFTER_10S -> 10_000L
                                 TimeChoice.CUSTOM    -> customDelaySec * 1000L
                             }
+                            // v1.2 — SHAKE armed 시점에 runtime caller label 을 결정해서
+                            // service intent 에 직접 박는다. ShakeDetectionService 가
+                            // 자체적으로 또 무작위화하지 않도록 발사 직전 한 번만 샘플링.
+                            val shakeScenario = selectedScenario.withRuntimeCallerLabel()
                             ShakeDetectionService.start(
                                 ctx,
-                                selectedScenario.callerName,
-                                selectedScenario.callerLabel,
-                                selectedScenario.prompterHint,
+                                shakeScenario.callerName,
+                                shakeScenario.callerLabel,
+                                shakeScenario.prompterHint,
                                 shakeDelayMs,
+                                scenarioId = shakeScenario.id,
+                                mode = "shake",
                             )
                             shakeStandby = true
                             if (EjectPrefs.loadHaptic(ctx)) {
@@ -666,11 +669,10 @@ fun MainScreen(
                         val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
                         EjectPrefs.addHistory(ctx, entry)
                         history = EjectPrefs.loadHistory(ctx)
-                        // Round 30 — mom/dad 프리셋은 isRandomPhone = true 이므로 실제 통화 직전에
-                        // 매번 새로운 무작위 번호를 주입한다. 커스텀 발신자는 입력한 번호 유지.
-                        val scenarioToSend = if (selectedScenario.isRandomPhone)
-                            selectedScenario.copy(callerLabel = randomKoreanMobileLabel())
-                        else selectedScenario
+                        // Round 30 / v1.2 — mom/dad 프리셋은 isRandomPhone=true 이므로 실제
+                        // 통화 직전 매번 새로운 무작위 번호로 callerLabel 갱신. 커스텀 발신자는
+                        // 입력한 번호 유지. 인라인 분기 → Scenario.withRuntimeCallerLabel() 헬퍼.
+                        val scenarioToSend = selectedScenario.withRuntimeCallerLabel()
                         onEject(scenarioToSend, delayMs)
                     },
                     onCancel = {

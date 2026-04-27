@@ -135,6 +135,9 @@ class FakeCallOverlayService : Service() {
         val prompter    = intent?.getStringExtra(EXTRA_PROMPTER)     ?: ""
         val delayMs     = intent?.getLongExtra(EXTRA_DELAY_MS, 0L)   ?: 0L
         val startInCall = intent?.getBooleanExtra(EXTRA_START_IN_CALL, false) ?: false
+        // v1.2 — analytics funnel 컨텍스트 (호출부가 추가로 전달).
+        val scenarioId  = intent?.getStringExtra("scenario_id") ?: ""
+        val mode        = intent?.getStringExtra("mode")        ?: "button_now"
         callState.value = startInCall
 
         try { startForeground(NOTIF_ID, buildNotif(delayMs)) } catch (_: Exception) {}
@@ -147,12 +150,12 @@ class FakeCallOverlayService : Service() {
                 pendingHandler = null
                 try { acquireWake() } catch (_: Exception) {}
                 try { ring() } catch (_: Exception) {}
-                tryShowOverlayOrAbort(callerName, callerLabel, prompter)
+                tryShowOverlayOrAbort(callerName, callerLabel, prompter, scenarioId, mode)
             }, delayMs)
         } else {
             try { acquireWake() } catch (_: Exception) {}
             try { ring() } catch (_: Exception) {}
-            tryShowOverlayOrAbort(callerName, callerLabel, prompter)
+            tryShowOverlayOrAbort(callerName, callerLabel, prompter, scenarioId, mode)
         }
         return START_NOT_STICKY
     }
@@ -160,10 +163,19 @@ class FakeCallOverlayService : Service() {
     /**
      * 오버레이 표시 시도. 실패 시(권한 철회, BadTokenException 등) 링/진동
      * 을 모두 중단하고 사용자에게 토스트로 원인 안내 → silent fail 방지.
+     *
+     * v1.2 — scenarioId/mode 를 showOverlay 까지 전달해 analytics 가
+     * 오버레이가 실제로 떴을 때만 fake_call_started 를 기록하도록.
      */
-    private fun tryShowOverlayOrAbort(callerName: String, callerLabel: String, prompter: String) {
+    private fun tryShowOverlayOrAbort(
+        callerName: String,
+        callerLabel: String,
+        prompter: String,
+        scenarioId: String,
+        mode: String,
+    ) {
         try {
-            showOverlay(callerName, callerLabel, prompter)
+            showOverlay(callerName, callerLabel, prompter, scenarioId, mode)
         } catch (e: Exception) {
             // 링/진동 정리
             stopRing()
@@ -203,7 +215,13 @@ class FakeCallOverlayService : Service() {
     }
 
     @Suppress("DEPRECATION")
-    private fun showOverlay(callerName: String, callerLabel: String, prompter: String) {
+    private fun showOverlay(
+        callerName: String,
+        callerLabel: String,
+        prompter: String,
+        scenarioId: String,
+        mode: String,
+    ) {
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -290,6 +308,16 @@ class FakeCallOverlayService : Service() {
 
         overlay = view
         try { wm?.addView(view, params) } catch (_: Exception) { stopSelf(); return }
+
+        // v1.2 — addView 가 성공한 다음에만 fake_call_started 를 기록.
+        // 카운트다운 / arming 단계에서 발사하면 실제로 화면이 안 뜬 경우 (권한 철회 등)
+        // 도 conversion 으로 잡혀 데이터가 오염된다. 또한 PII 방지를 위해
+        // callerName 자체는 보내지 않고 isNotBlank 로 환산한 Boolean 만 전달.
+        com.ejectbutton.analytics.EjectAnalytics.logFakeCallStarted(
+            mode = mode,
+            scenarioId = scenarioId,
+            callerNamePresent = callerName.isNotBlank(),
+        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.post {

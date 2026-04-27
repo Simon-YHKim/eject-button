@@ -172,11 +172,14 @@ fun OnboardingScreen(
                         OnboardingPageContent(pages[i])
                     } else {
                         // v1.2 — 외부 onDoneNoMore 가 (Int) -> Unit 이므로 totalSteps
-                        // 를 캡처해서 () -> Unit 으로 wrap. OnboardingFinalContent 의
-                        // 내부 시그니처는 () -> Unit 유지 (UI Button onClick 직결용).
+                        // 를 캡처해서 () -> Unit 으로 wrap.
+                        // v1.2 (Codex regression fix) — "잘못 들었습니다?" 버튼은 외부
+                        // onDoneOnceMore (호출부가 default no-op 으로 두는 케이스가 많음)
+                        // 에 의존하지 말고 첫 페이지로 되돌아가기. 이게 "한번 더" 의 진짜
+                        // 의도.
                         OnboardingFinalContent(
-                            onDoneNoMore   = { onDoneNoMore(totalSteps) },
-                            onDoneOnceMore = onDoneOnceMore,
+                            onDoneNoMore = { onDoneNoMore(totalSteps) },
+                            onRestart    = { index = 0 },
                         )
                     }
                 }
@@ -272,7 +275,7 @@ private fun OnboardingPageContent(page: OnboardingPage) {
 @Composable
 private fun OnboardingFinalContent(
     onDoneNoMore: () -> Unit,
-    onDoneOnceMore: () -> Unit,
+    onRestart: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
     Column(
@@ -325,7 +328,7 @@ private fun OnboardingFinalContent(
         }
         Spacer(Modifier.height(12.dp))
         OutlinedButton(
-            onClick = onDoneOnceMore,
+            onClick = onRestart,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp),
