@@ -63,6 +63,8 @@ import com.ejectbutton.ui.theme.EjectSurfaceMid
  *                      v1.2: stepCount 인자로 사용자가 도달한 페이지 수 (1..totalSteps)
  *                      를 함께 전달 → onboarding funnel 분석.
  *  - [onDoneOnceMore] — 다음 실행 시 또 띄움 (pref 유지). 호출부가 생략하면 no-op.
+ *                       v1.2.2-test.2 부터: 시각 회귀 fix 로 인해 onboarding 안에서는
+ *                       내부 index 0 복귀로 처리. 외부 콜백은 옵셔널 호환용으로 유지.
  *
  * 설정에서 "사용 설명 보기" 토글을 다시 켜면 재활성화된다.
  */
@@ -171,16 +173,13 @@ fun OnboardingScreen(
                     if (i < pages.size) {
                         OnboardingPageContent(pages[i])
                     } else {
-                        // v1.2 — 외부 onDoneNoMore 가 (Int) -> Unit 이므로 totalSteps
-                        // 를 캡처해서 () -> Unit 으로 wrap.
-                        // v1.2 (Codex regression fix) — "잘못 들었습니다?" 버튼은 외부
-                        // onDoneOnceMore (호출부가 default no-op 으로 두는 케이스가 많음)
-                        // 에 의존하지 말고 첫 페이지로 되돌아가기. 이게 "한번 더" 의 진짜
-                        // 의도.
-                        OnboardingFinalContent(
-                            onDoneNoMore = { onDoneNoMore(totalSteps) },
-                            onRestart    = { index = 0 },
-                        )
+                        // v1.2.2-test.2 — 두 버튼(옛썰! / 잘못들었습니다?)을 outer
+                        // Column 의 bottom action area 로 hoist 했다. AnimatedContent
+                        // 람다 내부에서 outer state(`index`)를 mutate 하면 transition
+                        // 진행 중 일부 recomposition trigger 가 누락되는 회귀가 있어서
+                        // (Test 1 — onRestart 무반응) 클릭 핸들러를 outer scope 로
+                        // 옮겨 람다 indirection 을 제거했다. 여기엔 시각 요소만 남는다.
+                        OnboardingFinalContent()
                     }
                 }
             }
@@ -204,7 +203,11 @@ fun OnboardingScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Next button only on non-final pages
+            // Bottom action area — 페이지 별 버튼.
+            // v1.2.2-test.2: final page 의 "옛썰!" / "잘못들었습니다?" 도 여기로 hoist.
+            // 클릭 람다(`{ onDoneNoMore(totalSteps) }`, `{ index = 0 }`) 가
+            // OnboardingScreen 스코프에서 직접 실행되므로 AnimatedContent 람다
+            // capture 의 회귀 영향권 밖이다.
             if (index < pages.size) {
                 Button(
                     onClick = { if (index < pages.size) index += 1 },
@@ -224,7 +227,40 @@ fun OnboardingScreen(
                     )
                 }
             } else {
-                Spacer(Modifier.height(0.dp))
+                // Final page primary action — 온보딩 종료 + pref 저장.
+                Button(
+                    onClick = { onDoneNoMore(totalSteps) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EjectCoral,
+                        contentColor   = Color.White,
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
+                ) {
+                    Text(
+                        strings.onboardingFinalDismiss,
+                        fontSize   = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.5.sp,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                // Final page secondary action — 첫 페이지로 복귀.
+                OutlinedButton(
+                    onClick = { index = 0 },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
+                ) {
+                    Text(
+                        strings.onboardingFinalRepeat,
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = EjectSecondary,
+                        letterSpacing = 0.5.sp,
+                    )
+                }
             }
         }
     }
@@ -272,11 +308,12 @@ private fun OnboardingPageContent(page: OnboardingPage) {
     }
 }
 
+/**
+ * v1.2.2-test.2 — 시각 요소만 (emoji + MAYDAY 타이틀 + 질문 텍스트).
+ * 두 버튼은 OnboardingScreen 의 bottom action area 에서 직접 렌더한다.
+ */
 @Composable
-private fun OnboardingFinalContent(
-    onDoneNoMore: () -> Unit,
-    onRestart: () -> Unit,
-) {
+private fun OnboardingFinalContent() {
     val strings = LocalAppStrings.current
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -308,38 +345,5 @@ private fun OnboardingFinalContent(
             fontWeight = FontWeight.SemiBold,
             color      = EjectOnSurface,
         )
-        Spacer(Modifier.height(36.dp))
-        Button(
-            onClick = onDoneNoMore,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = EjectCoral,
-                contentColor   = Color.White,
-            ),
-            shape = RoundedCornerShape(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp),
-        ) {
-            Text(
-                strings.onboardingFinalDismiss,
-                fontSize   = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(
-            onClick = onRestart,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp),
-        ) {
-            Text(
-                strings.onboardingFinalRepeat,
-                fontSize   = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color      = EjectSecondary,
-                letterSpacing = 0.5.sp,
-            )
-        }
     }
 }
