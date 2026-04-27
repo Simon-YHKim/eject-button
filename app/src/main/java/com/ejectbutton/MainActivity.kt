@@ -232,6 +232,8 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalAppStrings provides strings) {
                     var splashDone by remember { mutableStateOf(false) }
                     val isPremium by billingManager.isPremium.collectAsState()
+                    // v1.3.0 — INAPP 광고 제거 일회성 unlock 상태. premium 과 별도.
+                    val isAdsRemoved by billingManager.isAdsRemoved.collectAsState()
                     // 첫 실행 튜토리얼: pref 값이 true 일 때 MainScreen 대신 OnboardingScreen 을 보여준다.
                     // 사용자가 '더이상의 설명은 필요 없다' 를 누르면 false 로 저장.
                     // '다음번에... 한번만... 더...' 를 누르면 값을 유지 (다음 실행에 다시 표시).
@@ -246,6 +248,10 @@ class MainActivity : ComponentActivity() {
                     // 프리미엄 구매/복원 시 광고 로더/슬롯을 즉시 비운다.
                     LaunchedEffect(isPremium) {
                         AdManager.setPremium(this@MainActivity, isPremium)
+                    }
+                    // v1.3.0 — 광고 제거 일회성 구매/복원 시 광고 즉시 파기.
+                    LaunchedEffect(isAdsRemoved) {
+                        AdManager.setAdsRemoved(this@MainActivity, isAdsRemoved)
                     }
 
                     LaunchedEffect(Unit) {
@@ -312,6 +318,11 @@ class MainActivity : ComponentActivity() {
                                     billingManager.restorePurchases()
                                 },
                                 premiumPrice = billingManager.getPriceText(),
+                                isAdsRemoved = isAdsRemoved,
+                                onPurchaseRemoveAds = {
+                                    billingManager.launchPurchaseRemoveAds(this@MainActivity)
+                                },
+                                removeAdsPrice = billingManager.getRemoveAdsPriceText(),
                                 onEject = { scenario: Scenario, delayMs: Long ->
                                     if (!Settings.canDrawOverlays(this@MainActivity)) {
                                         overlayPermLauncher.launch(

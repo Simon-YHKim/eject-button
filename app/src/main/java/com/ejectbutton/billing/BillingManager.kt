@@ -15,13 +15,21 @@ import kotlinx.coroutines.flow.StateFlow
  *  - 상품 ID: [PRODUCT_PREMIUM] = "eject_premium_monthly"
  *  - Play Console 에서 이 ID 로 구독 상품을 만들고, 1개의 base plan ("monthly")
  *    을 등록한 뒤 가격을 설정해야 한다 (예: ₩1,900 / $1.99).
- *  - 사용자가 결제하면 [onPurchasesUpdated] → EjectPrefs.savePremium(true).
- *  - 복원 / acknowledge 는 SUBS ProductType 으로 재쿼리.
+ *
+ * v1.3.0 — 광고 제거 일회성 (INAPP) 추가.
+ *  - 상품 ID: [PRODUCT_REMOVE_ADS] = "eject_remove_ads_lifetime"
+ *  - Play Console 에서 INAPP 상품 (구독 아님) 으로 등록, 가격 ₩3,300 권장.
+ *  - 한 번 결제 + acknowledged 되면 영구 unlock. consume 하지 않음.
+ *  - SUBS premium 구독자는 자동으로 광고 제거되므로 별도 unlock 불필요.
+ *
+ * 두 상품은 독립 — 사용자는 둘 다 살 수도, 하나만 살 수도, 안 살 수도 있다.
+ * AdManager 는 (isPremium || isAdsRemoved) 둘 중 하나만 true 여도 광고 비활성.
  */
 class BillingManager(private val context: Context) : PurchasesUpdatedListener {
 
     companion object {
-        const val PRODUCT_PREMIUM = "eject_premium_monthly"
+        const val PRODUCT_PREMIUM     = "eject_premium_monthly"
+        const val PRODUCT_REMOVE_ADS  = "eject_remove_ads_lifetime"
     }
 
     private val billingClient = BillingClient.newBuilder(context)
@@ -29,16 +37,22 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
         .enablePendingPurchases()
         .build()
 
+    // SUBS premium 구독 상태
     private val _isPremium = MutableStateFlow(EjectPrefs.loadPremium(context))
     val isPremium: StateFlow<Boolean> = _isPremium
 
-    private var productDetails: ProductDetails? = null
+    // v1.3.0 — INAPP 광고 제거 일회성 unlock 상태 (SUBS 와 독립)
+    private val _isAdsRemoved = MutableStateFlow(EjectPrefs.loadAdsRemoved(context))
+    val isAdsRemoved: StateFlow<Boolean> = _isAdsRemoved
+
+    private var subsDetails: ProductDetails? = null
+    private var inappDetails: ProductDetails? = null
 
     fun connect() {
         billingClient.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    queryProduct()
+                    queryProducts()
                     restorePurchases()
                 }
             }
@@ -49,24 +63,45 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
         })
     }
 
-    private fun queryProduct() {
-        val params = QueryProductDetailsParams.newBuilder()
-            .setProductList(
-                listOf(
-                    QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId(PRODUCT_PREMIUM)
-                        .setProductType(BillingClient.ProductType.SUBS)
-                        .build()
+    /**
+     * SUBS + INAPP 두 상품을 모두 조회. 각각 별도 ProductDetails 캐시.
+     */
+    private fun queryProducts() {
+        // SUBS — 월 구독 (eject_premium_monthly)
+        billingClient.queryProductDetailsAsync(
+            QueryProductDetailsParams.newBuilder()
+                .setProductList(
+                    listOf(
+                        QueryProductDetailsParams.Product.newBuilder()
+                            .setProductId(PRODUCT_PREMIUM)
+                            .setProductType(BillingClient.ProductType.SUBS)
+                            .build()
+                    )
                 )
-            )
-            .build()
+                .build()
+        ) { _, details -> subsDetails = details.firstOrNull() }
 
-        billingClient.queryProductDetailsAsync(params) { _, details ->
-            productDetails = details.firstOrNull()
-        }
+        // INAPP — 일회성 광고 제거 (eject_remove_ads_lifetime)
+        billingClient.queryProductDetailsAsync(
+            QueryProductDetailsParams.newBuilder()
+                .setProductList(
+                    listOf(
+                        QueryProductDetailsParams.Product.newBuilder()
+                            .setProductId(PRODUCT_REMOVE_ADS)
+                            .setProductType(BillingClient.ProductType.INAPP)
+                            .build()
+                    )
+                )
+                .build()
+        ) { _, details -> inappDetails = details.firstOrNull() }
     }
 
+    /**
+     * SUBS + INAPP 양쪽 구매 내역 복원. 각각 다른 type 으로 query.
+     * 디바이스 변경 / 앱 재설치 시 자동 호출되어 unlock 복원.
+     */
     fun restorePurchases() {
+        // SUBS premium 구독 복원
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
                 .setProductType(BillingClient.ProductType.SUBS)
@@ -79,36 +114,39 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
             if (hasPremium) {
                 EjectPrefs.savePremium(context, true)
                 _isPremium.value = true
-                purchases.filter { !it.isAcknowledged }.forEach { purchase ->
-                    val ackParams = AcknowledgePurchaseParams.newBuilder()
-                        .setPurchaseToken(purchase.purchaseToken)
-                        .build()
-                    // v1.0.9 — 콜백의 BillingResult 검증.
-                    // ack 실패 시 다음 connect() → restorePurchases() 가 다시 시도하므로
-                    // 자동 회복이 가능하지만, Play 서버는 3일 안에 ack 안 된 구매를
-                    // 자동 환불한다. 그 안에 connect 가 한 번이라도 성공하면 회복.
-                    billingClient.acknowledgePurchase(ackParams) { ackResult ->
-                        if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                            android.util.Log.w(
-                                "BillingManager",
-                                "ackPurchase(restore) failed: code=${ackResult.responseCode}"
-                            )
-                        }
-                    }
-                }
-            } else {
+                purchases.filter { !it.isAcknowledged }.forEach { ackIfNeeded(it, "premium-restore") }
+            } else if (EjectPrefs.loadPremium(context)) {
                 // 구독이 만료/취소되면 프리미엄 상태도 내린다.
-                if (EjectPrefs.loadPremium(context)) {
-                    EjectPrefs.savePremium(context, false)
-                    _isPremium.value = false
-                }
+                EjectPrefs.savePremium(context, false)
+                _isPremium.value = false
             }
+        }
+
+        // v1.3.0 — INAPP 광고 제거 일회성 복원
+        billingClient.queryPurchasesAsync(
+            QueryPurchasesParams.newBuilder()
+                .setProductType(BillingClient.ProductType.INAPP)
+                .build()
+        ) { _, purchases ->
+            val hasAdsRemoved = purchases.any {
+                it.products.contains(PRODUCT_REMOVE_ADS) &&
+                    it.purchaseState == Purchase.PurchaseState.PURCHASED
+            }
+            if (hasAdsRemoved) {
+                EjectPrefs.saveAdsRemoved(context, true)
+                _isAdsRemoved.value = true
+                purchases.filter { !it.isAcknowledged }.forEach { ackIfNeeded(it, "ads-removed-restore") }
+            }
+            // INAPP 일회성 unlock 은 만료 / 환불 케이스 거의 없음 (consume 안 하니).
+            // 환불은 Play Console 에서 dev 가 직접 처리해야 isAdsRemoved=false 로 동기화 — 별도 follow-up.
         }
     }
 
+    /**
+     * SUBS premium 결제 시작 (월 구독). offerToken 필수.
+     */
     fun launchPurchase(activity: Activity) {
-        val details = productDetails ?: return
-        // 구독은 base plan 의 offerToken 을 지정해야 한다.
+        val details = subsDetails ?: return
         val offerToken = details.subscriptionOfferDetails
             ?.firstOrNull()
             ?.offerToken
@@ -127,11 +165,28 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
     }
 
     /**
+     * v1.3.0 — INAPP 광고 제거 일회성 결제 시작. offerToken 불필요 (구독이 아니므로).
+     */
+    fun launchPurchaseRemoveAds(activity: Activity) {
+        val details = inappDetails ?: return
+        val flowParams = BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(
+                listOf(
+                    BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(details)
+                        .build()
+                )
+            )
+            .build()
+        billingClient.launchBillingFlow(activity, flowParams)
+    }
+
+    /**
      * 구독의 경상 가격(월 요금) 을 반환. Play 에서 받아오는 `formattedPrice` 는
      * 로케일에 맞춰 통화 기호/숫자 포맷이 들어간 최종 문자열 ("₩1,900", "$1.99" 등).
      */
     fun getPriceText(): String? {
-        val phases = productDetails?.subscriptionOfferDetails
+        val phases = subsDetails?.subscriptionOfferDetails
             ?.firstOrNull()
             ?.pricingPhases
             ?.pricingPhaseList
@@ -142,36 +197,43 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
             ?: phases.firstOrNull()?.formattedPrice
     }
 
+    /**
+     * v1.3.0 — INAPP 광고 제거 일회성 가격 (예: "₩3,300", "$2.49"). 로케일 자동.
+     * INAPP 은 oneTimePurchaseOfferDetails 에서 가격 추출.
+     */
+    fun getRemoveAdsPriceText(): String? =
+        inappDetails?.oneTimePurchaseOfferDetails?.formattedPrice
+
+    /**
+     * 신규 구매 시 ack 또는 복원 ack 통합 헬퍼. 3 일 안에 ack 안 되면 Play 가
+     * 자동 환불하므로 실패 시 다음 connect() → restorePurchases() 가 재시도.
+     */
+    private fun ackIfNeeded(purchase: Purchase, label: String) {
+        if (purchase.isAcknowledged) return
+        val ackParams = AcknowledgePurchaseParams.newBuilder()
+            .setPurchaseToken(purchase.purchaseToken)
+            .build()
+        billingClient.acknowledgePurchase(ackParams) { ackResult ->
+            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                android.util.Log.w(
+                    "BillingManager",
+                    "ackPurchase($label) failed: code=${ackResult.responseCode}"
+                )
+            }
+        }
+    }
+
     override fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
-        // v1.1.5 — 결제 응답 모든 분기 처리 (이전엔 OK + PURCHASED 만 처리, 나머지 묵음 → 환불 요청 risk).
+        // v1.1.5 — 결제 응답 모든 분기 처리.
+        // v1.3.0 — INAPP 광고 제거 상품 분기 추가. PRODUCT_PREMIUM / PRODUCT_REMOVE_ADS
+        // 둘 다 같은 콜백으로 들어와 products list 로 구분.
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
                 purchases?.forEach { purchase ->
                     when (purchase.purchaseState) {
-                        Purchase.PurchaseState.PURCHASED -> {
-                            EjectPrefs.savePremium(context, true)
-                            _isPremium.value = true
-                            EjectAnalytics.logPremiumPurchased(PRODUCT_PREMIUM)
-                            if (!purchase.isAcknowledged) {
-                                val ackParams = AcknowledgePurchaseParams.newBuilder()
-                                    .setPurchaseToken(purchase.purchaseToken)
-                                    .build()
-                                // v1.0.9 — BillingResult OK 검증. 실패해도 premium 은 이미 저장되어
-                                // 있고 다음 실행 시 restorePurchases() 가 ack 를 재시도.
-                                billingClient.acknowledgePurchase(ackParams) { ackResult ->
-                                    if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                                        android.util.Log.w(
-                                            "BillingManager",
-                                            "ackPurchase(new) failed: code=${ackResult.responseCode}"
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        Purchase.PurchaseState.PURCHASED -> handlePurchased(purchase)
                         Purchase.PurchaseState.PENDING -> {
-                            // SEPA / 슬립 결제 등 비동기 결제. 일정 시간 후 PURCHASED 로 다시 콜백 옴.
-                            // 사용자에게는 "결제 진행 중" 토스트가 도움 되지만 BillingManager 는 Service 컨텍스트가 아니라
-                            // 토스트는 호출부 (MainActivity) 에서 처리. 여기선 로깅만.
+                            // SEPA / 슬립 결제 등 비동기 결제. 일정 시간 후 PURCHASED 로 다시 콜백.
                             android.util.Log.i("BillingManager", "purchase pending: ${purchase.products}")
                         }
                         Purchase.PurchaseState.UNSPECIFIED_STATE -> {
@@ -181,12 +243,11 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 }
             }
             BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
-                // 사용자가 이미 구매한 상품을 다시 결제 시도 (디바이스 변경, 재설치 등). 자동 복원.
+                // 이미 구매한 상품을 다시 결제 시도. 자동 복원.
                 android.util.Log.i("BillingManager", "ITEM_ALREADY_OWNED → restorePurchases() 자동 트리거")
                 restorePurchases()
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
-                // 사용자가 결제 다이얼로그를 닫음 — 일반적이고 예상된 흐름. 로깅만.
                 android.util.Log.d("BillingManager", "purchase canceled by user")
             }
             BillingClient.BillingResponseCode.NETWORK_ERROR,
@@ -196,6 +257,29 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
             }
             else -> {
                 android.util.Log.w("BillingManager", "purchase failed: code=${result.responseCode}, msg=${result.debugMessage}")
+            }
+        }
+    }
+
+    /**
+     * PURCHASED 상태 처리 — 상품 ID 로 분기. premium / ads-removed 각각 처리.
+     */
+    private fun handlePurchased(purchase: Purchase) {
+        when {
+            purchase.products.contains(PRODUCT_PREMIUM) -> {
+                EjectPrefs.savePremium(context, true)
+                _isPremium.value = true
+                EjectAnalytics.logPremiumPurchased(PRODUCT_PREMIUM)
+                ackIfNeeded(purchase, "premium-new")
+            }
+            purchase.products.contains(PRODUCT_REMOVE_ADS) -> {
+                EjectPrefs.saveAdsRemoved(context, true)
+                _isAdsRemoved.value = true
+                EjectAnalytics.logPremiumPurchased(PRODUCT_REMOVE_ADS)
+                ackIfNeeded(purchase, "ads-removed-new")
+            }
+            else -> {
+                android.util.Log.w("BillingManager", "unknown product purchased: ${purchase.products}")
             }
         }
     }

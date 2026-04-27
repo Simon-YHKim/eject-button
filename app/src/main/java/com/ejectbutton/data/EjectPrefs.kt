@@ -23,6 +23,10 @@ object EjectPrefs {
     private const val KEY_CUSTOM_DELAY_SEC  = "custom_delay_sec"
     private const val KEY_EJECT_COUNT = "eject_count"
     private const val KEY_PREMIUM     = "is_premium"
+    // v1.3.0 — 광고 제거 일회성 unlock (eject_remove_ads_lifetime).
+    // KEY_PREMIUM 과 별도 — 사용자가 premium 구독 안 해도 ₩3,300 일회성 으로 광고만 제거 가능.
+    // AdManager 가 (isPremium || isAdsRemoved) 둘 중 하나라도 true 면 광고 로드 안 함.
+    private const val KEY_ADS_REMOVED = "ads_removed"
     private const val KEY_SHOW_ONBOARDING = "show_onboarding"
     private const val KEY_BATTERY_OPT_ASKED = "battery_opt_asked"
     // Round 30 — 사용자가 삭제한 프리셋 ID 집합 (mom/dad). 사용자가 원하면 프리셋도 숨길 수 있게.
@@ -342,6 +346,24 @@ object EjectPrefs {
     fun loadPremium(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_PREMIUM, false)
+
+    // ── Ads Removed (v1.3.0 INAPP one-time unlock) ───────────────────────────
+    //
+    // 사용자가 eject_remove_ads_lifetime (₩3,300 일회성) 구매 시 true.
+    // INAPP 결제는 한 번 acknowledged 되면 영구 — 디바이스 재설치 시 restorePurchases() 가
+    // 자동 복원. KEY_PREMIUM 과 분리되어 premium 구독 없어도 광고만 제거 가능.
+
+    fun saveAdsRemoved(ctx: Context, removed: Boolean) {
+        // v1.0.10 패턴 — apply() 가 아닌 commit() 사용. BillingManager.onPurchasesUpdated
+        // 콜백 직후 앱 크래시 대비. 단일 키 commit() 은 1-5ms 라 ANR 임계 (5초) 와
+        // 비교하면 안전.
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_ADS_REMOVED, removed).commit()
+    }
+
+    fun loadAdsRemoved(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_ADS_REMOVED, false)
 
     // ── Initial permissions request flag (v1.0.10) ───────────────────────────
     //

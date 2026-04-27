@@ -45,6 +45,15 @@ object AdManager {
      */
     @Volatile private var isPremium: Boolean = false
 
+    /**
+     * v1.3.0 — 광고 제거 일회성 unlock (eject_remove_ads_lifetime ₩3,300).
+     * isPremium (월 구독) 과 별도. 둘 중 하나라도 true 면 광고 비활성.
+     */
+    @Volatile private var isAdsRemoved: Boolean = false
+
+    /** 광고 비활성 여부. premium 구독 OR 일회성 광고 제거 OR 둘 다. */
+    private val adsDisabled: Boolean get() = isPremium || isAdsRemoved
+
     private val _nativeAd = MutableStateFlow<NativeAd?>(null)
     val nativeAd: StateFlow<NativeAd?> = _nativeAd
 
@@ -53,7 +62,7 @@ object AdManager {
             MobileAds.initialize(context) {}
             isInitialized = true
         }
-        if (isPremium) return
+        if (adsDisabled) return
         // 웜 스타트로 Activity 가 재생성돼 이전 세션의 onDestroy() 에서 네이티브 광고가
         // 파기된 상태일 수 있다. 슬롯이 비어 있다면 다시 로드해 메인 화면에 노출한다.
         if (_nativeAd.value == null) {
@@ -75,7 +84,25 @@ object AdManager {
     fun setPremium(context: Context, premium: Boolean) {
         if (isPremium == premium) return
         isPremium = premium
-        if (premium) {
+        applyAdsState(context)
+    }
+
+    /**
+     * v1.3.0 — 광고 제거 일회성 (eject_remove_ads_lifetime) 상태 변경.
+     * setPremium 과 동일 패턴. 광고 즉시 파기 또는 재로드.
+     */
+    fun setAdsRemoved(context: Context, removed: Boolean) {
+        if (isAdsRemoved == removed) return
+        isAdsRemoved = removed
+        applyAdsState(context)
+    }
+
+    /**
+     * isPremium 또는 isAdsRemoved 변화 시 호출. adsDisabled 가 true 면 모든 광고
+     * 즉시 파기, false 면 (isInitialized 인 경우만) 재로드.
+     */
+    private fun applyAdsState(context: Context) {
+        if (adsDisabled) {
             _nativeAd.value?.destroy()
             _nativeAd.value = null
             interstitialAd = null
@@ -90,10 +117,10 @@ object AdManager {
     // ── 네이티브 광고 ────────────────────────────────────────────────────────
 
     fun loadNativeAd(context: Context) {
-        if (isPremium) return
+        if (adsDisabled) return
         val adLoader = AdLoader.Builder(context, BuildConfig.ADMOB_NATIVE_ID)
             .forNativeAd { ad ->
-                if (isPremium) {
+                if (adsDisabled) {
                     ad.destroy()
                     return@forNativeAd
                 }
@@ -114,7 +141,7 @@ object AdManager {
     // ── 전면 광고 ────────────────────────────────────────────────────────────
 
     fun loadInterstitial(context: Context) {
-        if (isPremium) return
+        if (adsDisabled) return
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             context,
@@ -122,7 +149,7 @@ object AdManager {
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
-                    if (isPremium) return
+                    if (adsDisabled) return
                     interstitialAd = ad
                 }
                 override fun onAdFailedToLoad(error: LoadAdError) {
@@ -134,7 +161,7 @@ object AdManager {
     }
 
     fun showInterstitialIfReady(activity: Activity, onDismissed: () -> Unit = {}) {
-        if (isPremium) {
+        if (adsDisabled) {
             onDismissed()
             return
         }
@@ -184,7 +211,7 @@ object AdManager {
     // 로 in-flight 가드. 실패해도 사용자가 다시 RewardedAdDialog 를 띄우면 자동 재시도.
 
     fun loadRewarded(context: Context) {
-        if (isPremium) return
+        if (adsDisabled) return
         if (rewardedAd != null || rewardedLoading) return
         rewardedLoading = true
         val adRequest = AdRequest.Builder().build()
@@ -195,7 +222,7 @@ object AdManager {
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewardedLoading = false
-                    if (isPremium) return
+                    if (adsDisabled) return
                     rewardedAd = ad
                 }
                 override fun onAdFailedToLoad(error: LoadAdError) {
@@ -221,7 +248,7 @@ object AdManager {
         onRewarded: () -> Unit,
         onDismissed: () -> Unit = {},
     ) {
-        if (isPremium) {
+        if (adsDisabled) {
             onRewarded()
             onDismissed()
             return

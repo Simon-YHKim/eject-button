@@ -128,6 +128,10 @@ fun MainScreen(
     onPurchasePremium: () -> Unit,
     onRestorePurchase: () -> Unit,
     premiumPrice: String?,
+    // v1.3.0 — INAPP 광고 제거 일회성 (eject_remove_ads_lifetime)
+    isAdsRemoved: Boolean = false,
+    onPurchaseRemoveAds: () -> Unit = {},
+    removeAdsPrice: String? = null,
     onEject: (scenario: Scenario, delayMs: Long) -> Unit,
 ) {
     val ctx     = LocalContext.current
@@ -697,6 +701,9 @@ fun MainScreen(
                 AppScreen.SYSTEMS -> SystemsContent(
                     isPremium         = isPremium,
                     premiumPrice      = premiumPrice,
+                    isAdsRemoved      = isAdsRemoved,
+                    removeAdsPrice    = removeAdsPrice,
+                    onPurchaseRemoveAds = onPurchaseRemoveAds,
                     currentLanguage   = currentLanguage,
                     themeMode         = themeMode,
                     onUpgradePremium  = { showPremiumSheet = true },
@@ -1152,6 +1159,10 @@ private fun HistoryEntryCard(entry: String) {
 private fun SystemsContent(
     isPremium: Boolean,
     premiumPrice: String?,
+    // v1.3.0 — INAPP 광고 제거 일회성
+    isAdsRemoved: Boolean = false,
+    removeAdsPrice: String? = null,
+    onPurchaseRemoveAds: () -> Unit = {},
     currentLanguage: AppLanguage,
     themeMode: com.ejectbutton.data.ThemeMode,
     onUpgradePremium: () -> Unit,
@@ -1312,6 +1323,21 @@ private fun SystemsContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
+            // v1.3.0 — 광고 제거 일회성 (eject_remove_ads_lifetime ₩3,300).
+            // premium 구독자도 자동으로 광고 비활성이라 굳이 또 살 필요 없음 → 숨김.
+            // 이미 구매한 사람은 "광고 제거됨 ✓" 상태로 표시 (재구매 차단).
+            if (!isPremium) {
+                if (isAdsRemoved) {
+                    SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
+                } else {
+                    val priceLabel = removeAdsPrice?.let { " — $it" } ?: ""
+                    SystemsRow(
+                        icon = "🚫",
+                        label = "${strings.settingsRemoveAdsBuy}$priceLabel",
+                        onClick = onPurchaseRemoveAds,
+                    )
+                }
+            }
             // v1.2.0 — 위장 아이콘 토글. 다이얼로그에서 5개 옵션 중 선택.
             SystemsRow(icon = "🎭", label = strings.settingsDecoy, onClick = {
                 currentDecoy = EjectPrefs.loadDecoy(ctx)
