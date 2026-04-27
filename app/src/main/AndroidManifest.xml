@@ -54,6 +54,18 @@
             android:resource="@xml/gma_ad_services_config"
             tools:replace="android:resource" />
 
+        <!--
+          v1.1.0 — 위장 아이콘 (decoy launcher).
+          기본 launcher (.MainActivity) 외에 4개 alias 추가.
+          가정폭력 / 강요 환경에서 폰을 옆 사람이 봐도 "Eject Button" 이름이
+          노출 안 되도록 위장. 사용자는 설정 화면에서 활성 alias 를 선택,
+          코드에서 PackageManager.setComponentEnabledSetting() 으로 토글.
+          - .Calculator  : 일반 계산기로 위장
+          - .Memo        : 메모장으로 위장
+          - .Weather     : 날씨 앱으로 위장
+          - .Clock       : 시계 앱으로 위장
+          기본은 MainActivity (활성), alias 4개는 disabled 상태로 시작.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -64,6 +76,66 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 위장 아이콘 1: 계산기 -->
+        <activity-alias
+            android:name=".launcher.Calculator"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/decoy_label_calculator">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- 위장 아이콘 2: 메모장 -->
+        <activity-alias
+            android:name=".launcher.Memo"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/decoy_label_memo">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- 위장 아이콘 3: 날씨 -->
+        <activity-alias
+            android:name=".launcher.Weather"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/decoy_label_weather">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- 위장 아이콘 4: 시계 -->
+        <activity-alias
+            android:name=".launcher.Clock"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/decoy_label_clock">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".service.FakeCallOverlayService"

@@ -1,42 +1,33 @@
-Stuck in a meeting that should have ended an hour ago?
-Trapped at a family dinner you can't leave?
-On a date that isn't going anywhere?
+﻿"I really need to leave..." A discreet fake call to escape drinking parties, awkward dates, and unwanted gatherings — without the people next to you noticing.
 
-Eject Button gives you a clean exit — a realistic-looking fake incoming call you trigger yourself to leave an uncomfortable situation.
+Work dinners, blind dates, family obligations, hostile meetings — we all have moments when we wish "the phone would ring." Eject Button makes that phone ring.
 
-■ HOW IT WORKS
-Tap EJECT and your phone rings immediately. Or set a timer (10s / 30s / 1 min / custom) so the call comes in at exactly the right moment. Shake your phone secretly to trigger it without anyone noticing.
+▸ Four trigger modes: shake / side button / immediate / delayed
+▸ Recents thumbnail blocked — even if someone glances at your phone, the fake call is invisible
+▸ Randomized phone numbers every time — never suspicious
+▸ 7 languages supported — English, Korean, Japanese, Chinese (Simplified/Traditional), Spanish, Hindi
 
-The call screen is styled to feel familiar so the interaction doesn't look out of place. Pick it up, say a few words from the built-in script hints, and walk out. No awkward goodbyes. No explanations.
+■ Who is this for?
+- Office workers escaping forced drinking parties
+- Anyone leaving awkward dates or social gatherings naturally
+- People declining unwanted plans without confrontation
+- Those needing discreet help in unsafe situations (Safety Mode)
 
-Eject Button is for your own self-escape. Don't use it to deceive, defraud, or harm anyone else.
+■ Why is this different from other fake call apps?
+"Invisible to bystanders" is the core principle. 99% of fake call apps are built as pranks — their fake screens leak through Recents, notifications, and multitasking views. Eject Button uses FLAG_SECURE so the fake call never appears anywhere except the active call screen.
 
-■ FEATURES
-• Instant, timer, shake, and custom delay triggers
-• Real ringtone + vibration (uses your phone's default)
-• Customizable caller name — set it to Mom, Boss, or anyone
-• Script hints during the call so you know what to say
-• Call history log
-• 7 languages: English, 한국어, 日本語, 中文, Español, हिन्दी
+■ Safety Mode (optional, coming soon)
+In unsafe situations, automatically send your location, timestamp, and name to a registered emergency contact. (Requires both users to install + pair the app.)
 
-■ WHEN PEOPLE USE IT
-→ Stuck at work dinners with no polite exit
-→ First dates that need to end
-→ Sales calls that go too long
-→ Awkward family gatherings
-→ Uncomfortable one-on-ones
+■ Smart Triggers (coming soon)
+Galaxy Watch integration — tap your wrist to trigger
+GPS scenario auto-switching — auto-enable mode when entering specific locations
 
-No prank. No joke. A real tool for real social pressure.
+■ Privacy
+Names, phone numbers, and scenario content stay entirely on-device. Analytics data is PII-masked before any external transmission.
 
-■ PERMISSIONS
-• Display over other apps — shows the fake call UI on top of whatever you're in (core function)
-• Phone state — hides the fake call if a real one arrives
-• Contacts — optional, lets you pick a real contact as the fake caller
+■ Emergency
+For real emergencies, call your local emergency line (911 in US, 112 in EU/Korea, 1366 Korea Women's Hotline). This app is an assistive tool, not a replacement for real emergency services.
 
-■ PRIVACY
-Your contacts and call history stay on your device — we never upload them.
-For product improvement the app uses Google AdMob (ad personalization), Firebase Analytics (app-usage events), and Microsoft Clarity (anonymous session recording). No personally identifying information is collected.
-Full policy: https://eject-button.hwanydanh.workers.dev/privacy-policy
-
-■ SUPPORT
-simonkim250405@gmail.com
+■ Supported devices
+Android 8.0 (Oreo) and above — phones, tablets, Chromebooks
