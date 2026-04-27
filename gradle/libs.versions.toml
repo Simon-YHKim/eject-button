@@ -11,6 +11,8 @@ ump = "3.0.0"
 firebaseBom = "33.5.1"
 googleServices = "4.4.2"
 firebaseCrashlyticsPlugin = "3.0.2"
+# v1.4.0 — Geofencing API. FusedLocationProvider + GeofencingClient.
+playServicesLocation = "21.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +39,8 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
 # v1.0.10 — Crashlytics: 자체 CrashReportManager (메일 의존) 보완. 자동 클라우드 수집.
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
+# v1.4.0 — Geofencing 기반 시나리오 자동 전환 (특정 위치 진입 시 sidebtn 모드 ON).
+google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

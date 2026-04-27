@@ -25,6 +25,16 @@
     <!-- 인터넷 (Clarity 분석, 크래시 리포트) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!--
+      v1.4.0 — GPS 지오펜스 시나리오 자동 전환.
+      사용자가 등록한 위치(예: 직장, 집) 100m 이내 진입 시 sidebtn 모드 ON,
+      이탈 시 원복. ACCESS_FINE_LOCATION 은 진입 후 정확한 trigger 위해 필수.
+      ACCESS_BACKGROUND_LOCATION 은 폰이 sleep / 백그라운드 일 때도 지오펜스
+      이벤트를 받아야 하므로 필수 — Play Console 정당화 필수 (별도 양식 + 영상).
+      가정폭력 use case 와 강한 시너지 — 위험 장소 도달 시 자동 활성화.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <application
         android:name=".EjectApplication"
@@ -160,6 +170,16 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="shake_gesture_pattern_detection" />
         </service>
+
+        <!--
+          v1.4.0 — Geofence 이벤트 수신 BroadcastReceiver.
+          PendingIntent 으로 GeofencingClient 에 등록되며, OS 가 지오펜스 진입/이탈 감지
+          시 이 receiver 의 onReceive 호출. 백그라운드에서도 작동 (FOREGROUND_SERVICE
+          따로 필요 X — OS 가 효율적으로 wake up 시킴).
+        -->
+        <receiver
+            android:name=".geofence.GeofenceTransitionReceiver"
+            android:exported="false" />
 
         <service
             android:name=".service.ButtonWatchService"

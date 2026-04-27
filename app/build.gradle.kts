@@ -140,6 +140,8 @@ dependencies {
     // v1.0.10 — Crashlytics 추가. 자체 CrashReportManager (사용자 메일 전송 의존, 보고율 1-5%)
     // 와 병행 운영. Crashlytics 는 100% 자동 클라우드 수집 → 미발견 크래시 즉시 인지.
     implementation(libs.firebase.crashlytics)
+    // v1.4.0 — Geofencing API. 특정 GPS 범위 진입/이탈 감지 → 시나리오 모드 자동 전환.
+    implementation(libs.google.location)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Unit tests — JVM only, no Android runtime required.

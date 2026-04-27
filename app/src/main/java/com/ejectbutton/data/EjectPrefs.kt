@@ -45,6 +45,12 @@ object EjectPrefs {
     // v1.2.0 — 위장 launcher 아이콘 (Decoy) 선택값.
     // 값은 DecoyManager.Decoy enum 의 name (e.g. "DEFAULT", "CALCULATOR")
     private const val KEY_DECOY = "decoy_alias"
+    // v1.4.0 — 지오펜스 ENTER 직전의 sidebtn 모드 백업 (EXIT 시 원복용).
+    // null 이면 백업이 없는 상태 (지오펜스 안에 들어있지 않음).
+    private const val KEY_GEOFENCE_PREV_MODE = "geofence_prev_mode"
+    // v1.4.0 — 사용자가 등록한 지오펜스 위치 (JSON 배열 단순 직렬화).
+    // 형식: "id|lat|lng|radius;id|lat|lng|radius;..." (구분자 ; / |).
+    private const val KEY_GEOFENCES = "registered_geofences"
     private const val F = "\u001F"
     private const val R = "\u001E"
 
@@ -440,6 +446,43 @@ object EjectPrefs {
             .getString(KEY_DECOY, null)
         return DecoyManager.Decoy.fromName(raw)
     }
+
+    // ── Geofence (v1.4.0) ────────────────────────────────────────────────────
+    //
+    // GeofenceTransitionReceiver 가 ENTER / EXIT 처리 시 사용.
+    // - prev_mode: ENTER 전 사이드 버튼 모드 백업. EXIT 시 원복.
+    // - geofences: 사용자 등록 위치 목록 (단순 string 직렬화).
+
+    fun saveGeofencePrevMode(ctx: Context, modeName: String) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_GEOFENCE_PREV_MODE, modeName).apply()
+    }
+
+    fun loadGeofencePrevMode(ctx: Context): String? =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_GEOFENCE_PREV_MODE, null)
+
+    fun hasGeofencePrevMode(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .contains(KEY_GEOFENCE_PREV_MODE)
+
+    fun clearGeofencePrevMode(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().remove(KEY_GEOFENCE_PREV_MODE).apply()
+    }
+
+    /**
+     * 사용자 등록 지오펜스 직렬화 형식: "id|lat|lng|radius;id2|lat|lng|radius;..."
+     * 빈 문자열이면 등록된 지오펜스 없음.
+     */
+    fun saveGeofences(ctx: Context, encoded: String) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putString(KEY_GEOFENCES, encoded).apply()
+    }
+
+    fun loadGeofences(ctx: Context): String =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getString(KEY_GEOFENCES, "") ?: ""
 
     // ── Theme mode ───────────────────────────────────────────────────────────
 
