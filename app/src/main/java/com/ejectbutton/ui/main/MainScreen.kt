@@ -1292,7 +1292,10 @@ private fun SystemsContent(
             onRestorePresets  = onRestorePresets,
         )
 
-        // 빠른 작업: 히스토리 정리. (Advanced 진입은 더 이상 없음 — 본문 자체가 settings)
+        // 빠른 작업: 히스토리 정리 + 친구 추천.
+        // v1.2.0 — "친구에게 추천" 행 추가. 사용자가 EJECT 한 번 성공한 후 settings
+        // 들어와서 share 가능. ACTION_SEND intent → Play Store URL 자동 포함.
+        // viral loop 의 핵심 — 회식 탈출 use case 는 단톡방에 자연스럽게 share 됨.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1302,6 +1305,20 @@ private fun SystemsContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
+            SystemsRow(icon = "💬", label = strings.settingsShare, onClick = {
+                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(
+                        android.content.Intent.EXTRA_TEXT,
+                        strings.shareMessageBody
+                    )
+                }
+                runCatching {
+                    ctx.startActivity(
+                        android.content.Intent.createChooser(shareIntent, strings.settingsShare)
+                    )
+                }
+            })
         }
 
         Spacer(Modifier.height(16.dp))
