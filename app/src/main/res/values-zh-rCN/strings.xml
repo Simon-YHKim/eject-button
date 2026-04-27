@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- v1.4.1 — 위장 launcher 아이콘 라벨 다국어. 사용자 시스템 locale 에 맞춰 launcher 에 표시. -->
+    <string name="decoy_label_calculator">计算器</string>
+    <string name="decoy_label_memo">备忘录</string>
+    <string name="decoy_label_weather">天气</string>
+    <string name="decoy_label_clock">时钟</string>
+</resources>

@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- v1.4.1 — 위장 launcher 아이콘 라벨 다국어. 사용자 시스템 locale 에 맞춰 launcher 에 표시. -->
+    <string name="decoy_label_calculator">Calculadora</string>
+    <string name="decoy_label_memo">Notas</string>
+    <string name="decoy_label_weather">Tiempo</string>
+    <string name="decoy_label_clock">Reloj</string>
+</resources>
