@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ejectbutton.data.LocalAppStrings
+import com.microsoft.clarity.modifiers.clarityMask
 import kotlinx.coroutines.delay
 
 private val InCallGradient = Brush.verticalGradient(
@@ -74,7 +75,9 @@ fun FakeInCallScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(callerName, fontSize = 52.sp, fontWeight = FontWeight.Light, color = Color.White)
+            // v1.0.1 — Clarity 마스킹: 등록 contact 이름 PII 보호.
+            Text(callerName, fontSize = 52.sp, fontWeight = FontWeight.Light, color = Color.White,
+                modifier = Modifier.clarityMask())
             Text(strings.callerMobile, fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White.copy(.75f))
 
             Spacer(modifier = Modifier.height(28.dp))

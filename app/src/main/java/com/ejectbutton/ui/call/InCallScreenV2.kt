@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ejectbutton.R
 import com.ejectbutton.data.LocalAppStrings
+import com.microsoft.clarity.modifiers.clarityMask
 import kotlinx.coroutines.delay
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -208,6 +209,9 @@ fun InCallScreenV2(
                     .padding(horizontal = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // v1.0.1 — Clarity 마스킹: callerName 은 등록 contact 이름, callerLabel
+                // 은 실제 전화번호 ("폰 010-XXXX-XXXX") 일 수 있어 PII. ComposeView
+                // 녹화 시 두 Text 만 mask. 화면 다른 부분의 heatmap 분석은 유지됨.
                 Text(
                     text = callerName,
                     color = Color.White,
@@ -215,12 +219,14 @@ fun InCallScreenV2(
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     lineHeight = 44.sp,
+                    modifier = Modifier.clarityMask(),
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
                     text = callerLabel,
                     color = Color.White.copy(alpha = 0.72f),
                     fontSize = 15.sp,                  // ↑ from 14sp — slightly larger + wider tracking feel
+                    modifier = Modifier.clarityMask(),
                 )
             }
 

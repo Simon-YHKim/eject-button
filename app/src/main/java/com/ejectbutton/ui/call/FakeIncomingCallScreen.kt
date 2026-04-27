@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ejectbutton.data.LocalAppStrings
+import com.microsoft.clarity.modifiers.clarityMask
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -58,19 +59,24 @@ fun FakeIncomingCallScreen(
                     .background(Color.White.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center,
             ) {
+                // v1.0.1 — Clarity 마스킹: 아바타 이니셜도 callerName 첫 글자라 PII 가능성.
                 Text(
                     text = callerName.take(1),
                     fontSize = 42.sp,
                     fontWeight = FontWeight.Light,
                     color = Color.White,
+                    modifier = Modifier.clarityMask(),
                 )
             }
 
             Spacer(Modifier.height(28.dp))
 
-            Text(callerName, fontSize = 38.sp, fontWeight = FontWeight.Light, color = Color.White)
+            // v1.0.1 — Clarity 마스킹: 등록 contact 이름 + 실제 전화번호 PII 보호.
+            Text(callerName, fontSize = 38.sp, fontWeight = FontWeight.Light, color = Color.White,
+                modifier = Modifier.clarityMask())
             Spacer(Modifier.height(8.dp))
-            Text(callerLabel, fontSize = 15.sp, color = Color.White.copy(alpha = 0.55f))
+            Text(callerLabel, fontSize = 15.sp, color = Color.White.copy(alpha = 0.55f),
+                modifier = Modifier.clarityMask())
             Spacer(Modifier.height(10.dp))
             Text(strings.incomingCallLabel, fontSize = 12.sp, color = Color.White.copy(alpha = 0.3f), letterSpacing = 3.sp)
 

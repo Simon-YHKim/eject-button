@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ejectbutton.data.LocalAppStrings
+import com.microsoft.clarity.modifiers.clarityMask
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -97,9 +98,15 @@ fun FakeIncomingCallScreenV2(
 
             Spacer(Modifier.height(52.dp))
 
-            Text(callerName, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            // v1.0.1 — Clarity 마스킹: callerName 은 사용자가 등록한 실제 contact 이름
+            // (예: "전남편") 일 수 있어 PII. callerLabel 도 실제 전화번호 ("010-XXXX-XXXX")
+            // 또는 관계 라벨일 수 있음. Microsoft Clarity 가 ComposeView 녹화 시 노출되지
+            // 않도록 마스킹 처리. 화면 다른 부분의 heatmap 분석은 유지됨.
+            Text(callerName, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                modifier = Modifier.clarityMask())
             Spacer(Modifier.height(10.dp))
-            Text(callerLabel, fontSize = 14.sp, color = Color.White.copy(alpha = 0.75f))
+            Text(callerLabel, fontSize = 14.sp, color = Color.White.copy(alpha = 0.75f),
+                modifier = Modifier.clarityMask())
 
             Spacer(Modifier.weight(1f))
 
