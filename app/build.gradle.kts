@@ -1,4 +1,4 @@
-import java.util.Properties
+﻿import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -8,13 +8,13 @@ plugins {
     alias(libs.plugins.google.firebase.crashlytics)
 }
 
-// keystore.properties 로드 (없으면 릴리즈 서명 스킵)
+// keystore.properties 濡쒕뱶 (?놁쑝硫?由대━利??쒕챸 ?ㅽ궢)
 val keystoreProps = Properties().also { props ->
     val f = rootProject.file("keystore.properties")
     if (f.exists()) props.load(f.inputStream())
 }
 
-// secrets.properties 로드 (API 키 — git에 포함되지 않음)
+// secrets.properties 濡쒕뱶 (API ????git???ы븿?섏? ?딆쓬)
 val secretsProps = Properties().also { props ->
     val f = rootProject.file("secrets.properties")
     if (f.exists()) props.load(f.inputStream())
@@ -33,10 +33,10 @@ android {
         versionCode = (project.findProperty("versionCodeOverride") as String?)?.toInt() ?: 1
         versionName = (project.findProperty("versionNameOverride") as String?) ?: "1.0"
 
-        // secrets.properties에서 API 키 주입 (보안: 소스코드에 키 노출 방지).
+        // secrets.properties?먯꽌 API ??二쇱엯 (蹂댁븞: ?뚯뒪肄붾뱶?????몄텧 諛⑹?).
         //
-        // Round 28 — the previous fallbacks baked Google's AdMob TEST unit IDs
-        // (ca-app-pub-3940256099942544/…) into any build where secrets.properties
+        // Round 28 ??the previous fallbacks baked Google's AdMob TEST unit IDs
+        // (ca-app-pub-3940256099942544/?? into any build where secrets.properties
         // was missing. A release APK that ships with test IDs causes AdMob to
         // suspend the publisher account. We now fail-fast at configuration time
         // when a release build can't find the real IDs; debug builds keep the
@@ -50,7 +50,7 @@ android {
                 error(
                     "Required secret '$key' is missing from keystore/secrets.properties. " +
                     "Release builds refuse to fall back to placeholder values. " +
-                    "See SETUP_GUIDE.md → secrets.properties."
+                    "See SETUP_GUIDE.md ??secrets.properties."
                 )
             }
             return value
@@ -59,17 +59,17 @@ android {
             "\"${requireSecret("CLARITY_PROJECT_ID")}\"")
         buildConfigField("String", "ADMOB_NATIVE_ID",
             "\"${secretsProps.getProperty("ADMOB_NATIVE_ID")
-                ?: if (isReleaseTask) error("ADMOB_NATIVE_ID missing — release refuses test fallback")
+                ?: if (isReleaseTask) error("ADMOB_NATIVE_ID missing ??release refuses test fallback")
                    else "ca-app-pub-3940256099942544/2247696110"}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID",
             "\"${secretsProps.getProperty("ADMOB_INTERSTITIAL_ID")
-                ?: if (isReleaseTask) error("ADMOB_INTERSTITIAL_ID missing — release refuses test fallback")
+                ?: if (isReleaseTask) error("ADMOB_INTERSTITIAL_ID missing ??release refuses test fallback")
                    else "ca-app-pub-3940256099942544/1033173712"}\"")
-        // v1.1.0 — Rewarded Ad unit ID. RewardedAdDialog 에서 30초 광고 1회 시청
-        // → 잠긴 기능 1회 사용 권한 부여. 디버그 fallback 은 Google 공식 테스트 ID.
+        // v1.1.0 ??Rewarded Ad unit ID. RewardedAdDialog ?먯꽌 30珥?愿묎퀬 1???쒖껌
+        // ???좉릿 湲곕뒫 1???ъ슜 沅뚰븳 遺?? ?붾쾭洹?fallback ? Google 怨듭떇 ?뚯뒪??ID.
         buildConfigField("String", "ADMOB_REWARDED_ID",
             "\"${secretsProps.getProperty("ADMOB_REWARDED_ID")
-                ?: if (isReleaseTask) error("ADMOB_REWARDED_ID missing — release refuses test fallback")
+                ?: if (isReleaseTask) error("ADMOB_REWARDED_ID missing ??release refuses test fallback")
                    else "ca-app-pub-3940256099942544/5224354917"}\"")
     }
 
@@ -131,20 +131,22 @@ dependencies {
     implementation(libs.play.review)
     implementation(libs.play.billing)
     implementation(libs.google.admob)
-    // v1.2 — UMP SDK. GDPR consent flow. ConsentManager가 wrapping.
+    // v1.2 ??UMP SDK. GDPR consent flow. ConsentManager媛 wrapping.
     implementation(libs.google.ump)
     implementation(libs.ms.clarity)
-    // Firebase — BoM 으로 모든 Firebase 라이브러리 버전을 한 번에 통일.
+    // Firebase ??BoM ?쇰줈 紐⑤뱺 Firebase ?쇱씠釉뚮윭由?踰꾩쟾????踰덉뿉 ?듭씪.
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
-    // v1.0.10 — Crashlytics 추가. 자체 CrashReportManager (사용자 메일 전송 의존, 보고율 1-5%)
-    // 와 병행 운영. Crashlytics 는 100% 자동 클라우드 수집 → 미발견 크래시 즉시 인지.
+    // v1.0.10 ??Crashlytics 異붽?. ?먯껜 CrashReportManager (?ъ슜??硫붿씪 ?꾩넚 ?섏〈, 蹂닿퀬??1-5%)
+    // ? 蹂묓뻾 ?댁쁺. Crashlytics ??100% ?먮룞 ?대씪?곕뱶 ?섏쭛 ??誘몃컻寃??щ옒??利됱떆 ?몄?.
     implementation(libs.firebase.crashlytics)
-    // v1.4.0 — Geofencing API. 특정 GPS 범위 진입/이탈 감지 → 시나리오 모드 자동 전환.
+    // v1.4.0 ??Geofencing API. ?뱀젙 GPS 踰붿쐞 吏꾩엯/?댄깉 媛먯? ???쒕굹由ъ삤 紐⑤뱶 ?먮룞 ?꾪솚.
     implementation(libs.google.location)
+    // v1.4.2 — Lottie for drag-to-confirm rings overlay.
+    implementation(libs.lottie.compose)
     debugImplementation(libs.androidx.ui.tooling)
 
-    // Unit tests — JVM only, no Android runtime required.
+    // Unit tests ??JVM only, no Android runtime required.
     // Added in Round 27 so we can regression-test the emoji/surrogate-pair
     // history parser, callerLabel formatting, and future pure-Kotlin logic.
     testImplementation("junit:junit:4.13.2")
