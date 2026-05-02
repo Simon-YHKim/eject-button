@@ -28,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.ejectbutton.data.LocalAppStrings
 import com.microsoft.clarity.modifiers.clarityMask
 import kotlin.math.roundToInt
@@ -193,10 +196,25 @@ private fun PulsingCallButton(
     val dragging = offsetX != 0f || offsetY != 0f
     val distance = sqrt(offsetX * offsetX + offsetY * offsetY)
 
+    // v1.4.3 — drag fraction (0.0 ~ 1.0) for Lottie progress.
+    val dragFraction = (distance / dragThresholdPx).coerceIn(0f, 1f)
+
     Box(
-        modifier = Modifier.size(72.dp),
+        modifier = Modifier.size(200.dp),  // larger box to accommodate Lottie ripple
         contentAlignment = Alignment.Center,
     ) {
+        // v1.4.3 — Lottie drag-to-confirm rings overlay (drag 중일 때만)
+        if (dragging && !triggered) {
+            val lottieComp by rememberLottieComposition(
+                LottieCompositionSpec.Asset("animations/drag_confirm.json")
+            )
+            LottieAnimation(
+                composition = lottieComp,
+                progress = { dragFraction },
+                modifier = Modifier.size(200.dp),
+            )
+        }
+
         // Pulses only when idle (looks cleaner mid-drag)
         if (!dragging && !triggered) {
             for (i in 0 until pulseLayers) {
