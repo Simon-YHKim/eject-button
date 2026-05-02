@@ -209,6 +209,12 @@ fun MainScreen(
     // Round 9 — SIDE_BUTTON arm 직후 한 번만 띄우는 "볼륨 커맨드 안내" 팝업.
     var showSideVolumeHint by remember { mutableStateOf(false) }
 
+    // v1.5.0 — 메인 화면 4-step 코치마크 투어.
+    // 첫 진입 시 EjectPrefs.loadCoachmarkSeen 이 false 면 자동 표시.
+    // OnboardingScreen 직후에만 의미가 있으므로 COMMAND 탭에서만 띄운다.
+    // spotlight 좌표 측정은 v1.5.1+ 에서 정밀화 — v1.5.0 은 fullscreen dim + tooltip 만.
+    var coachmarkVisible by remember { mutableStateOf(!EjectPrefs.loadCoachmarkSeen(ctx)) }
+
     // Round 11 — 모드 전환 = 자동 취소.
     // 현재 진행 중인 countdown / 서비스 / arm 플래그를 모두 정리.
     // 사용자가 EJECT 취소 버튼을 누르지 않고 모드만 바꿔도 안전하게 clean slate 로
@@ -756,6 +762,18 @@ fun MainScreen(
                 onPremiumTap = { showPremiumSheet = true },
             )
             Spacer(Modifier.height(12.dp))
+        }
+
+        // v1.5.0 — 코치마크 4-step 투어 overlay.
+        // 첫 실행 + COMMAND 탭에서만 한 번 자동 표시. 종료 시 prefs 저장.
+        if (coachmarkVisible && currentScreen == AppScreen.COMMAND) {
+            com.ejectbutton.ui.onboarding.CoachmarkOverlay(
+                spotlights = listOf(null, null, null, null),
+                onDone = {
+                    coachmarkVisible = false
+                    EjectPrefs.saveCoachmarkSeen(ctx, true)
+                },
+            )
         }
     }
 }
