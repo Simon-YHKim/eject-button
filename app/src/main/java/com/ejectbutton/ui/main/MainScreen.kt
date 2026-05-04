@@ -36,6 +36,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +65,11 @@ import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.CountdownBus
 import com.ejectbutton.service.FakeCallOverlayService
 import com.ejectbutton.service.ShakeDetectionService
+import com.ejectbutton.ui.coachmark.CoachmarkHost
+import com.ejectbutton.ui.coachmark.CoachmarkState
+import com.ejectbutton.ui.coachmark.CoachmarkStep
+import com.ejectbutton.ui.coachmark.SpotShape
+import com.ejectbutton.ui.coachmark.rememberCoachmarkState
 import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
 import com.google.android.gms.ads.nativead.NativeAd
@@ -209,11 +216,49 @@ fun MainScreen(
     // Round 9 — SIDE_BUTTON arm 직후 한 번만 띄우는 "볼륨 커맨드 안내" 팝업.
     var showSideVolumeHint by remember { mutableStateOf(false) }
 
-    // v1.5.0 — 메인 화면 4-step 코치마크 투어.
-    // 첫 진입 시 EjectPrefs.loadCoachmarkSeen 이 false 면 자동 표시.
-    // OnboardingScreen 직후에만 의미가 있으므로 COMMAND 탭에서만 띄운다.
-    // spotlight 좌표 측정은 v1.5.1+ 에서 정밀화 — v1.5.0 은 fullscreen dim + tooltip 만.
-    var coachmarkVisible by remember { mutableStateOf(!EjectPrefs.loadCoachmarkSeen(ctx)) }
+    // v1.5.1 — 코치마크 4-step 투어 (디자인 적용판).
+    // CoachmarkState 가 register-spot / index / isActive 모두 관리.
+    // 첫 진입 시 EjectPrefs.loadCoachmarkSeen 이 false 면 LaunchedEffect 가 start().
+    // OnboardingScreen 직후에만 의미가 있으므로 COMMAND 탭에서만 자동 트리거.
+    val coachmark = rememberCoachmarkState()
+    val coachmarkSteps = remember(strings) {
+        listOf(
+            CoachmarkStep(
+                id = "scenario",
+                title = strings.coachmarkStep1Title,
+                body  = strings.coachmarkStep1Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "trigger",
+                title = strings.coachmarkStep2Title,
+                body  = strings.coachmarkStep2Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "eject",
+                title = strings.coachmarkStep3Title,
+                body  = strings.coachmarkStep3Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "settings",
+                title = strings.coachmarkStep4Title,
+                body  = strings.coachmarkStep4Desc,
+                // Step 4 만 "시작하기" 톤 — 기존 onboardingFinalDismiss ("옛썰!" / "Copy that") 활용.
+                // 다음 마이너 버전에서 별도 "coachmarkStart" 키로 분리 가능.
+                primaryLabel = strings.onboardingFinalDismiss,
+            ),
+        )
+    }
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == AppScreen.COMMAND &&
+            !EjectPrefs.loadCoachmarkSeen(ctx) &&
+            !coachmark.isActive
+        ) {
+            coachmark.start()
+        }
+    }
 
     // Round 11 — 모드 전환 = 자동 취소.
     // 현재 진행 중인 countdown / 서비스 / arm 플래그를 모두 정리.
@@ -479,7 +524,11 @@ fun MainScreen(
             // Round 11 — COMMAND ↔ HISTORY ↔ SYSTEMS 탭 스와이프.
             // 드래그 누적 거리를 저장했다가 onDragEnd 시점에 단 한 번만 판정해
             // 어떤 속도/길이의 제스처에서도 항상 "한 번 스와이프 = 한 탭 이동" 보장.
-            .pointerInput(Unit) {
+            //
+            // v1.5.1 — 코치마크 활성 시 차단. coachmark.isActive 를 pointerInput key 로 두어
+            // 코치마크 시작/종료 시 제스처 핸들러가 새로 매칭되도록 강제.
+            .pointerInput(coachmark.isActive) {
+                if (coachmark.isActive) return@pointerInput
                 var totalDrag = 0f
                 detectHorizontalDragGestures(
                     onDragStart  = { totalDrag = 0f },
@@ -699,6 +748,7 @@ fun MainScreen(
                         EjectPrefs.saveSideButtonArmed(ctx, false)
                         ButtonWatchService.reconcile(ctx)
                     },
+                    coachmark = coachmark,
                 )
                 AppScreen.HISTORY -> HistoryContent(
                     history = history,
@@ -764,17 +814,14 @@ fun MainScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        // v1.5.0 — 코치마크 4-step 투어 overlay.
-        // 첫 실행 + COMMAND 탭에서만 한 번 자동 표시. 종료 시 prefs 저장.
-        if (coachmarkVisible && currentScreen == AppScreen.COMMAND) {
-            com.ejectbutton.ui.onboarding.CoachmarkOverlay(
-                spotlights = listOf(null, null, null, null),
-                onDone = {
-                    coachmarkVisible = false
-                    EjectPrefs.saveCoachmarkSeen(ctx, true)
-                },
-            )
-        }
+        // v1.5.1 — 코치마크 4-step 투어 (디자인 적용판).
+        // CoachmarkState 가 register-spot / index / isActive 모두 관리.
+        // CommandContent 의 4개 영역이 onGloballyPositioned 로 boundsInRoot 등록 완료된 후 start.
+        CoachmarkHost(
+            state = coachmark,
+            steps = coachmarkSteps,
+            onFinish = { EjectPrefs.saveCoachmarkSeen(ctx, true) },
+        )
     }
 }
 
@@ -804,6 +851,7 @@ private fun CommandContent(
     onSettingsTap: () -> Unit,
     onEject: () -> Unit,
     onCancel: () -> Unit,
+    coachmark: CoachmarkState,
 ) {
     val strings = LocalAppStrings.current
     val isCancelMode = countdown > 0 || sideButtonStandby || shakeStandby
@@ -816,7 +864,13 @@ private fun CommandContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(14.dp))
-        StitchTopBar(onSettingsTap = onSettingsTap)
+        StitchTopBar(
+            onSettingsTap = onSettingsTap,
+            // v1.5.1 — 코치마크 Step 4 spotlight 등록 (라운드 사각형 — IconButton 자체가 정사각형이라 RoundRect 로).
+            onSettingsBoundsChanged = { rect ->
+                coachmark.register("settings", rect, SpotShape.RoundRect)
+            },
+        )
 
         Spacer(Modifier.height(24.dp))
 
@@ -908,10 +962,17 @@ private fun CommandContent(
         }
 
         // EJECT 버튼 — countdown/standby 중엔 취소 버튼으로 변신
-        EjectButton(
-            isCancelMode = isCancelMode,
-            onClick = { if (isCancelMode) onCancel() else onEject() },
-        )
+        // v1.5.1 — 코치마크 Step 3 spotlight 등록 (원형).
+        Box(
+            modifier = Modifier.onGloballyPositioned { coords ->
+                coachmark.register("eject", coords.boundsInRoot(), SpotShape.Circle)
+            },
+        ) {
+            EjectButton(
+                isCancelMode = isCancelMode,
+                onClick = { if (isCancelMode) onCancel() else onEject() },
+            )
+        }
         Spacer(Modifier.height(14.dp))
         Text(
             text          = strings.noEscapeLabel,
@@ -925,14 +986,24 @@ private fun CommandContent(
         // 발신자 섹션
         SectionHeader(strings.sectionCaller)
         Spacer(Modifier.height(12.dp))
-        CallerChips(
-            callers   = allCallers,
-            selected  = selectedScenario,
-            customIds = customCallerIds,
-            onSelect  = onSelectCaller,
-            onDelete  = onDeleteCaller,
-            onAdd     = onAddCaller,
-        )
+        // v1.5.1 — 코치마크 Step 1 spotlight 등록 (라운드 사각형).
+        // fillMaxWidth 로 wrap — child(CallerChips) 의 LazyRow 가 fillMaxWidth 가정.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    coachmark.register("scenario", coords.boundsInRoot(), SpotShape.RoundRect)
+                },
+        ) {
+            CallerChips(
+                callers   = allCallers,
+                selected  = selectedScenario,
+                customIds = customCallerIds,
+                onSelect  = onSelectCaller,
+                onDelete  = onDeleteCaller,
+                onAdd     = onAddCaller,
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -950,10 +1021,19 @@ private fun CommandContent(
         // 트리거 모드 행 (버튼/흔들기/사이드)
         SectionHeader(strings.sectionTriggerMode)
         Spacer(Modifier.height(12.dp))
-        TriggerModeRow(
-            selected = selectedMode,
-            onSelect = onSelectMode,
-        )
+        // v1.5.1 — 코치마크 Step 2 spotlight 등록 (라운드 사각형).
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    coachmark.register("trigger", coords.boundsInRoot(), SpotShape.RoundRect)
+                },
+        ) {
+            TriggerModeRow(
+                selected = selectedMode,
+                onSelect = onSelectMode,
+            )
+        }
 
         // 사이드 모드 선택 시에만 사이드 버튼 설정 카드 노출
         if (selectedMode == ModeChoice.SIDE_BUTTON) {
@@ -972,6 +1052,8 @@ private fun CommandContent(
 private fun StitchTopBar(
     onSettingsTap: () -> Unit,
     showSettingsIcon: Boolean = true,
+    // v1.5.1 — 코치마크 Step 4 (⚙ 설정 spotlight) 등록용. COMMAND 탭에서만 전달.
+    onSettingsBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val strings = LocalAppStrings.current
     Row(
@@ -997,7 +1079,14 @@ private fun StitchTopBar(
         // v1.1.5 — SETTINGS 탭에서는 톱니바퀴를 숨김 (이미 SETTINGS 안이라 의미 X).
         // COMMAND/HISTORY 탭에서만 톱니바퀴를 보여 SETTINGS 로 점프 가능하게.
         if (showSettingsIcon) {
-            IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
+            IconButton(
+                onClick = onSettingsTap,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onGloballyPositioned { coords ->
+                        onSettingsBoundsChanged?.invoke(coords.boundsInRoot())
+                    },
+            ) {
                 Icon(
                     Icons.Default.Settings,
                     contentDescription = strings.settingsTitle,
