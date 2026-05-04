@@ -36,8 +36,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import kotlin.math.abs
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -1831,6 +1833,18 @@ private fun SectionHeader(title: String) {
     }
 }
 
+/**
+ * v1.5.3 — Sliding pill indicator (사용자 피드백 #6).
+ *
+ * 회귀 (v1.5.0~v1.5.2): `if (isActive) EjectSurfaceMid else Color.Transparent` 가 boolean step
+ * 으로 작동해서, 화면 스와이프 / 탭 전환 시 회색 음영이 한 탭에서 사라지면서 다른 탭에 즉시 jump.
+ *
+ * fix: pill 을 별도 Box 로 추출 → `animateFloatAsState` 로 slide 위치 보간.
+ *      text color / fontWeight 도 active fraction 비례해 lerp.
+ *      iOS UISegmentedControl / Material3 NavigationBar 톤.
+ *
+ * 코너 RoundedCornerShape(50), shadow, border 등 기존 디자인 시스템 그대로 유지.
+ */
 @Composable
 private fun BottomBar(
     current: AppScreen,
@@ -1839,7 +1853,19 @@ private fun BottomBar(
     onPremiumTap: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    Row(
+    val tabs = listOf(
+        AppScreen.COMMAND to strings.tabCommand,
+        AppScreen.HISTORY to strings.tabHistory,
+        AppScreen.SYSTEMS to strings.tabSystems,
+    )
+    val activeIndex = tabs.indexOfFirst { it.first == current }.coerceAtLeast(0)
+    val animatedIndex by animateFloatAsState(
+        targetValue = activeIndex.toFloat(),
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        label = "bottombar-pill-position",
+    )
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
@@ -1848,31 +1874,45 @@ private fun BottomBar(
             .background(EjectSurface.copy(alpha = 0.96f))
             .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(50))
             .padding(vertical = 6.dp, horizontal = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        listOf(
-            AppScreen.COMMAND to strings.tabCommand,
-            AppScreen.HISTORY to strings.tabHistory,
-            AppScreen.SYSTEMS to strings.tabSystems,
-        ).forEach { (screen, label) ->
-            val isActive = screen == current
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isActive) EjectSurfaceMid else Color.Transparent)
-                    .clickable { onSelect(screen) }
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text          = label,
-                    fontSize      = 11.sp,
-                    color         = if (isActive) EjectOnSurface else EjectSecondary,
-                    fontWeight    = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
-                    letterSpacing = 1.5.sp,
-                )
+        // 슬라이딩 pill — 한 탭에서 다른 탭으로 부드럽게 이동.
+        // BoxWithConstraints 의 maxWidth = 6+6dp horizontal padding 빼고 남은 가용 폭 (3 탭 동등 분할).
+        val tabWidth = maxWidth / tabs.size
+        Box(
+            modifier = Modifier
+                .offset(x = tabWidth * animatedIndex)
+                .width(tabWidth)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(50))
+                .background(EjectSurfaceMid),
+        )
+        // 텍스트 row — pill 위에 layered. 각 탭의 active fraction 으로 color/weight 보간.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { idx, (screen, label) ->
+                val activeFrac = (1f - abs(animatedIndex - idx)).coerceIn(0f, 1f)
+                val textColor = lerp(EjectSecondary, EjectOnSurface, activeFrac)
+                // FontWeight 보간: SemiBold(600) ↔ ExtraBold(800)
+                val weightInt = (600 + (800 - 600) * activeFrac).toInt()
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(50))
+                        .clickable { onSelect(screen) }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text          = label,
+                        fontSize      = 11.sp,
+                        color         = textColor,
+                        fontWeight    = FontWeight(weightInt),
+                        letterSpacing = 1.5.sp,
+                    )
+                }
             }
         }
     }
