@@ -114,10 +114,13 @@ private fun CoachmarkOverlay(
                 interactionSource = MutableInteractionSource(),
                 indication = null,
             ) { /* swallow taps */ }
+            // v1.5.6 — drawWithContent 순서 변경: dim 먼저 → cutout → drawContent (tooltip).
+            // 이전: drawContent() → dim → cutout → tooltip 도 dim 위에 보임... 아니, drawContent
+            // 가 children (= tooltip) 그리고 그 위에 dim 그려짐. 결과적으로 tooltip 도 어두워짐.
+            // 새 순서: dim 그림 → cutout (spotlight transparent) → drawContent() (tooltip 등).
+            // 이러면 tooltip 은 dim 위에 그려져 항상 명확히 보이고, spotlight 영역만 child 보임.
             .drawWithContent {
-                drawContent()
-                // v1.5.2 — dim alpha 0.74 → 0.62 로 약화. spotlight cutout 이 잘 작동하면
-                // ring 안의 child (시나리오 카드 / EJECT 버튼 / ⚙ 등) 이 명확히 보이도록.
+                // 1. 전체 dim
                 drawRect(Color.Black.copy(alpha = 0.62f))
                 spot?.let { s ->
                     if (s.shape == SpotShape.Circle) {
@@ -160,6 +163,9 @@ private fun CoachmarkOverlay(
                         }
                     }
                 }
+                // v1.5.6 — 마지막에 children (TooltipCard + 진행도 + Skip + 다음 버튼) 그림.
+                // 이러면 dim/cutout 위에 tooltip 이 항상 명확히 보임 (사용자 #2 fix).
+                drawContent()
             },
     ) {
         val placement = remember(spot, screenW, screenH) {
@@ -177,42 +183,34 @@ private fun CoachmarkOverlay(
 private data class Placement(val topDp: Dp, val sideDp: Dp)
 
 /**
- * v1.5.2 — Tooltip 카드를 spotlight 와 절대 겹치지 않게 배치.
+ * v1.5.6 — Tooltip 카드를 spotlight 와 절대 겹치지 않게 배치 + 화면 비율 기반.
  *
  * 알고리즘:
- *  1) spotlight 의 위/아래 어디에 더 큰 여백이 있는지 계산
- *  2) 더 큰 여백 쪽에 카드 배치
- *  3) cardH 추정 = 180dp (실제는 더 작거나 비슷, 안전 margin)
- *  4) 카드가 화면 밖으로 나가지 않게 coerce
- *
- * 스크린샷 회귀 (v1.5.1) 의 원인:
- *  - 기존 220dp 가정 + 한 쪽만 보던 로직이라 spotlight 와 같은 영역 차지
- *  - 시나리오 카드가 dim 으로 가려져 ring 안에 무엇이 있는지 안 보였음 (graphicsLayer 누락)
- *  - 둘 다 fix 해서 "지시 (spotlight) + 팝업 (tooltip) 둘 다 잘 보이게" 보장
+ *  1) cardH/gap/sidePad/minTop 모두 화면 height 비율 기반 (작은 폰/큰 폰 자동 적응)
+ *  2) spotlight 위/아래 여백 비교 후 더 큰 쪽에 배치
+ *  3) 카드 화면 밖 coerce
  */
 private fun placeTooltip(
     spot: Spot?, screenW: Float, screenH: Float, density: androidx.compose.ui.unit.Density,
 ): Placement {
-    val sidePad = 16.dp
-    val cardH = 180.dp           // v1.5.1 의 220dp 보다 작게 — 카드 본문 더 컴팩트해짐
-    val gap = 16.dp              // spotlight 와 카드 사이 안전 여백
-    val minTop = 64.dp           // 화면 상단 안전 영역 (status bar)
-    val rect = spot?.rect ?: return Placement(minTop + 56.dp, sidePad)
-
     return with(density) {
         val screenHDp = screenH.toDp()
+        // v1.5.6 — 화면 비율 기반 (다른 폰 자동 적응):
+        val sidePad = (screenW.toDp() * 0.04f).coerceIn(12.dp, 24.dp)   // 좌우 4% (12~24dp)
+        val cardH   = (screenHDp * 0.22f).coerceIn(150.dp, 240.dp)      // 카드 ≈ 화면 22% (150~240)
+        val gap     = (screenHDp * 0.02f).coerceIn(12.dp, 24.dp)        // spot 과 카드 간격 ≈ 2%
+        val minTop  = (screenHDp * 0.08f).coerceIn(56.dp, 96.dp)        // 상단 안전 영역 ≈ 8%
+
+        val rect = spot?.rect ?: return@with Placement(minTop + 56.dp, sidePad)
         val spotTopDp = rect.top.toDp()
         val spotBotDp = rect.bottom.toDp()
 
         val spaceAbove = (spotTopDp - minTop - gap).coerceAtLeast(0.dp)
         val spaceBelow = (screenHDp - spotBotDp - gap).coerceAtLeast(0.dp)
 
-        // 위/아래 중 cardH 가 들어갈 수 있는 큰 쪽 선택
         if (spaceBelow >= cardH || spaceBelow >= spaceAbove) {
-            // 카드를 spotlight 아래에 배치
             Placement(spotBotDp + gap, sidePad)
         } else {
-            // 카드를 spotlight 위에 배치 (위에서 cardH 만큼 빼서 top 결정)
             Placement((spotTopDp - gap - cardH).coerceAtLeast(minTop), sidePad)
         }
     }

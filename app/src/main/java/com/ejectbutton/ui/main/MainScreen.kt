@@ -223,12 +223,20 @@ fun MainScreen(
     // 첫 진입 시 EjectPrefs.loadCoachmarkSeen 이 false 면 LaunchedEffect 가 start().
     // OnboardingScreen 직후에만 의미가 있으므로 COMMAND 탭에서만 자동 트리거.
     val coachmark = rememberCoachmarkState()
+    // v1.5.6 — 5-step (시나리오 → 타이밍 → 모드 → EJECT → ⚙).
+    // 신규 step "timing" 추가 (TriggerTimeRow). 마지막 step (settings) primary 만 "옛썰!".
     val coachmarkSteps = remember(strings) {
         listOf(
             CoachmarkStep(
                 id = "scenario",
                 title = strings.coachmarkStep1Title,
                 body  = strings.coachmarkStep1Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "timing",
+                title = strings.coachmarkStepTimingTitle,
+                body  = strings.coachmarkStepTimingDesc,
                 primaryLabel = strings.coachmarkNext,
             ),
             CoachmarkStep(
@@ -247,8 +255,6 @@ fun MainScreen(
                 id = "settings",
                 title = strings.coachmarkStep4Title,
                 body  = strings.coachmarkStep4Desc,
-                // Step 4 만 "시작하기" 톤 — 기존 onboardingFinalDismiss ("옛썰!" / "Copy that") 활용.
-                // 다음 마이너 버전에서 별도 "coachmarkStart" 키로 분리 가능.
                 primaryLabel = strings.onboardingFinalDismiss,
             ),
         )
@@ -985,56 +991,69 @@ private fun CommandContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // 발신자 섹션
-        SectionHeader(strings.sectionCaller)
-        Spacer(Modifier.height(12.dp))
-        // v1.5.1 — 코치마크 Step 1 spotlight 등록 (라운드 사각형).
-        // fillMaxWidth 로 wrap — child(CallerChips) 의 LazyRow 가 fillMaxWidth 가정.
+        // v1.5.6 — 발신자 섹션. v1.5.5 wrap 패턴 유지 (child modifier 시도 후 회귀로 되돌림).
+        // verticalScroll + LazyRow 의 boundsInRoot timing 이슈로 child modifier 가 잘못된 좌표.
+        // wrap 패턴이 ring 영역 크지만 chip 들 안 보이는 회귀는 없음. v1.5.7 에서 정확화 예정.
         Box(
             modifier = Modifier
-                .fillMaxWidth()
                 .onGloballyPositioned { coords ->
                     coachmark.register("scenario", coords.boundsInRoot(), SpotShape.RoundRect)
-                },
+                }
+                .fillMaxWidth(),
         ) {
-            CallerChips(
-                callers   = allCallers,
-                selected  = selectedScenario,
-                customIds = customCallerIds,
-                onSelect  = onSelectCaller,
-                onDelete  = onDeleteCaller,
-                onAdd     = onAddCaller,
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(strings.sectionCaller)
+                Spacer(Modifier.height(12.dp))
+                CallerChips(
+                    callers   = allCallers,
+                    selected  = selectedScenario,
+                    customIds = customCallerIds,
+                    onSelect  = onSelectCaller,
+                    onDelete  = onDeleteCaller,
+                    onAdd     = onAddCaller,
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
 
-        // 트리거 시간 행 (즉시/10초/커스텀)
-        SectionHeader(strings.sectionDelay)
-        Spacer(Modifier.height(12.dp))
-        TriggerTimeRow(
-            selected       = selectedTime,
-            customDelaySec = customDelaySec,
-            onSelect       = onSelectTime,
-        )
+        // v1.5.6 — 신규 step "timing" — wrap 패턴 (v1.5.5 와 동일).
+        Box(
+            modifier = Modifier
+                .onGloballyPositioned { coords ->
+                    coachmark.register("timing", coords.boundsInRoot(), SpotShape.RoundRect)
+                }
+                .fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(strings.sectionDelay)
+                Spacer(Modifier.height(12.dp))
+                TriggerTimeRow(
+                    selected       = selectedTime,
+                    customDelaySec = customDelaySec,
+                    onSelect       = onSelectTime,
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        // 트리거 모드 행 (버튼/흔들기/사이드)
-        SectionHeader(strings.sectionTriggerMode)
-        Spacer(Modifier.height(12.dp))
-        // v1.5.1 — 코치마크 Step 2 spotlight 등록 (라운드 사각형).
+        // v1.5.6 — 트리거 모드 — wrap 패턴 (v1.5.5 와 동일).
         Box(
             modifier = Modifier
-                .fillMaxWidth()
                 .onGloballyPositioned { coords ->
                     coachmark.register("trigger", coords.boundsInRoot(), SpotShape.RoundRect)
-                },
+                }
+                .fillMaxWidth(),
         ) {
-            TriggerModeRow(
-                selected = selectedMode,
-                onSelect = onSelectMode,
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(strings.sectionTriggerMode)
+                Spacer(Modifier.height(12.dp))
+                TriggerModeRow(
+                    selected = selectedMode,
+                    onSelect = onSelectMode,
+                )
+            }
         }
 
         // 사이드 모드 선택 시에만 사이드 버튼 설정 카드 노출
@@ -1342,7 +1361,8 @@ private fun SystemsContent(
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text(
-                            "ELITE TIER",
+                            // v1.5.5 — strings.premiumBadge ("MAYDAY" 등) 사용
+                            strings.premiumBadge,
                             fontSize      = 10.sp,
                             fontWeight    = FontWeight.ExtraBold,
                             color         = Color.White,
@@ -1351,7 +1371,8 @@ private fun SystemsContent(
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Eject Mayday",
+                        // v1.5.5 — strings.premiumTitle (한국어 = "탈출 Mayday" 등)
+                        strings.premiumTitle,
                         fontSize   = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color      = Color.White,
@@ -1617,7 +1638,8 @@ private fun EjectButton(
         label = "s",
     )
 
-    // 취소 모드: 채워진 코랄 원 + 흰색 X 아이콘. 일반 모드: 흰 원 + 코랄 테두리.
+    // v1.5.6 — 일반 모드 + 취소 모드 모두 채우기 색을 외곽선과 통일 (EjectCoral 빨강).
+    // 안의 ⏏ 아이콘 + "탈출" 텍스트는 흰색으로 잘 보이게.
     Box(
         modifier = Modifier
             .size(260.dp)
@@ -1631,7 +1653,7 @@ private fun EjectButton(
                 .clip(CircleShape)
                 .background(EjectCoral.copy(alpha = 0.10f))
         )
-        // Main circle
+        // Main circle — 항상 EjectCoral 채우기
         Box(
             modifier = Modifier
                 .size(232.dp)
@@ -1642,7 +1664,7 @@ private fun EjectButton(
                     spotColor    = EjectCoral.copy(alpha = 0.35f),
                 )
                 .clip(CircleShape)
-                .background(if (isCancelMode) EjectCoral else EjectSurface)
+                .background(EjectCoral)
                 .border(4.dp, EjectCoral, CircleShape)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
@@ -1665,19 +1687,20 @@ private fun EjectButton(
                     )
                 } else {
                     Text(
+                        // v1.5.6 — 50% 키움 (72 → 108sp)
                         "⏏",
-                        fontSize   = 72.sp,
-                        color      = EjectOnSurface,
+                        fontSize   = 108.sp,
+                        color      = Color.White,
                         fontWeight = FontWeight.ExtraBold,
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        // v1.5.2 — 큰 빨간 버튼 안 라벨도 다국어 (한국어 = "탈출").
+                        // v1.5.6 — 50% 키움 (13 → 20sp), letterSpacing 약간 줄임
                         strings.ejectButtonLabel,
-                        fontSize      = 13.sp,
-                        color         = EjectCoral,
+                        fontSize      = 20.sp,
+                        color         = Color.White,
                         fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 4.sp,
+                        letterSpacing = 5.sp,
                     )
                 }
             }
@@ -1693,12 +1716,13 @@ private fun CallerChips(
     onSelect: (Scenario) -> Unit,
     onDelete: (Scenario) -> Unit,
     onAdd: () -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     val strings = LocalAppStrings.current
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         items(callers) { caller ->
             val isSelected = caller.id == selected.id
@@ -1760,6 +1784,7 @@ private fun TriggerTimeRow(
     selected: TimeChoice,
     customDelaySec: Int,
     onSelect: (TimeChoice) -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     val strings = LocalAppStrings.current
     val items = listOf(
@@ -1768,13 +1793,14 @@ private fun TriggerTimeRow(
         TimeChoice.CUSTOM    to if (selected == TimeChoice.CUSTOM && customDelaySec > 0)
             "${strings.triggerCustom} (${customDelaySec}s)" else strings.triggerCustom,
     )
-    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
+    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect, modifier = modifier)
 }
 
 @Composable
 private fun TriggerModeRow(
     selected: ModeChoice,
     onSelect: (ModeChoice) -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     val strings = LocalAppStrings.current
     val items = listOf(
@@ -1782,7 +1808,7 @@ private fun TriggerModeRow(
         ModeChoice.SHAKE       to strings.triggerShake,
         ModeChoice.SIDE_BUTTON to strings.triggerSideButton,
     )
-    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
+    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect, modifier = modifier)
 }
 
 @Composable
@@ -1790,9 +1816,10 @@ private fun <T> TriggerChoiceRow(
     items: List<Pair<T, String>>,
     selectedKey: T,
     onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items.forEach { (key, label) ->
@@ -1877,12 +1904,17 @@ private fun BottomBar(
     ) {
         // 슬라이딩 pill — 한 탭에서 다른 탭으로 부드럽게 이동.
         // BoxWithConstraints 의 maxWidth = 6+6dp horizontal padding 빼고 남은 가용 폭 (3 탭 동등 분할).
+        // v1.5.4 — fillMaxHeight() 회귀 fix: BoxWithConstraints 가 wrap-content 인 상황에서
+        // child 의 fillMaxHeight 가 unbounded 로 측정되어 BottomBar 전체 height 가
+        // 화면 거의 전체로 확장됐던 문제. 명시 height(40.dp) 로 안정화 (Row padding 12+12 +
+        // text 11sp ≈ 37dp 와 일치, 약간 여유).
         val tabWidth = maxWidth / tabs.size
+        val pillHeight = 40.dp
         Box(
             modifier = Modifier
                 .offset(x = tabWidth * animatedIndex)
                 .width(tabWidth)
-                .fillMaxHeight()
+                .height(pillHeight)
                 .clip(RoundedCornerShape(50))
                 .background(EjectSurfaceMid),
         )
@@ -1897,12 +1929,14 @@ private fun BottomBar(
                 val textColor = lerp(EjectSecondary, EjectOnSurface, activeFrac)
                 // FontWeight 보간: SemiBold(600) ↔ ExtraBold(800)
                 val weightInt = (600 + (800 - 600) * activeFrac).toInt()
+                // v1.5.6 — clickable area 와 sliding pill area 정확히 일치 (호버/클릭 음영 크기 통일).
+                // 3 탭 모두 weight(1f) + height(pillHeight) → tabWidth × 40dp 동일.
                 Box(
                     modifier = Modifier
                         .weight(1f)
+                        .height(pillHeight)
                         .clip(RoundedCornerShape(50))
-                        .clickable { onSelect(screen) }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .clickable { onSelect(screen) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
