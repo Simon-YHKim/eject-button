@@ -26,15 +26,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!--
-      v1.4.0 — GPS 지오펜스 시나리오 자동 전환.
-      사용자가 등록한 위치(예: 직장, 집) 100m 이내 진입 시 sidebtn 모드 ON,
-      이탈 시 원복. ACCESS_FINE_LOCATION 은 진입 후 정확한 trigger 위해 필수.
-      ACCESS_BACKGROUND_LOCATION 은 폰이 sleep / 백그라운드 일 때도 지오펜스
-      이벤트를 받아야 하므로 필수 — Play Console 정당화 필수 (별도 양식 + 영상).
-      가정폭력 use case 와 강한 시너지 — 위험 장소 도달 시 자동 활성화.
+      v1.5.8 — GPS 지오펜스 권한 제거.
+      v1.4.0 에 추가된 GeofenceManager 코드는 호출하는 곳이 없는 dead code 였고,
+      Play Console 비공개 테스트 검토에서 "선언되지 않은 민감한 권한" 오류 유발.
+      향후 지오펜스 시나리오 재도입 시 이 권한 + 정당화 양식을 다시 추가할 것.
     -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> -->
+    <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->
 
     <application
         android:name=".EjectApplication"

@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+## [1.5.8] - 2026-05-04
+
+### Removed
+- **dead code**: `com.ejectbutton.geofence.GeofenceManager.kt` (149 lines, 호출하는 곳 0건). v1.4.0에 추가됐으나 실제 wiring이 안 된 채 잔존.
+- **manifest 위치 권한**: `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`. dead code였던 GeofenceManager 외에 사용처 없었음. Play Console 비공개 테스트 검토에서 "선언되지 않은 민감한 권한" 오류로 출시 차단됨 → 권한 제거로 해결. 향후 지오펜스 기능 재도입 시 권한 + 정당화 양식 다시 추가 필요.
+
+### Note
+v1.5.7 의 모든 변경은 그대로 포함. 이번 patch는 Play Console 검토 통과를 위한 권한 cleanup만.
+
+[1.5.8]: https://github.com/Simon-YHKim/eject-button/releases/tag/v1.5.8
+
 ## [1.5.7] - 2026-05-04
 
 ### Fixed
