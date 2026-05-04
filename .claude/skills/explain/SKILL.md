@@ -1,6 +1,6 @@
 ---
 name: explain
-description: Use when the user asks "how does X work", "walk me through", "explain this code", "이 코드 설명해줘", "what does this do", "이게 뭐하는거야"—or wants to understand unfamiliar code, a module, or a system. Produces a structured walkthrough: entry points, data flow, key invariants, and where to make changes.
+description: "Use when the user asks \"how does X work\", \"walk me through\", \"explain this code\", \"이 코드 설명해줘\", \"what does this do\", \"이게 뭐하는거야\"—or wants to understand unfamiliar code, a module, or a system. Produces a structured walkthrough: entry points, data flow, key invariants, and where to make changes."
 version: 1.0.0
 author: general-dev
 ---

@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Use when the user asks to commit changes, stage files, or create a git commit—triggers include "commit", "커밋", "stage and commit", "git commit", "make a commit", "commit this". Produces a Conventional Commits-style commit following the repo's log style: type(scope): subject with optional body explaining the why.
+description: "Use when the user asks to commit changes, stage files, or create a git commit—triggers include \"commit\", \"커밋\", \"stage and commit\", \"git commit\", \"make a commit\", \"commit this\". Produces a Conventional Commits-style commit following the repo's log style: type(scope): subject with optional body explaining the why."
 version: 1.0.0
 author: general-dev
 ---

@@ -90,6 +90,11 @@ author: simon
 ### 단계 13. `simon-tdd` — RED-GREEN-REFACTOR 구현
 
 > simon-stack `simon-tdd` 호출. 실패 테스트 먼저 → 최소 구현 → 리팩토링. Next.js 프로젝트일 경우 `nextjs-optimizer` 동시 호출 (있을 때만).
+> **Guard Mode 활성화**: `tdd-guard-check.sh` pre-commit hook으로 source-without-test 차단.
+
+### 단계 13.5. `code-health-guard` — 구조 점검 (병렬)
+
+> simon-stack `code-health-guard` 호출. 각 기능 구현 후 file placement, naming, import direction, 함수 size 검사. 복잡 기능은 `test-gen` Scenario Planning Mode로 시나리오 매트릭스 먼저 생성.
 
 ### 단계 14. `/design-review` → `/design-html`
 
@@ -129,6 +134,11 @@ author: simon
 ### 단계 21. `simon-instincts` 업데이트 → `/checkpoint`
 
 > 이번 사이클에서 배운 것을 `simon-instincts` 로 `~/.claude/instincts/` 에 기록 → Gstack `/checkpoint` 로 상태 스냅샷.
+> **신규 skill 발견 시**: 반드시 `skill-gen-agent` Create 모드 경유. 직접 SKILL.md 작성 금지.
+
+### 병렬 실행 — `agent-delegate` 활용
+
+위 21단계 중 독립적 작업 (예: 단계 16의 5개 보안 감사, 단계 13 + 13.5의 TDD + 코드 구조 점검)은 `agent-delegate`의 Fan-out 패턴으로 병렬화 가능. 토큰 절약 + 시간 단축.
 
 ---
 
@@ -173,5 +183,5 @@ author: simon
 ## Related skills
 
 - **Gstack 파이프라인**: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/autoplan`, `/design-consultation`, `/design-shotgun`, `/design-review`, `/design-html`, `/qa`, `/cso`, `/benchmark`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/document-release`, `/retro`, `/checkpoint`, `/codex`
-- **simon-stack**: `simon-research`, `simon-tdd`, `simon-worktree`, `simon-instincts`, `security-checklist`, `authz-designer`, `paid-api-guard`, `stitch-design-flow`
+- **simon-stack**: `simon-research`, `simon-tdd`, `simon-worktree`, `simon-instincts`, `simon-design-first`, `security-checklist`, `authz-designer`, `paid-api-guard`, `stitch-design-flow`, `code-health-guard`, `agent-delegate`
 - **유틸리티**: `/careful`, `/guard`, `/freeze`, `/unfreeze`

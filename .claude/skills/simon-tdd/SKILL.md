@@ -105,6 +105,40 @@ CLAUDE.md 또는 세션 시작 시 아래를 명시:
 - [ ] 검증 도구 (서버·테스트·브라우저·DB) 가 CLAUDE.md 에 명시됨
 - [ ] 사이클당 최대 30분 — 초과하면 스코프 쪼개기
 
+---
+
+## Guard Mode — 구현 전 테스트 강제 (권고가 아닌 차단)
+
+권고는 무시당하지만 차단은 행동을 바꾼다. source 변경에 대응 test 변경이 없으면 BLOCKER.
+
+### 자동 검사
+
+```bash
+bash skills-src/simon-tdd/scripts/tdd-guard-check.sh
+```
+
+검사 로직:
+1. `git diff --cached --name-only` 로 staged 파일 수집
+2. source 파일 (`*.ts`, `*.tsx`, `*.js`, `*.jsx`, `*.py`)별로:
+   - 대응 test 파일 존재 확인 (`*.test.*`, `*.spec.*`, `test_*.py`, `*_test.py`)
+   - 동일 staging에 test 파일도 추가/변경됐는지 확인
+3. 위반 시 exit 1 + 위반 파일 목록 출력
+
+### Pre-commit hook 통합 (권장)
+
+```bash
+# .git/hooks/pre-commit 또는 husky
+bash skills-src/simon-tdd/scripts/tdd-guard-check.sh || {
+  echo "TDD Guard 위반: 테스트 없이 source 변경"
+  exit 1
+}
+```
+
+### 예외
+
+- 문서·설정 파일 (`*.md`, `*.json`, `*.yml`, `*.yaml`) 자동 제외
+- 명시적 우회: `git commit --no-verify` (사용자 책임. 실수 방지 위해 권장 안 함)
+
 ## Anti-patterns
 
 - ❌ 테스트 없이 코드 먼저 작성
