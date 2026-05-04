@@ -7,6 +7,23 @@
 
 ## [Unreleased]
 
+## [1.5.7] - 2026-05-04
+
+### Fixed
+- **코치마크 spotlight 위치 (v1.5.6 known issue 해결)**: STEP 1·2·3 ring이 의도한 register와 130px 어긋나 다음 register 영역에 그려지던 off-by-one shift. Root cause: register는 `boundsInRoot()` (window root 좌표, status bar 포함) 사용, overlay Box는 `statusBarsPadding()` 적용된 outer Box 안에 위치 → 좌표계 mismatch ≈ statusBarHeight. CoachmarkHost를 outer Box 밖 root composition level로 이동해 fix.
+- **가짜 통화 수신 화면 Lottie ring fade-out 버그**: max swipe (progress=1.0) 시 Lottie spec의 frame 100에서 두 ring 모두 opacity 0으로 fade out → ring 사라짐. `dragFraction.coerceIn(0f, 0.95f)`로 cap해 frame 95에서 멈춰 max size + visible opacity 유지.
+
+### Changed
+- **가짜 통화 수신 버튼 layout 정확도 (frame 2 reference 매칭)**: outer Box 200dp → 120dp (대칭 확보, SpaceBetween overlap 해결), Row horizontal padding 56dp → 16dp (좌우 가장자리 18%/82% 위치).
+- **가짜 통화 수신 swipe 애니메이션 속도**: `dragThresholdPx` 120f → 300f. swipe 거리 2.5배 증가로 ring expansion이 자연스럽게 천천히 진행.
+- **Lottie ring max 크기**: `Modifier.requiredSize(460.dp)`로 parent constraint 우회 (이전 `Modifier.size`는 outer Box 120dp constraint에 의해 clip됨). max ring 우측 끝이 화면 width 60%에 도달 (사용자 spec).
+- **CallerChips**: `LazyRow` → `Row + horizontalScroll`로 변경 (eager measure, horizontal scroll 유지).
+
+### Removed
+- 사용하지 않는 `androidx.compose.foundation.lazy.LazyRow` import 제거.
+
+[1.5.7]: https://github.com/Simon-YHKim/eject-button/releases/tag/v1.5.7
+
 ## [1.5.6] - 2026-05-02
 
 ### Added

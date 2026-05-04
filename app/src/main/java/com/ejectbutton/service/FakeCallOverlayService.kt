@@ -17,6 +17,7 @@ import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.os.Build
+import android.view.Gravity
 import android.view.WindowInsets
 import android.view.WindowManager
 import androidx.compose.runtime.*

@@ -73,7 +73,7 @@ fun FakeIncomingCallScreenV2(
     pulseMaxScale: Float = 2.2f,
     pulseLayers: Int = 2,
     pulseColor: Color = Color.White.copy(alpha = 0.22f),
-    dragThresholdPx: Float = 120f,
+    dragThresholdPx: Float = 300f,
 ) {
     val strings = LocalAppStrings.current
 
@@ -130,7 +130,10 @@ fun FakeIncomingCallScreenV2(
             Spacer(Modifier.height(52.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 56.dp),
+                // v1.5.7 — horizontal padding 56dp → 16dp. frame 2 (Galaxy reference) 측정 결과
+                // 두 버튼 center 가 화면 가장자리에서 ≈18% (76dp) 위치. 56dp + outerBox/2(60) = 116dp
+                // → reference 와 40dp 차이로 "버튼이 중앙에 모인" 인상. 16dp 로 줄여 정확 매칭.
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -197,10 +200,16 @@ private fun PulsingCallButton(
     val distance = sqrt(offsetX * offsetX + offsetY * offsetY)
 
     // v1.4.3 — drag fraction (0.0 ~ 1.0) for Lottie progress.
-    val dragFraction = (distance / dragThresholdPx).coerceIn(0f, 1f)
+    // v1.5.7 — coerceIn 상한을 1.0 → 0.95 로 cap. Lottie spec: frame 100 (progress=1.0)
+    // 에서 두 ring 모두 opacity=0 으로 fade out → max swipe 시 ring 사라짐 버그.
+    // 0.95 로 cap 하면 frame 95 에서 멈춰 max size + visible opacity 유지.
+    val dragFraction = (distance / dragThresholdPx).coerceIn(0f, 0.95f)
 
     Box(
-        modifier = Modifier.size(200.dp),  // larger box to accommodate Lottie ripple
+        // v1.5.7 — 200dp → 120dp. 화면 411dp(1080px@420dpi)에 두 outer Box (200*2=400dp) +
+        // padding 112dp 가 안 들어가 SpaceBetween 이 강제 overlap → 비대칭. 120dp 로 줄여
+        // (240dp + 112dp = 352dp < 411dp) 완벽 대칭. button 72dp 는 그대로.
+        modifier = Modifier.size(120.dp),
         contentAlignment = Alignment.Center,
     ) {
         // v1.4.3 — Lottie drag-to-confirm rings overlay (drag 중일 때만)
@@ -208,10 +217,16 @@ private fun PulsingCallButton(
             val lottieComp by rememberLottieComposition(
                 LottieCompositionSpec.Asset("animations/drag_confirm.json")
             )
+            // v1.5.7 — Lottie viewport 400dp + requiredSize.
+            // 사용자 spec: ring 우측 끝 = 화면 width 60% (= 화면 중간 50% + 10% 넘어감).
+            // button center 좌측 16% (76dp) + ring radius 44% (181dp) = 우측 60% (247dp).
+            // ring diameter = 362dp ≈ Lottie canvas max (360 of 400) → viewport 400dp.
+            // requiredSize: parent Box(120dp) constraint 를 무시하고 강제로 400dp 적용 →
+            // Box 안에서 overflow 그림. modifier.size 만 쓰면 부모 120 으로 clipped 됨.
             LottieAnimation(
                 composition = lottieComp,
                 progress = { dragFraction },
-                modifier = Modifier.size(200.dp),
+                modifier = Modifier.requiredSize(460.dp),
             )
         }
 
@@ -233,7 +248,8 @@ private fun PulsingCallButton(
                 // v1.5.2 — 사용자 명시: "사용자 터치 따라가지 않게 + 버튼 고정시키고 애니메이션만 작동".
                 // 기존의 .offset { IntOffset(offsetX, offsetY) } 제거. 버튼은 절대 고정.
                 // 드래그 인텐트는 dragFraction (= 거리/threshold) → Lottie ring progress 만 시각화.
-                // 위치/크기 (72dp / 200dp outer Box / Row padding 56dp) 는 사용자 명시로 그대로.
+                // 위치/크기: button 72dp / outer Box 120dp (v1.5.7 라운드: 200→120 대칭 확보) /
+                // Row padding 56dp. dragThresholdPx 300f (v1.5.7: 120→300 으로 swipe 거리 ↑ → animation 속도 ↓).
                 .size(72.dp)
                 .clip(CircleShape)
                 .background(color)

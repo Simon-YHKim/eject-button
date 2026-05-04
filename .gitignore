@@ -55,3 +55,7 @@ HANDOFF_*.md
 /release_*.ps1
 /cleanup_*.ps1
 /install_*.ps1
+
+# Cowork agent temporary working files
+.cowork-tmp/
+

@@ -1,4 +1,4 @@
-package com.ejectbutton.ui.main
+﻿package com.ejectbutton.ui.main
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -14,9 +14,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -822,15 +822,17 @@ fun MainScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        // v1.5.1 — 코치마크 4-step 투어 (디자인 적용판).
-        // CoachmarkState 가 register-spot / index / isActive 모두 관리.
-        // CommandContent 의 4개 영역이 onGloballyPositioned 로 boundsInRoot 등록 완료된 후 start.
-        CoachmarkHost(
-            state = coachmark,
-            steps = coachmarkSteps,
-            onFinish = { EjectPrefs.saveCoachmarkSeen(ctx, true) },
-        )
     }
+
+    // v1.5.7 round 3 — CoachmarkHost를 outer Box 밖 (root composition 레벨) 으로 이동.
+    // 이전 위치: outer Box (statusBarsPadding 적용) 안 → overlay 좌표계가 status bar 만큼 시프트
+    //   → register(boundsInRoot, status bar 포함 좌표) 와 mismatch (≈130px) 로 ring off-by-one.
+    // 새 위치: root level → overlay도 boundsInRoot와 같은 window root 좌표계 → ring 정확.
+    CoachmarkHost(
+        state = coachmark,
+        steps = coachmarkSteps,
+        onFinish = { EjectPrefs.saveCoachmarkSeen(ctx, true) },
+    )
 }
 
 // ─── COMMAND 탭 ──────────────────────────────────────────────────────────────
@@ -991,9 +993,11 @@ private fun CommandContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // v1.5.6 — 발신자 섹션. v1.5.5 wrap 패턴 유지 (child modifier 시도 후 회귀로 되돌림).
-        // verticalScroll + LazyRow 의 boundsInRoot timing 이슈로 child modifier 가 잘못된 좌표.
-        // wrap 패턴이 ring 영역 크지만 chip 들 안 보이는 회귀는 없음. v1.5.7 에서 정확화 예정.
+        // v1.5.7 라운드 1 — SectionHeader 를 register Box 밖으로.
+        // 이전 wrap 패턴: ring = 헤더 + 12dp + chips (헤더가 ring 안에 통째 보였음).
+        // 변경: SectionHeader 외부 / Box(register) 가 chips 만 wrap → ring ≈ chips 영역.
+        SectionHeader(strings.sectionCaller)
+        Spacer(Modifier.height(12.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1001,23 +1005,21 @@ private fun CommandContent(
                 }
                 .fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                SectionHeader(strings.sectionCaller)
-                Spacer(Modifier.height(12.dp))
-                CallerChips(
-                    callers   = allCallers,
-                    selected  = selectedScenario,
-                    customIds = customCallerIds,
-                    onSelect  = onSelectCaller,
-                    onDelete  = onDeleteCaller,
-                    onAdd     = onAddCaller,
-                )
-            }
+            CallerChips(
+                callers   = allCallers,
+                selected  = selectedScenario,
+                customIds = customCallerIds,
+                onSelect  = onSelectCaller,
+                onDelete  = onDeleteCaller,
+                onAdd     = onAddCaller,
+            )
         }
 
         Spacer(Modifier.height(24.dp))
 
         // v1.5.6 — 신규 step "timing" — wrap 패턴 (v1.5.5 와 동일).
+        SectionHeader(strings.sectionDelay)
+        Spacer(Modifier.height(12.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1025,20 +1027,18 @@ private fun CommandContent(
                 }
                 .fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                SectionHeader(strings.sectionDelay)
-                Spacer(Modifier.height(12.dp))
-                TriggerTimeRow(
-                    selected       = selectedTime,
-                    customDelaySec = customDelaySec,
-                    onSelect       = onSelectTime,
-                )
-            }
+            TriggerTimeRow(
+                selected       = selectedTime,
+                customDelaySec = customDelaySec,
+                onSelect       = onSelectTime,
+            )
         }
 
         Spacer(Modifier.height(24.dp))
 
         // v1.5.6 — 트리거 모드 — wrap 패턴 (v1.5.5 와 동일).
+        SectionHeader(strings.sectionTriggerMode)
+        Spacer(Modifier.height(12.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1046,14 +1046,10 @@ private fun CommandContent(
                 }
                 .fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                SectionHeader(strings.sectionTriggerMode)
-                Spacer(Modifier.height(12.dp))
-                TriggerModeRow(
-                    selected = selectedMode,
-                    onSelect = onSelectMode,
-                )
-            }
+            TriggerModeRow(
+                selected = selectedMode,
+                onSelect = onSelectMode,
+            )
         }
 
         // 사이드 모드 선택 시에만 사이드 버튼 설정 카드 노출
@@ -1720,18 +1716,23 @@ private fun CallerChips(
 ) {
     val strings = LocalAppStrings.current
 
-    LazyRow(
+    // v1.5.7 round 2 — LazyRow -> Row + horizontalScroll.
+    // Hypothesis: LazyRow lazy measure -> first layout pass register Box height stale ->
+    //   subsequent register Boxes' boundsInRoot cached one step too high -> ring off-by-one.
+    // Row + horizontalScroll = eager measure -> accurate height from first pass.
+    Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
     ) {
-        items(callers) { caller ->
+        callers.forEach { caller ->
             val isSelected = caller.id == selected.id
             val isCustom   = caller.id in customIds
 
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    // 선택: 크림슨 bg + 흰 텍스트 / 비선택: 서피스 bg + 외곽선
                     .background(if (isSelected) EjectCoral else EjectSurface)
                     .then(
                         if (!isSelected)
@@ -1743,7 +1744,7 @@ private fun CallerChips(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text       = "${caller.emoji}  ${caller.name}",
+                    text       = caller.emoji + "  " + caller.name,
                     fontSize   = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                     color      = if (isSelected) Color.White else EjectOnSurface,
@@ -1760,21 +1761,19 @@ private fun CallerChips(
             }
         }
 
-        // + 추가 버튼
-        item {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(EjectSurface)
-                    .border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
-                    .clickable(onClick = onAdd)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Add, "Add", tint = EjectOnSurface, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(strings.addCallerBtn, fontSize = 13.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
-            }
+        // + add button
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(EjectSurface)
+                .border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
+                .clickable(onClick = onAdd)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Add, "Add", tint = EjectOnSurface, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(strings.addCallerBtn, fontSize = 13.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
         }
     }
 }
