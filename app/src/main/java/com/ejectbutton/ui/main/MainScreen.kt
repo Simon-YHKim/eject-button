@@ -1063,7 +1063,8 @@ private fun StitchTopBar(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text          = "⏏ EJECT BUTTON",
+                // v1.5.2 — strings.appBrandLabel 사용. 7개 언어 자동 분기 (한국어 = "비상 탈출" 등).
+                text          = "⏏ ${strings.appBrandLabel}",
                 fontSize      = 20.sp,
                 fontWeight    = FontWeight.ExtraBold,
                 color         = EjectCoral,
@@ -1545,7 +1546,8 @@ private fun SystemsContent(
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(
-                    text       = "EJECT BUTTON",
+                    // v1.5.2 — 앱 정보 카드도 다국어 brand label 사용
+                    text       = strings.appBrandLabel,
                     fontSize   = 14.sp,
                     color      = EjectOnSurface,
                     fontWeight = FontWeight.ExtraBold,
@@ -1668,7 +1670,8 @@ private fun EjectButton(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "EJECT",
+                        // v1.5.2 — 큰 빨간 버튼 안 라벨도 다국어 (한국어 = "탈출").
+                        strings.ejectButtonLabel,
                         fontSize      = 13.sp,
                         color         = EjectCoral,
                         fontWeight    = FontWeight.ExtraBold,

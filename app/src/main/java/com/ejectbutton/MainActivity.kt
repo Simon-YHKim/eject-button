@@ -516,6 +516,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SplashScreen(initLabel: String, catchphrase: String) {
+    val strings = LocalAppStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -540,7 +541,8 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
             Spacer(Modifier.height(32.dp))
 
             Text(
-                text       = "EJECT BUTTON",
+                // v1.5.2 — 스플래시 brand label 도 다국어
+                text       = strings.appBrandLabel,
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = TacticalOnSurface,

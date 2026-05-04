@@ -17,6 +17,9 @@ enum class AppLanguage(val code: String, val nativeName: String) {
 }
 
 data class AppStrings(
+    // v1.5.2 — 앱 브랜드 라벨 다국어화 (#5)
+    val appBrandLabel: String,        // 헤더 / 가짜 통화 overlay 의 "EJECT BUTTON" / "비상 탈출" 등
+    val ejectButtonLabel: String,     // 큰 빨간 버튼 안 라벨 "EJECT" / "탈출" 등 (짧게)
     // Catchphrase
     val catchphrase: String,
     // Tab bar
@@ -279,6 +282,8 @@ data class AppStrings(
 // handoff, with matching caps, callsigns, and "pilot / mission / briefing"
 // terminology throughout.
 private val en = AppStrings(
+    appBrandLabel        = "EJECT BUTTON",
+    ejectButtonLabel     = "EJECT",
     catchphrase          = "Your escape, on command.",
     tabCommand           = "COMMAND",
     tabHistory           = "HISTORY",
@@ -499,10 +504,12 @@ private val en = AppStrings(
 // Round 18 — 한국어 전체 "상사 → 존중받는 파일럿" 말투로 개편.
 // 앱(상사)이 파일럿(사용자)에게 브리핑하는 톤. 존대 + 군대 용어 + 짧은 명령조.
 private val ko = AppStrings(
+    appBrandLabel        = "비상 탈출",
+    ejectButtonLabel     = "탈출",
     catchphrase          = "비상탈출, 언제든지.",
-    tabCommand           = "COMMAND",
-    tabHistory           = "HISTORY",
-    tabSystems           = "SETTINGS",
+    tabCommand           = "명령",
+    tabHistory           = "기록",
+    tabSystems           = "설정",
     sectionCaller        = "호출 대상",
     sectionDelay         = "발신 타이밍",
     triggerNow           = "즉시",
@@ -717,10 +724,12 @@ private val ko = AppStrings(
 )
 
 private val zhCN = AppStrings(
+    appBrandLabel        = "紧急脱身",
+    ejectButtonLabel     = "脱身",
     catchphrase          = "随时弹射逃生。",
-    tabCommand           = "COMMAND",
-    tabHistory           = "HISTORY",
-    tabSystems           = "SETTINGS",
+    tabCommand           = "指令",
+    tabHistory           = "记录",
+    tabSystems           = "设置",
     sectionCaller        = "来电者",
     sectionDelay         = "触发器",
     triggerNow           = "立即",
@@ -935,10 +944,12 @@ private val zhCN = AppStrings(
 )
 
 private val zhTW = AppStrings(
+    appBrandLabel        = "緊急脫身",
+    ejectButtonLabel     = "脫身",
     catchphrase          = "隨時彈射逃生。",
-    tabCommand           = "COMMAND",
-    tabHistory           = "HISTORY",
-    tabSystems           = "SETTINGS",
+    tabCommand           = "指令",
+    tabHistory           = "記錄",
+    tabSystems           = "設定",
     sectionCaller        = "來電者",
     sectionDelay         = "觸發器",
     triggerNow           = "立即",
@@ -1153,10 +1164,12 @@ private val zhTW = AppStrings(
 )
 
 private val ja = AppStrings(
+    appBrandLabel        = "緊急脱出",
+    ejectButtonLabel     = "脱出",
     catchphrase          = "いつでも緊急脱出。",
-    tabCommand           = "COMMAND",
-    tabHistory           = "HISTORY",
-    tabSystems           = "SETTINGS",
+    tabCommand           = "コマンド",
+    tabHistory           = "履歴",
+    tabSystems           = "設定",
     sectionCaller        = "発信者",
     sectionDelay         = "トリガー",
     triggerNow           = "すぐに",
@@ -1371,10 +1384,12 @@ private val ja = AppStrings(
 )
 
 private val es = AppStrings(
+    appBrandLabel        = "Salida de Emergencia",
+    ejectButtonLabel     = "SALIR",
     catchphrase          = "Eyección a la orden.",
-    tabCommand           = "COMMAND",
-    tabHistory           = "HISTORY",
-    tabSystems           = "SETTINGS",
+    tabCommand           = "COMANDO",
+    tabHistory           = "HISTORIAL",
+    tabSystems           = "AJUSTES",
     sectionCaller        = "LLAMANTE",
     sectionDelay         = "TEMPORIZADOR",
     triggerNow           = "Ahora",
@@ -1590,10 +1605,12 @@ private val es = AppStrings(
 )
 
 private val hi = AppStrings(
+    appBrandLabel        = "आपातकालीन निकास",
+    ejectButtonLabel     = "निकलें",
     catchphrase          = "आदेश पर इजेक्शन।",
-    tabCommand           = "COMMAND",
-    tabHistory           = "HISTORY",
-    tabSystems           = "SETTINGS",
+    tabCommand           = "कमांड",
+    tabHistory           = "रिकॉर्ड",
+    tabSystems           = "सेटिंग्स",
     sectionCaller        = "कॉलर",
     sectionDelay         = "ट्रिगर",
     triggerNow           = "अभी",

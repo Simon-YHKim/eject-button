@@ -514,8 +514,11 @@ object EjectPrefs {
     }
 
     fun loadThemeMode(ctx: Context): ThemeMode {
+        // v1.5.2 — 사용자 결정: 디폴트 LIGHT (기존 SYSTEM → LIGHT).
+        // 이미 SYSTEM 으로 저장된 사용자는 그 값 유지 (raw != null 이면 그대로 사용).
+        // 신규 사용자만 LIGHT 시작.
         val raw = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-            .getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
-        return runCatching { ThemeMode.valueOf(raw) }.getOrDefault(ThemeMode.SYSTEM)
+            .getString(KEY_THEME_MODE, ThemeMode.LIGHT.name) ?: ThemeMode.LIGHT.name
+        return runCatching { ThemeMode.valueOf(raw) }.getOrDefault(ThemeMode.LIGHT)
     }
 }

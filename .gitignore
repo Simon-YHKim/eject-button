@@ -46,3 +46,12 @@ stop
 dist/
 .agents/
 HANDOFF_*.md
+
+# Cowork session ?„ì‹œ ?Œì¼ (v1.5.1+)
+/commit_msg_*.txt
+/build_*.log
+/test-result.log
+/COMMIT_*_INSTRUCTIONS.md
+/release_*.ps1
+/cleanup_*.ps1
+/install_*.ps1

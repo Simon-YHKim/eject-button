@@ -21,7 +21,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -105,13 +107,18 @@ private fun CoachmarkOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // v1.5.2 — BlendMode.Clear 가 dim 만 깎고 child content 는 살리려면
+            // offscreen 컴포지팅 layer 가 필수. 디자인 zip 코드에서 누락된 부분 — 추가.
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .clickable(
                 interactionSource = MutableInteractionSource(),
                 indication = null,
             ) { /* swallow taps */ }
             .drawWithContent {
                 drawContent()
-                drawRect(Color.Black.copy(alpha = 0.74f))
+                // v1.5.2 — dim alpha 0.74 → 0.62 로 약화. spotlight cutout 이 잘 작동하면
+                // ring 안의 child (시나리오 카드 / EJECT 버튼 / ⚙ 등) 이 명확히 보이도록.
+                drawRect(Color.Black.copy(alpha = 0.62f))
                 spot?.let { s ->
                     if (s.shape == SpotShape.Circle) {
                         val r = (s.rect.maxDimension / 2) + pad
@@ -169,18 +176,44 @@ private fun CoachmarkOverlay(
 
 private data class Placement(val topDp: Dp, val sideDp: Dp)
 
+/**
+ * v1.5.2 — Tooltip 카드를 spotlight 와 절대 겹치지 않게 배치.
+ *
+ * 알고리즘:
+ *  1) spotlight 의 위/아래 어디에 더 큰 여백이 있는지 계산
+ *  2) 더 큰 여백 쪽에 카드 배치
+ *  3) cardH 추정 = 180dp (실제는 더 작거나 비슷, 안전 margin)
+ *  4) 카드가 화면 밖으로 나가지 않게 coerce
+ *
+ * 스크린샷 회귀 (v1.5.1) 의 원인:
+ *  - 기존 220dp 가정 + 한 쪽만 보던 로직이라 spotlight 와 같은 영역 차지
+ *  - 시나리오 카드가 dim 으로 가려져 ring 안에 무엇이 있는지 안 보였음 (graphicsLayer 누락)
+ *  - 둘 다 fix 해서 "지시 (spotlight) + 팝업 (tooltip) 둘 다 잘 보이게" 보장
+ */
 private fun placeTooltip(
     spot: Spot?, screenW: Float, screenH: Float, density: androidx.compose.ui.unit.Density,
 ): Placement {
     val sidePad = 16.dp
-    val cardH = 220.dp
-    val gap = 20.dp
-    val rect = spot?.rect ?: return Placement(120.dp, sidePad)
+    val cardH = 180.dp           // v1.5.1 의 220dp 보다 작게 — 카드 본문 더 컴팩트해짐
+    val gap = 16.dp              // spotlight 와 카드 사이 안전 여백
+    val minTop = 64.dp           // 화면 상단 안전 영역 (status bar)
+    val rect = spot?.rect ?: return Placement(minTop + 56.dp, sidePad)
+
     return with(density) {
-        val centerY = rect.center.y
-        when {
-            centerY < screenH / 2 -> Placement(rect.bottom.toDp() + gap, sidePad)
-            else -> Placement((rect.top.toDp() - gap - cardH).coerceAtLeast(80.dp), sidePad)
+        val screenHDp = screenH.toDp()
+        val spotTopDp = rect.top.toDp()
+        val spotBotDp = rect.bottom.toDp()
+
+        val spaceAbove = (spotTopDp - minTop - gap).coerceAtLeast(0.dp)
+        val spaceBelow = (screenHDp - spotBotDp - gap).coerceAtLeast(0.dp)
+
+        // 위/아래 중 cardH 가 들어갈 수 있는 큰 쪽 선택
+        if (spaceBelow >= cardH || spaceBelow >= spaceAbove) {
+            // 카드를 spotlight 아래에 배치
+            Placement(spotBotDp + gap, sidePad)
+        } else {
+            // 카드를 spotlight 위에 배치 (위에서 cardH 만큼 빼서 top 결정)
+            Placement((spotTopDp - gap - cardH).coerceAtLeast(minTop), sidePad)
         }
     }
 }

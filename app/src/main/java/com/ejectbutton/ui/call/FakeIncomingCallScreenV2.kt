@@ -230,11 +230,14 @@ private fun PulsingCallButton(
         val interaction = remember { MutableInteractionSource() }
         Box(
             modifier = Modifier
-                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                // v1.5.2 — 사용자 명시: "사용자 터치 따라가지 않게 + 버튼 고정시키고 애니메이션만 작동".
+                // 기존의 .offset { IntOffset(offsetX, offsetY) } 제거. 버튼은 절대 고정.
+                // 드래그 인텐트는 dragFraction (= 거리/threshold) → Lottie ring progress 만 시각화.
+                // 위치/크기 (72dp / 200dp outer Box / Row padding 56dp) 는 사용자 명시로 그대로.
                 .size(72.dp)
                 .clip(CircleShape)
                 .background(color)
-                // Tap
+                // Tap — 즉시 trigger (위험 상황 빠른 받기 시나리오 유지)
                 .clickable(
                     interactionSource = interaction,
                     indication = null,
@@ -244,7 +247,8 @@ private fun PulsingCallButton(
                         onTrigger()
                     }
                 }
-                // Drag
+                // Drag — 의도 추적만 (offsetX/Y 누적은 유지하지만 .offset 으로 그리지 않음).
+                // 거리 ≥ threshold 면 release 시 trigger, 아니면 reset.
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDrag = { change, drag ->
