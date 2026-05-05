@@ -101,6 +101,20 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
      * 디바이스 변경 / 앱 재설치 시 자동 호출되어 unlock 복원.
      */
     fun restorePurchases() {
+        // v1.5.12 — DEBUG mock: BuildConfig.DEBUG && EjectPrefs.is_premium=true 인 경우
+        // Play Store sync 를 skip 하여 SharedPreferences 상태를 그대로 유지.
+        // 이는 release 빌드에는 영향 없음 (BuildConfig.DEBUG=false 이라 분기 자체 안 탐).
+        // 사용 목적: UI 검증 (구독 중 카드 노출) 시 Play Store 실제 구독 없이 강제 활성.
+        if (com.ejectbutton.BuildConfig.DEBUG && EjectPrefs.loadPremium(context)) {
+            android.util.Log.d("BillingManager", "DEBUG mock: skip Play Store sync, keeping is_premium=true")
+            _isPremium.value = true
+            // INAPP 광고 제거도 동일 mock 처리
+            if (EjectPrefs.loadAdsRemoved(context)) {
+                _isAdsRemoved.value = true
+            }
+            return
+        }
+
         // SUBS premium 구독 복원
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
