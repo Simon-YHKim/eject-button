@@ -76,7 +76,6 @@ author: simon
 
 체크리스트:
 - [ ] GitHub 레포 생성 또는 기존 브랜치 확인
-- [ ] `.env.example` 작성 (키 placeholder)
 - [ ] `.gitignore` 에 `.env`, `node_modules/`, `dist/`, `.DS_Store`, `*.log` 포함 확인
 - [ ] gitleaks pre-commit hook 설치: `pre-commit install` + `.pre-commit-config.yaml`
 - [ ] README 초안·LICENSE 선택
