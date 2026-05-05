@@ -59,3 +59,26 @@ HANDOFF_*.md
 # Cowork agent temporary working files
 .cowork-tmp/
 
+
+# v1.5.12 — turn-key 작업 중 생성되는 temp 파일들 (logs / dumps / screenshots / commit msgs)
+*.out.log
+*.err.log
+billing-log.txt
+check*.log
+commit-msg*.txt
+commit-mil.txt
+dump.xml
+eject_prefs.xml
+logcat-*.txt
+inst*.log
+install*.log
+lint.out.log
+lint.err.log
+pm-dump.txt
+test_v*.log
+release_notes_v*.md
+v1.5.12-*.png
+artifacts-v*/
+extracted/
+extracted-final/
+rn-*.txt
