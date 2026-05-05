@@ -46,3 +46,14 @@ stop
 dist/
 .agents/
 HANDOFF_*.md
+
+# v1.5.x — temp 파일 / cowork-tmp / instruction docs
+.cowork-tmp/
+COMMIT_*.md
+build_v*.log
+cleanup_*.ps1
+commit_msg_*.txt
+release_v*.ps1
+test-result.log
+*.out.log
+*.err.log
