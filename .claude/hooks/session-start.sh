@@ -49,11 +49,14 @@ if [ -d ~/.claude/skills/gstack ]; then
 fi
 
 # --- simon-stack skills from THIS repo ---
-for d in "$REPO_DIR"/.claude/skills/*/; do
-  name=$(basename "$d")
-  [ -f "$d/SKILL.md" ] || continue
-  [ -e ~/.claude/skills/"$name" ] && continue
-  cp -r "$d" ~/.claude/skills/"$name"
+for src_dir in "$REPO_DIR"/skills-src "$REPO_DIR"/.claude/skills; do
+  [ -d "$src_dir" ] || continue
+  for d in "$src_dir"/*/; do
+    name=$(basename "$d")
+    [ -f "$d/SKILL.md" ] || continue
+    [ -e ~/.claude/skills/"$name" ] && continue
+    cp -r "$d" ~/.claude/skills/"$name"
+  done
 done
 
 # --- INDEX + instincts ---

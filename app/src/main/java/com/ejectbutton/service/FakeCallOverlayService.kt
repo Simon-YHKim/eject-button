@@ -17,6 +17,7 @@ import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.os.Build
+import android.view.Gravity
 import android.view.WindowInsets
 import android.view.WindowManager
 import androidx.compose.runtime.*
@@ -231,11 +232,9 @@ class FakeCallOverlayService : Service() {
                     or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                     or WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED    // API 27+ 대안 없음 (Service context)
                     or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD    // API 27+ 대안 없음 (Service context)
-                    or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON     // API 27+ 대안 없음 (Service context)
-                    // v1.1.5 — 가짜 통화 화면이 Recents/스크린샷/화면녹화에 안 잡히게 차단.
-                    // 위기 사용자가 가해자 옆에서 사용 시 시스템 multitasking 화면이나 외부
-                    // 도구로 가짜 통화 사용 흔적이 남지 않도록 보호.
-                    or WindowManager.LayoutParams.FLAG_SECURE,
+                    or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,    // API 27+ 대안 없음 (Service context)
+                    // v1.4.2 — FLAG_SECURE 제거 (테스터 스크린샷 가능). v1.5+ 에서 debug-only 토글로 재구성 예정.
+                    // 원래 의도: 가짜 통화 화면이 Recents/스크린샷/화면녹화에 안 잡히게 차단.
             PixelFormat.TRANSLUCENT,
         ).also {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

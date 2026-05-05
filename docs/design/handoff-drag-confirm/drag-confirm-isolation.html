@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>drag_confirm.json — Isolation Verification</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #1a1a1a; color: #e6e7ea;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: #8a8d94; font-size: 13px; margin: 0 0 24px; max-width: 760px; line-height: 1.6; }
+
+  .verdict {
+    background: #0d2818; border: 1px solid #1d5934; color: #5dde9a;
+    padding: 14px 16px; border-radius: 10px; margin-bottom: 24px;
+    font-size: 13px; line-height: 1.6;
+  }
+  .verdict b { color: #8aff9d; }
+  .verdict ul { margin: 8px 0 0 18px; padding: 0; }
+
+  .stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 800px) { .stages { grid-template-columns: 1fr 1fr; } }
+
+  .stage {
+    border-radius: 12px;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    border: 1px solid #2a2c31;
+  }
+  .stage .label {
+    position: absolute; top: 8px; left: 0; right: 0; text-align: center;
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    font-weight: 600;
+  }
+  .stage .lottie {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stage .lottie > div { width: 90%; height: 90%; }
+
+  /* Three different backgrounds for sanity */
+  .bg-checker {
+    background-image:
+      linear-gradient(45deg, #555 25%, transparent 25%),
+      linear-gradient(-45deg, #555 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #555 75%),
+      linear-gradient(-45deg, transparent 75%, #555 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    background-color: #2a2a2a;
+  }
+  .bg-white { background: white; }
+  .bg-black { background: #000; }
+
+  .controls {
+    background: #16171a; border: 1px solid #2a2c31; border-radius: 14px;
+    padding: 20px;
+  }
+  .controls h3 { margin: 0 0 14px; font-size: 13px; }
+  .row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .row:last-child { margin-bottom: 0; }
+  label { font-size: 10px; font-weight: 600; color: #8a8d94; text-transform: uppercase; letter-spacing: 0.06em; }
+  .progress-readout { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; }
+  .progress-readout .frame { color: #8a8d94; font-size: 11px; margin-left: 8px; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 5px; border-radius: 999px;
+    background: linear-gradient(to right, #4c8bf5 0%, #4c8bf5 var(--p, 0%), #2a2c31 var(--p, 0%), #2a2c31 100%);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: white; border: 2px solid #4c8bf5;
+  }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn {
+    background: #1f2125; border: 1px solid #2a2c31; color: #e6e7ea;
+    padding: 7px 11px; border-radius: 7px; font-size: 11px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn.primary { background: #4c8bf5; border-color: #4c8bf5; color: white; }
+
+  .json-info {
+    margin-top: 18px;
+    font-size: 11px; color: #8a8d94; line-height: 1.7;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    background: #0f1012; border: 1px solid #2a2c31; border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .json-info b { color: #e6e7ea; }
+  .json-info .layer { color: #5dde9a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>drag_confirm.json — 단독 재생 검증</h1>
+  <p class="sub">
+    <b>composition mockup ≠ JSON 내용</b> 명확히 구분하기 위한 검증 페이지.
+    JSON을 transparent 캔버스 위에서 단독 재생합니다 — 회색 동심원 외에는
+    아무것도 보이지 않아야 정상입니다. 세 가지 배경(체크무늬/흰색/검정)에서 동시 재생.
+  </p>
+
+  <div class="verdict">
+    <b>검증 결과:</b> drag_confirm.json은 <b>2개 layer만</b> 포함합니다 — Outer ellipse + Inner ellipse.
+    캔버스는 transparent (배경 fill 없음). 모든 mockup 요소(전화 버튼·아이콘·점·텍스트·수신화면)는
+    이전 미리보기 HTML이 따로 그렸던 것이며 JSON에는 존재하지 않습니다.
+    <ul>
+      <li>✅ Layer 1: <b>Outer</b> — rgb(200,200,200), opacity 0→30%→0, r=100→180dp</li>
+      <li>✅ Layer 2: <b>Inner</b> — rgb(150,150,150), opacity 0→45%→0, r=30→160dp</li>
+      <li>✗ 그 외 0 개 (배경/버튼/아이콘/점/텍스트 모두 없음)</li>
+    </ul>
+  </div>
+
+  <div class="stages">
+    <div class="stage bg-checker">
+      <div class="label">Checker (transparent test)</div>
+      <div class="lottie"><div id="lottie1"></div></div>
+    </div>
+    <div class="stage bg-white">
+      <div class="label" style="color: #333; text-shadow: none;">White</div>
+      <div class="lottie"><div id="lottie2"></div></div>
+    </div>
+    <div class="stage bg-black">
+      <div class="label">Black</div>
+      <div class="lottie"><div id="lottie3"></div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <h3>Driver</h3>
+    <div class="row">
+      <label>Progress (drag fraction)</label>
+      <div class="progress-readout">
+        <span id="pVal">0.50</span><span class="frame" id="fVal">f 50 / 100</span>
+      </div>
+      <input id="prog" type="range" min="0" max="1000" value="500" step="1" />
+    </div>
+    <div class="row">
+      <label>Quick scrub</label>
+      <div class="btn-row">
+        <button class="btn" data-jump="0">0.0</button>
+        <button class="btn" data-jump="0.05">0.05</button>
+        <button class="btn" data-jump="0.2">0.2</button>
+        <button class="btn" data-jump="0.5">0.5</button>
+        <button class="btn" data-jump="0.75">0.75</button>
+        <button class="btn" data-jump="0.95">0.95</button>
+        <button class="btn" data-jump="1">1.0</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Loop</label>
+      <div class="btn-row">
+        <button class="btn primary" id="playLoop">Play loop (1.6s)</button>
+        <button class="btn" id="stopLoop">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="json-info" id="jsonInfo">loading…</div>
+</div>
+
+<script>
+(async function () {
+  const res = await fetch('drag_confirm.json');
+  const data = await res.json();
+
+  function makeAnim(id) {
+    return lottie.loadAnimation({
+      container: document.getElementById(id),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      animationData: data,
+    });
+  }
+  const anims = [makeAnim('lottie1'), makeAnim('lottie2'), makeAnim('lottie3')];
+
+  function setProgress(p) {
+    p = Math.max(0, Math.min(1, p));
+    const total = anims[0].totalFrames;
+    const f = p * total;
+    anims.forEach(a => a.goToAndStop(f, true));
+    const slider = document.getElementById('prog');
+    slider.value = Math.round(p * 1000);
+    slider.style.setProperty('--p', (p * 100) + '%');
+    document.getElementById('pVal').textContent = p.toFixed(2);
+    document.getElementById('fVal').textContent = `f ${f.toFixed(1)} / ${total}`;
+  }
+
+  document.getElementById('prog').addEventListener('input', e => {
+    setProgress(parseInt(e.target.value, 10) / 1000);
+  });
+  document.querySelectorAll('[data-jump]').forEach(b => {
+    b.addEventListener('click', () => setProgress(parseFloat(b.dataset.jump)));
+  });
+
+  let loopRaf = null;
+  document.getElementById('playLoop').addEventListener('click', () => {
+    if (loopRaf) cancelAnimationFrame(loopRaf);
+    const start = performance.now();
+    const cycle = 1600;
+    function step(now) {
+      const t = ((now - start) % cycle) / cycle;
+      // Up-then-hold-then-down profile
+      let p;
+      if (t < 0.7) p = (t / 0.7);
+      else if (t < 0.8) p = 1.0;
+      else p = 1 - (t - 0.8) / 0.2;
+      setProgress(p);
+      loopRaf = requestAnimationFrame(step);
+    }
+    loopRaf = requestAnimationFrame(step);
+  });
+  document.getElementById('stopLoop').addEventListener('click', () => {
+    if (loopRaf) cancelAnimationFrame(loopRaf);
+    loopRaf = null;
+    setProgress(0);
+  });
+
+  const bytes = new Blob([JSON.stringify(data)]).size;
+  document.getElementById('jsonInfo').innerHTML = `
+    <b>drag_confirm.json</b> &nbsp;·&nbsp; ${bytes.toLocaleString()} B<br>
+    canvas &nbsp;${data.w}×${data.h}dp &nbsp;·&nbsp; transparent &nbsp;·&nbsp; fps ${data.fr} &nbsp;·&nbsp; ${data.op} frames<br>
+    layers (${data.layers.length}):<br>
+    ${data.layers.map(l => {
+      const fill = l.shapes[0].it.find(i => i.ty === 'fl');
+      const c = fill.c.k;
+      return `&nbsp;&nbsp;<span class="layer">●</span> <b>${l.nm}</b> &nbsp;rgb(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)})`;
+    }).join('<br>')}
+    <br><br>
+    <b>외부 검증:</b> 이 JSON을 그대로 lottiefiles.com/preview-tool 에 업로드하면 동일하게
+    체크무늬 / 흰색 / 검정 배경 위 동심원 두 개만 보입니다.
+  `;
+
+  setProgress(0.5);
+})();
+</script>
+</body>
+</html>

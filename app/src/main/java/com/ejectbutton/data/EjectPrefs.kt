@@ -28,6 +28,11 @@ object EjectPrefs {
     // AdManager 가 (isPremium || isAdsRemoved) 둘 중 하나라도 true 면 광고 로드 안 함.
     private const val KEY_ADS_REMOVED = "ads_removed"
     private const val KEY_SHOW_ONBOARDING = "show_onboarding"
+    // v1.5.0 — 메인 화면 4-step 코치마크 투어를 본 적이 있는지 여부.
+    // 첫 실행에 OnboardingScreen 종료 후 MainScreen 진입 시 false 면 overlay 표시.
+    // 한 번 다 보거나 "건너뛰기" 누르면 true 로 영구 저장 (재진입에 다시 안 뜸).
+    // Settings → "사용 설명서" 에서 다시 보기 가능 (saveCoachmarkSeen(false) 로 리셋).
+    private const val KEY_COACHMARK_SEEN = "coachmark_seen"
     private const val KEY_BATTERY_OPT_ASKED = "battery_opt_asked"
     // Round 30 — 사용자가 삭제한 프리셋 ID 집합 (mom/dad). 사용자가 원하면 프리셋도 숨길 수 있게.
     private const val KEY_DELETED_PRESETS = "deleted_preset_ids"
@@ -338,6 +343,7 @@ object EjectPrefs {
 
     // ── Premium ──────────────────────────────────────────────────────────────
 
+    @Suppress("ApplySharedPref") // 의도된 동기 commit (BillingManager 결제 콜백 크래시 대비)
     fun savePremium(ctx: Context, premium: Boolean) {
         // v1.0.10 — apply() 가 아닌 commit() 사용.
         // BillingManager.onPurchasesUpdated 콜백 직후에 앱이 크래시 되면
@@ -359,6 +365,7 @@ object EjectPrefs {
     // INAPP 결제는 한 번 acknowledged 되면 영구 — 디바이스 재설치 시 restorePurchases() 가
     // 자동 복원. KEY_PREMIUM 과 분리되어 premium 구독 없어도 광고만 제거 가능.
 
+    @Suppress("ApplySharedPref") // 의도된 동기 commit (BillingManager 결제 콜백 크래시 대비)
     fun saveAdsRemoved(ctx: Context, removed: Boolean) {
         // v1.0.10 패턴 — apply() 가 아닌 commit() 사용. BillingManager.onPurchasesUpdated
         // 콜백 직후 앱 크래시 대비. 단일 키 commit() 은 1-5ms 라 ANR 임계 (5초) 와
@@ -396,6 +403,23 @@ object EjectPrefs {
     fun loadShowOnboarding(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_SHOW_ONBOARDING, true)
+
+    // ── Coachmark tour (v1.5.0) ───────────────────────────────────────────────
+    //
+    // 메인 화면 4-step 코치마크 투어 (시나리오 카드 / 모드 토글 / EJECT 버튼 / ⚙ 설정).
+    // 신규 사용자에게 a-ha 모먼트를 제공. 한 번만 자동 표시.
+    // 기본값 false → 첫 실행 시 표시. 본 후 true 저장.
+    //
+    // Settings → "사용 설명서" 에서 saveCoachmarkSeen(false) 호출로 다시 보기 트리거.
+
+    fun saveCoachmarkSeen(ctx: Context, seen: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_COACHMARK_SEEN, seen).apply()
+    }
+
+    fun loadCoachmarkSeen(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_COACHMARK_SEEN, false)
 
     // ── Battery optimization dialog (한 번 물어보고 기록) ─────────────────────
 
@@ -492,8 +516,11 @@ object EjectPrefs {
     }
 
     fun loadThemeMode(ctx: Context): ThemeMode {
+        // v1.5.2 — 사용자 결정: 디폴트 LIGHT (기존 SYSTEM → LIGHT).
+        // 이미 SYSTEM 으로 저장된 사용자는 그 값 유지 (raw != null 이면 그대로 사용).
+        // 신규 사용자만 LIGHT 시작.
         val raw = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-            .getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
-        return runCatching { ThemeMode.valueOf(raw) }.getOrDefault(ThemeMode.SYSTEM)
+            .getString(KEY_THEME_MODE, ThemeMode.LIGHT.name) ?: ThemeMode.LIGHT.name
+        return runCatching { ThemeMode.valueOf(raw) }.getOrDefault(ThemeMode.LIGHT)
     }
 }

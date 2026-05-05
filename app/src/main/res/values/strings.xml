@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Eject Button</string>
+    <string name="app_name">비상 탈출</string>
 
-    <!-- v1.1.0 위장 아이콘 라벨. 사용자가 설정에서 활성화하면 launcher 에 이 이름으로 표시됨.
-         가정폭력 / 강요 환경에서 폰을 옆 사람이 봐도 진짜 앱 정체가 노출되지 않도록 위장. -->
+    <!-- v1.1.0 위장 아이콘 라벨. 사용자가 설정에서 활성화하면 launcher 에 이 이름으로 표시됨. -->
     <string name="decoy_label_calculator">계산기</string>
     <string name="decoy_label_memo">메모장</string>
     <string name="decoy_label_weather">날씨</string>

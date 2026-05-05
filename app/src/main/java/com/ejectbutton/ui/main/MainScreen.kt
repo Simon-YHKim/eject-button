@@ -1,6 +1,7 @@
 package com.ejectbutton.ui.main
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.activity.compose.BackHandler
@@ -14,9 +15,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +37,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import kotlin.math.abs
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
+import com.ejectbutton.BuildConfig
 import com.ejectbutton.R
 import com.ejectbutton.ads.AdManager
 import com.ejectbutton.data.AppLanguage
@@ -63,6 +70,11 @@ import com.ejectbutton.service.ButtonWatchService
 import com.ejectbutton.service.CountdownBus
 import com.ejectbutton.service.FakeCallOverlayService
 import com.ejectbutton.service.ShakeDetectionService
+import com.ejectbutton.ui.coachmark.CoachmarkHost
+import com.ejectbutton.ui.coachmark.CoachmarkState
+import com.ejectbutton.ui.coachmark.CoachmarkStep
+import com.ejectbutton.ui.coachmark.SpotShape
+import com.ejectbutton.ui.coachmark.rememberCoachmarkState
 import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
 import com.google.android.gms.ads.nativead.NativeAd
@@ -208,6 +220,64 @@ fun MainScreen(
     var shakeStandby      by remember { mutableStateOf(false) }
     // Round 9 — SIDE_BUTTON arm 직후 한 번만 띄우는 "볼륨 커맨드 안내" 팝업.
     var showSideVolumeHint by remember { mutableStateOf(false) }
+
+    // v1.5.1 — 코치마크 4-step 투어 (디자인 적용판).
+    // CoachmarkState 가 register-spot / index / isActive 모두 관리.
+    // 첫 진입 시 EjectPrefs.loadCoachmarkSeen 이 false 면 LaunchedEffect 가 start().
+    // OnboardingScreen 직후에만 의미가 있으므로 COMMAND 탭에서만 자동 트리거.
+    val coachmark = rememberCoachmarkState()
+    // v1.5.6 — 5-step (시나리오 → 타이밍 → 모드 → EJECT → ⚙).
+    // 신규 step "timing" 추가 (TriggerTimeRow). 마지막 step (settings) primary 만 "옛썰!".
+    val coachmarkSteps = remember(strings) {
+        listOf(
+            CoachmarkStep(
+                id = "scenario",
+                title = strings.coachmarkStep1Title,
+                body  = strings.coachmarkStep1Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "timing",
+                title = strings.coachmarkStepTimingTitle,
+                body  = strings.coachmarkStepTimingDesc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "trigger",
+                title = strings.coachmarkStep2Title,
+                body  = strings.coachmarkStep2Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "eject",
+                title = strings.coachmarkStep3Title,
+                body  = strings.coachmarkStep3Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            CoachmarkStep(
+                id = "settings",
+                title = strings.coachmarkStep4Title,
+                body  = strings.coachmarkStep4Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            // v1.5.12 — Step 6: 위장 토글 IconButton spotlight.
+            // settings 다음에 둠 (시각적으로 settings 왼쪽에 위치한 버튼이라 흐름이 자연스럽다).
+            CoachmarkStep(
+                id = "disguise",
+                title = strings.coachmarkStepDisguiseTitle,
+                body  = strings.coachmarkStepDisguiseDesc,
+                primaryLabel = strings.onboardingFinalDismiss,
+            ),
+        )
+    }
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == AppScreen.COMMAND &&
+            !EjectPrefs.loadCoachmarkSeen(ctx) &&
+            !coachmark.isActive
+        ) {
+            coachmark.start()
+        }
+    }
 
     // Round 11 — 모드 전환 = 자동 취소.
     // 현재 진행 중인 countdown / 서비스 / arm 플래그를 모두 정리.
@@ -473,7 +543,11 @@ fun MainScreen(
             // Round 11 — COMMAND ↔ HISTORY ↔ SYSTEMS 탭 스와이프.
             // 드래그 누적 거리를 저장했다가 onDragEnd 시점에 단 한 번만 판정해
             // 어떤 속도/길이의 제스처에서도 항상 "한 번 스와이프 = 한 탭 이동" 보장.
-            .pointerInput(Unit) {
+            //
+            // v1.5.1 — 코치마크 활성 시 차단. coachmark.isActive 를 pointerInput key 로 두어
+            // 코치마크 시작/종료 시 제스처 핸들러가 새로 매칭되도록 강제.
+            .pointerInput(coachmark.isActive) {
+                if (coachmark.isActive) return@pointerInput
                 var totalDrag = 0f
                 detectHorizontalDragGestures(
                     onDragStart  = { totalDrag = 0f },
@@ -693,6 +767,7 @@ fun MainScreen(
                         EjectPrefs.saveSideButtonArmed(ctx, false)
                         ButtonWatchService.reconcile(ctx)
                     },
+                    coachmark = coachmark,
                 )
                 AppScreen.HISTORY -> HistoryContent(
                     history = history,
@@ -723,6 +798,15 @@ fun MainScreen(
                     onRestorePresets  = {
                         deletedPresetIds = emptySet()
                         EjectPrefs.clearDeletedPresetIds(ctx)
+                    },
+                    // v1.5.12 — "사용 설명서" 클릭 시 코치마크 강제 재시작.
+                    //   EjectPrefs.saveCoachmarkSeen(false) → COMMAND 탭 진입 시 자동 트리거 다시 가능
+                    //   coachmark.start() → SETTINGS 탭에서는 spotlight target 이 없으므로,
+                    //     COMMAND 로 자동 이동 후 시작하도록 currentScreen 도 함께 변경.
+                    onShowGuide = {
+                        EjectPrefs.saveCoachmarkSeen(ctx, false)
+                        currentScreen = AppScreen.COMMAND
+                        coachmark.start()
                     },
                 )
             }
@@ -757,7 +841,18 @@ fun MainScreen(
             )
             Spacer(Modifier.height(12.dp))
         }
+
     }
+
+    // v1.5.7 round 3 — CoachmarkHost를 outer Box 밖 (root composition 레벨) 으로 이동.
+    // 이전 위치: outer Box (statusBarsPadding 적용) 안 → overlay 좌표계가 status bar 만큼 시프트
+    //   → register(boundsInRoot, status bar 포함 좌표) 와 mismatch (≈130px) 로 ring off-by-one.
+    // 새 위치: root level → overlay도 boundsInRoot와 같은 window root 좌표계 → ring 정확.
+    CoachmarkHost(
+        state = coachmark,
+        steps = coachmarkSteps,
+        onFinish = { EjectPrefs.saveCoachmarkSeen(ctx, true) },
+    )
 }
 
 // ─── COMMAND 탭 ──────────────────────────────────────────────────────────────
@@ -786,6 +881,7 @@ private fun CommandContent(
     onSettingsTap: () -> Unit,
     onEject: () -> Unit,
     onCancel: () -> Unit,
+    coachmark: CoachmarkState,
 ) {
     val strings = LocalAppStrings.current
     val isCancelMode = countdown > 0 || sideButtonStandby || shakeStandby
@@ -798,7 +894,17 @@ private fun CommandContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(14.dp))
-        StitchTopBar(onSettingsTap = onSettingsTap)
+        StitchTopBar(
+            onSettingsTap = onSettingsTap,
+            // v1.5.1 — 코치마크 Step 4 spotlight 등록 (라운드 사각형 — IconButton 자체가 정사각형이라 RoundRect 로).
+            onSettingsBoundsChanged = { rect ->
+                coachmark.register("settings", rect, SpotShape.RoundRect)
+            },
+            // v1.5.12 — 코치마크 Step 6 (위장 토글) spotlight 등록.
+            onDisguiseBoundsChanged = { rect ->
+                coachmark.register("disguise", rect, SpotShape.RoundRect)
+            },
+        )
 
         Spacer(Modifier.height(24.dp))
 
@@ -890,10 +996,17 @@ private fun CommandContent(
         }
 
         // EJECT 버튼 — countdown/standby 중엔 취소 버튼으로 변신
-        EjectButton(
-            isCancelMode = isCancelMode,
-            onClick = { if (isCancelMode) onCancel() else onEject() },
-        )
+        // v1.5.1 — 코치마크 Step 3 spotlight 등록 (원형).
+        Box(
+            modifier = Modifier.onGloballyPositioned { coords ->
+                coachmark.register("eject", coords.boundsInRoot(), SpotShape.Circle)
+            },
+        ) {
+            EjectButton(
+                isCancelMode = isCancelMode,
+                onClick = { if (isCancelMode) onCancel() else onEject() },
+            )
+        }
         Spacer(Modifier.height(14.dp))
         Text(
             text          = strings.noEscapeLabel,
@@ -904,38 +1017,64 @@ private fun CommandContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // 발신자 섹션
+        // v1.5.7 라운드 1 — SectionHeader 를 register Box 밖으로.
+        // 이전 wrap 패턴: ring = 헤더 + 12dp + chips (헤더가 ring 안에 통째 보였음).
+        // 변경: SectionHeader 외부 / Box(register) 가 chips 만 wrap → ring ≈ chips 영역.
         SectionHeader(strings.sectionCaller)
         Spacer(Modifier.height(12.dp))
-        CallerChips(
-            callers   = allCallers,
-            selected  = selectedScenario,
-            customIds = customCallerIds,
-            onSelect  = onSelectCaller,
-            onDelete  = onDeleteCaller,
-            onAdd     = onAddCaller,
-        )
+        Box(
+            modifier = Modifier
+                .onGloballyPositioned { coords ->
+                    coachmark.register("scenario", coords.boundsInRoot(), SpotShape.RoundRect)
+                }
+                .fillMaxWidth(),
+        ) {
+            CallerChips(
+                callers   = allCallers,
+                selected  = selectedScenario,
+                customIds = customCallerIds,
+                onSelect  = onSelectCaller,
+                onDelete  = onDeleteCaller,
+                onAdd     = onAddCaller,
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        // 트리거 시간 행 (즉시/10초/커스텀)
+        // v1.5.6 — 신규 step "timing" — wrap 패턴 (v1.5.5 와 동일).
         SectionHeader(strings.sectionDelay)
         Spacer(Modifier.height(12.dp))
-        TriggerTimeRow(
-            selected       = selectedTime,
-            customDelaySec = customDelaySec,
-            onSelect       = onSelectTime,
-        )
+        Box(
+            modifier = Modifier
+                .onGloballyPositioned { coords ->
+                    coachmark.register("timing", coords.boundsInRoot(), SpotShape.RoundRect)
+                }
+                .fillMaxWidth(),
+        ) {
+            TriggerTimeRow(
+                selected       = selectedTime,
+                customDelaySec = customDelaySec,
+                onSelect       = onSelectTime,
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        // 트리거 모드 행 (버튼/흔들기/사이드)
+        // v1.5.6 — 트리거 모드 — wrap 패턴 (v1.5.5 와 동일).
         SectionHeader(strings.sectionTriggerMode)
         Spacer(Modifier.height(12.dp))
-        TriggerModeRow(
-            selected = selectedMode,
-            onSelect = onSelectMode,
-        )
+        Box(
+            modifier = Modifier
+                .onGloballyPositioned { coords ->
+                    coachmark.register("trigger", coords.boundsInRoot(), SpotShape.RoundRect)
+                }
+                .fillMaxWidth(),
+        ) {
+            TriggerModeRow(
+                selected = selectedMode,
+                onSelect = onSelectMode,
+            )
+        }
 
         // 사이드 모드 선택 시에만 사이드 버튼 설정 카드 노출
         if (selectedMode == ModeChoice.SIDE_BUTTON) {
@@ -954,8 +1093,106 @@ private fun CommandContent(
 private fun StitchTopBar(
     onSettingsTap: () -> Unit,
     showSettingsIcon: Boolean = true,
+    // v1.5.1 — 코치마크 Step 4 (⚙ 설정 spotlight) 등록용. COMMAND 탭에서만 전달.
+    onSettingsBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
+    // v1.5.12 — 코치마크 Step 6 (위장 토글 spotlight) 등록용. COMMAND 탭에서만 전달.
+    onDisguiseBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val strings = LocalAppStrings.current
+    val ctx = LocalContext.current
+
+    // v1.5.12 — 위장 토글 IconButton. Settings 왼쪽에 항상 노출되며 두 상태로 토글:
+    //   STATE 1 (isDisguised=false, 일반 모드)
+    //     drawable: ic_disguise_off (가면 위 + ⏏ 아래)
+    //     contentDescription: actionDisguiseOn ("앱 위장")
+    //     onClick: 위장 picker 다이얼로그 → 4개 옵션 (계산기/메모/날씨/시계) 중 선택
+    //   STATE 2 (isDisguised=true, 위장 모드)
+    //     drawable: ic_disguise_on (⏏ 위 + 가면 떨어짐, 기울어짐)
+    //     contentDescription: actionUnmask ("위장 복구")
+    //     onClick: 복구 확인 다이얼로그 → 확인 시 DecoyManager.setActive(ctx, DEFAULT)
+    //   상태 변경 시 currentDecoy state 업데이트 → drawable + onClick 자동 토글.
+    var currentDecoy by remember { mutableStateOf(EjectPrefs.loadDecoy(ctx)) }
+    val isDisguised = currentDecoy != DecoyManager.Decoy.DEFAULT
+    var showUnmaskDialog by remember { mutableStateOf(false) }
+    var showDisguisePicker by remember { mutableStateOf(false) }
+
+    // ── 위장 복구 확인 다이얼로그 ───────────────────────────────────────────────
+    if (showUnmaskDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showUnmaskDialog = false },
+            title = { Text(strings.unmaskConfirmTitle, fontWeight = FontWeight.Bold) },
+            text  = { Text(strings.unmaskConfirmBody) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        DecoyManager.setActive(ctx, DecoyManager.Decoy.DEFAULT)
+                        currentDecoy = DecoyManager.Decoy.DEFAULT
+                        showUnmaskDialog = false
+                    },
+                ) {
+                    Text(
+                        strings.unmaskConfirmCta,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showUnmaskDialog = false }) {
+                    Text(strings.dialogCancel, color = EjectSecondary)
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
+    // ── 위장 picker 다이얼로그 (일반 → 위장 활성화) ──────────────────────────────
+    if (showDisguisePicker) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDisguisePicker = false },
+            title = { Text(strings.settingsDecoy, fontWeight = FontWeight.Bold) },
+            text  = {
+                Column {
+                    Text(
+                        strings.settingsDecoyDesc,
+                        fontSize = 13.sp,
+                        color    = EjectSecondary,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    val options = listOf(
+                        DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
+                        DecoyManager.Decoy.MEMO       to stringResource(R.string.decoy_label_memo),
+                        DecoyManager.Decoy.WEATHER    to stringResource(R.string.decoy_label_weather),
+                        DecoyManager.Decoy.CLOCK      to stringResource(R.string.decoy_label_clock),
+                    )
+                    options.forEach { (decoy, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    DecoyManager.setActive(ctx, decoy)
+                                    currentDecoy = decoy
+                                    showDisguisePicker = false
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("🎭", fontSize = 18.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Text(label, fontSize = 15.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showDisguisePicker = false }) {
+                    Text(strings.dialogCancel, color = EjectSecondary)
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -963,7 +1200,8 @@ private fun StitchTopBar(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text          = "⏏ EJECT BUTTON",
+                // v1.5.2 — strings.appBrandLabel 사용. 7개 언어 자동 분기 (한국어 = "비상 탈출" 등).
+                text          = "⏏ ${strings.appBrandLabel}",
                 fontSize      = 20.sp,
                 fontWeight    = FontWeight.ExtraBold,
                 color         = EjectCoral,
@@ -976,10 +1214,42 @@ private fun StitchTopBar(
                 color    = EjectSecondary,
             )
         }
+        // v1.5.12 — 위장 토글 IconButton. 항상 노출, drawable 만 상태에 따라 변경.
+        IconButton(
+            onClick  = {
+                if (isDisguised) showUnmaskDialog = true
+                else             showDisguisePicker = true
+            },
+            modifier = Modifier
+                .size(40.dp)
+                .onGloballyPositioned { coords ->
+                    onDisguiseBoundsChanged?.invoke(coords.boundsInRoot())
+                },
+        ) {
+            Icon(
+                painter = painterResource(
+                    id = if (isDisguised) R.drawable.ic_disguise_on
+                         else              R.drawable.ic_disguise_off,
+                ),
+                contentDescription = if (isDisguised) strings.actionUnmask
+                                     else              strings.actionDisguiseOn,
+                // tint Unspecified → vector drawable 의 hard-coded fillColor (deep red + ink) 그대로 노출.
+                // 메인 EJECT 버튼 톤과 동일해 시그니처 역할.
+                tint               = androidx.compose.ui.graphics.Color.Unspecified,
+                modifier           = Modifier.size(24.dp),
+            )
+        }
         // v1.1.5 — SETTINGS 탭에서는 톱니바퀴를 숨김 (이미 SETTINGS 안이라 의미 X).
         // COMMAND/HISTORY 탭에서만 톱니바퀴를 보여 SETTINGS 로 점프 가능하게.
         if (showSettingsIcon) {
-            IconButton(onClick = onSettingsTap, modifier = Modifier.size(40.dp)) {
+            IconButton(
+                onClick = onSettingsTap,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onGloballyPositioned { coords ->
+                        onSettingsBoundsChanged?.invoke(coords.boundsInRoot())
+                    },
+            ) {
                 Icon(
                     Icons.Default.Settings,
                     contentDescription = strings.settingsTitle,
@@ -1170,6 +1440,8 @@ private fun SystemsContent(
     onLanguageChange: (AppLanguage) -> Unit,
     onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
     onRestorePresets: () -> Unit,
+    // v1.5.12 — 사용 설명서 (코치마크 다시 보기) 콜백.
+    onShowGuide: () -> Unit = {},
 ) {
     // v1.1.4 — SETTINGS 탭. 별도 SettingsScreen 진입 제거.
     // SettingsScreen 본문 전체 (Language / Theme / Notifications / SideButton /
@@ -1232,7 +1504,8 @@ private fun SystemsContent(
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text(
-                            "ELITE TIER",
+                            // v1.5.5 — strings.premiumBadge ("MAYDAY" 등) 사용
+                            strings.premiumBadge,
                             fontSize      = 10.sp,
                             fontWeight    = FontWeight.ExtraBold,
                             color         = Color.White,
@@ -1241,7 +1514,8 @@ private fun SystemsContent(
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Eject Mayday",
+                        // v1.5.5 — strings.premiumTitle (한국어 = "탈출 Mayday" 등)
+                        strings.premiumTitle,
                         fontSize   = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color      = Color.White,
@@ -1252,6 +1526,33 @@ private fun SystemsContent(
                         fontSize = 14.sp,
                         color    = EjectOnPrimaryContainer,
                     )
+                    // v1.5.9 — 프리미엄 혜택 리스트. premiumFeature1/2/3 (이미 7개 언어 string)
+                    // 을 카드에 표시해 "업그레이드하면 무엇을 얻는가" 명확화.
+                    Spacer(Modifier.height(16.dp))
+                    listOf(
+                        strings.premiumFeature1,
+                        strings.premiumFeature2,
+                        strings.premiumFeature3,
+                    ).forEach { feature ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        ) {
+                            Text(
+                                "✓",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = EjectCoral,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                feature,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick  = onUpgradePremium,
@@ -1273,29 +1574,116 @@ private fun SystemsContent(
             }
             Spacer(Modifier.height(20.dp))
         } else {
-            // 프리미엄 사용자 배지
-            Row(
+            // v1.5.12 — 프리미엄 사용자 카드 (구독 중).
+            // 이전엔 단순 ⭐ + "MAYDAY" 텍스트 한 줄 배지였음. 사용자 요청으로 풍부한
+            // "구독 중 카드" 로 변경 — features 활성 표시 + Play 스토어 구독 관리 진입점.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(EjectPrimaryContainer)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                EjectPrimaryContainer,
+                                EjectPrimaryContainer.copy(alpha = 0.92f),
+                            )
+                        )
+                    )
+                    .padding(24.dp),
             ) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint               = EjectCoral,
-                    modifier           = Modifier.size(22.dp),
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    strings.premiumBadge,
-                    fontSize      = 13.sp,
-                    fontWeight    = FontWeight.ExtraBold,
-                    color         = Color.White,
-                    letterSpacing = 2.sp,
-                )
+                Column {
+                    // 활성 배지 — 코랄 배경 + ✓ 아이콘
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EjectCoral)
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint               = Color.White,
+                            modifier           = Modifier.size(12.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            strings.premiumActiveBadge,
+                            fontSize      = 10.sp,
+                            fontWeight    = FontWeight.ExtraBold,
+                            color         = Color.White,
+                            letterSpacing = 2.sp,
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        strings.premiumActiveTitle,
+                        fontSize   = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = Color.White,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        strings.premiumActiveSubtitle,
+                        fontSize = 14.sp,
+                        color    = EjectOnPrimaryContainer,
+                    )
+                    // 활성 features 리스트 (premium 카드와 동일 키 재사용, ✓ 아이콘으로 활성 강조)
+                    Spacer(Modifier.height(16.dp))
+                    listOf(
+                        strings.premiumFeature1,
+                        strings.premiumFeature2,
+                        strings.premiumFeature3,
+                    ).forEach { feature ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        ) {
+                            Text(
+                                "✓",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = EjectCoral,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                feature,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    // 구독 관리 버튼 — Play 스토어 Subscriptions 페이지로 deep link.
+                    //   url 패턴: https://play.google.com/store/account/subscriptions?sku=<sku>&package=<pkg>
+                    //   sku 가 없어도 일반 subscriptions 페이지로 fallback 가능.
+                    OutlinedButton(
+                        onClick  = {
+                            val url = "https://play.google.com/store/account/subscriptions?package=${ctx.packageName}"
+                            runCatching {
+                                ctx.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(url),
+                                    )
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White,
+                        ),
+                        border   = androidx.compose.foundation.BorderStroke(1.dp, EjectCoral),
+                        shape    = RoundedCornerShape(50),
+                    ) {
+                        Text(
+                            strings.premiumManageBtn,
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 14.sp,
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -1323,26 +1711,20 @@ private fun SystemsContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
-            // v1.3.0 — 광고 제거 일회성 (eject_remove_ads_lifetime ₩3,300).
-            // premium 구독자도 자동으로 광고 비활성이라 굳이 또 살 필요 없음 → 숨김.
-            // 이미 구매한 사람은 "광고 제거됨 ✓" 상태로 표시 (재구매 차단).
-            if (!isPremium) {
-                if (isAdsRemoved) {
-                    SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
-                } else {
-                    val priceLabel = removeAdsPrice?.let { " — $it" } ?: ""
-                    SystemsRow(
-                        icon = "🚫",
-                        label = "${strings.settingsRemoveAdsBuy}$priceLabel",
-                        onClick = onPurchaseRemoveAds,
-                    )
-                }
+            // v1.5.9 — "광고 제거" 일회성 결제 버튼 제거. 광고 제거는 프리미엄 업그레이드
+            // 카드의 혜택(premiumFeature1)으로 통합 — 사용자가 두 결제 옵션 중 선택해야
+            // 하던 혼란 제거. 이미 광고 제거 결제한 사용자는 isAdsRemoved=true 가 그대로
+            // 유지되어 광고 비활성 상태로 계속 사용 가능 (BillingManager 결제 path 유지).
+            if (!isPremium && isAdsRemoved) {
+                SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
             }
             // v1.2.0 — 위장 아이콘 토글. 다이얼로그에서 5개 옵션 중 선택.
             SystemsRow(icon = "🎭", label = strings.settingsDecoy, onClick = {
                 currentDecoy = EjectPrefs.loadDecoy(ctx)
                 showDecoyDialog = true
             })
+            // v1.5.12 — 사용 설명서 (코치마크 다시 보기). 코치마크 step 4 desc 가 안내하는 메뉴.
+            SystemsRow(icon = "📖", label = strings.settingsManual, onClick = onShowGuide)
             SystemsRow(icon = "💬", label = strings.settingsShare, onClick = {
                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "text/plain"
@@ -1438,7 +1820,8 @@ private fun SystemsContent(
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(
-                    text       = "EJECT BUTTON",
+                    // v1.5.2 — 앱 정보 카드도 다국어 brand label 사용
+                    text       = strings.appBrandLabel,
                     fontSize   = 14.sp,
                     color      = EjectOnSurface,
                     fontWeight = FontWeight.ExtraBold,
@@ -1446,7 +1829,10 @@ private fun SystemsContent(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text       = strings.settingsVersion,
+                    // v1.5.12 — BuildConfig.VERSION_NAME 으로 동적 표시.
+                    //   이전: strings.settingsVersion 하드코딩 ("v1.0 · ...") → 실제 v1.5.x 와 mismatch.
+                    //   이제: CI 가 -PversionNameOverride 로 주입한 실제 버전이 자동 반영.
+                    text       = "v" + BuildConfig.VERSION_NAME + "  ·  " + strings.catchphrase,
                     fontSize   = 11.sp,
                     color      = EjectSecondary,
                     fontWeight = FontWeight.Medium,
@@ -1506,7 +1892,8 @@ private fun EjectButton(
         label = "s",
     )
 
-    // 취소 모드: 채워진 코랄 원 + 흰색 X 아이콘. 일반 모드: 흰 원 + 코랄 테두리.
+    // v1.5.6 — 일반 모드 + 취소 모드 모두 채우기 색을 외곽선과 통일 (EjectCoral 빨강).
+    // 안의 ⏏ 아이콘 + "탈출" 텍스트는 흰색으로 잘 보이게.
     Box(
         modifier = Modifier
             .size(260.dp)
@@ -1520,7 +1907,7 @@ private fun EjectButton(
                 .clip(CircleShape)
                 .background(EjectCoral.copy(alpha = 0.10f))
         )
-        // Main circle
+        // Main circle — 항상 EjectCoral 채우기
         Box(
             modifier = Modifier
                 .size(232.dp)
@@ -1531,7 +1918,7 @@ private fun EjectButton(
                     spotColor    = EjectCoral.copy(alpha = 0.35f),
                 )
                 .clip(CircleShape)
-                .background(if (isCancelMode) EjectCoral else EjectSurface)
+                .background(EjectCoral)
                 .border(4.dp, EjectCoral, CircleShape)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
@@ -1554,18 +1941,20 @@ private fun EjectButton(
                     )
                 } else {
                     Text(
+                        // v1.5.6 — 50% 키움 (72 → 108sp)
                         "⏏",
-                        fontSize   = 72.sp,
-                        color      = EjectOnSurface,
+                        fontSize   = 108.sp,
+                        color      = Color.White,
                         fontWeight = FontWeight.ExtraBold,
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        "EJECT",
-                        fontSize      = 13.sp,
-                        color         = EjectCoral,
+                        // v1.5.6 — 50% 키움 (13 → 20sp), letterSpacing 약간 줄임
+                        strings.ejectButtonLabel,
+                        fontSize      = 20.sp,
+                        color         = Color.White,
                         fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 4.sp,
+                        letterSpacing = 5.sp,
                     )
                 }
             }
@@ -1581,21 +1970,27 @@ private fun CallerChips(
     onSelect: (Scenario) -> Unit,
     onDelete: (Scenario) -> Unit,
     onAdd: () -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     val strings = LocalAppStrings.current
 
-    LazyRow(
+    // v1.5.7 round 2 — LazyRow -> Row + horizontalScroll.
+    // Hypothesis: LazyRow lazy measure -> first layout pass register Box height stale ->
+    //   subsequent register Boxes' boundsInRoot cached one step too high -> ring off-by-one.
+    // Row + horizontalScroll = eager measure -> accurate height from first pass.
+    Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
     ) {
-        items(callers) { caller ->
+        callers.forEach { caller ->
             val isSelected = caller.id == selected.id
             val isCustom   = caller.id in customIds
 
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    // 선택: 크림슨 bg + 흰 텍스트 / 비선택: 서피스 bg + 외곽선
                     .background(if (isSelected) EjectCoral else EjectSurface)
                     .then(
                         if (!isSelected)
@@ -1607,7 +2002,7 @@ private fun CallerChips(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text       = "${caller.emoji}  ${caller.name}",
+                    text       = caller.emoji + "  " + caller.name,
                     fontSize   = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                     color      = if (isSelected) Color.White else EjectOnSurface,
@@ -1624,21 +2019,19 @@ private fun CallerChips(
             }
         }
 
-        // + 추가 버튼
-        item {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(EjectSurface)
-                    .border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
-                    .clickable(onClick = onAdd)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Add, "Add", tint = EjectOnSurface, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(strings.addCallerBtn, fontSize = 13.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
-            }
+        // + add button
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(EjectSurface)
+                .border(1.dp, EjectOutlineVar, RoundedCornerShape(50))
+                .clickable(onClick = onAdd)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Add, "Add", tint = EjectOnSurface, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(strings.addCallerBtn, fontSize = 13.sp, color = EjectOnSurface, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -1648,6 +2041,7 @@ private fun TriggerTimeRow(
     selected: TimeChoice,
     customDelaySec: Int,
     onSelect: (TimeChoice) -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     val strings = LocalAppStrings.current
     val items = listOf(
@@ -1656,13 +2050,14 @@ private fun TriggerTimeRow(
         TimeChoice.CUSTOM    to if (selected == TimeChoice.CUSTOM && customDelaySec > 0)
             "${strings.triggerCustom} (${customDelaySec}s)" else strings.triggerCustom,
     )
-    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
+    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect, modifier = modifier)
 }
 
 @Composable
 private fun TriggerModeRow(
     selected: ModeChoice,
     onSelect: (ModeChoice) -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     val strings = LocalAppStrings.current
     val items = listOf(
@@ -1670,7 +2065,7 @@ private fun TriggerModeRow(
         ModeChoice.SHAKE       to strings.triggerShake,
         ModeChoice.SIDE_BUTTON to strings.triggerSideButton,
     )
-    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect)
+    TriggerChoiceRow(items = items, selectedKey = selected, onSelect = onSelect, modifier = modifier)
 }
 
 @Composable
@@ -1678,9 +2073,10 @@ private fun <T> TriggerChoiceRow(
     items: List<Pair<T, String>>,
     selectedKey: T,
     onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,  // v1.5.6 — 코치마크 register 용
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items.forEach { (key, label) ->
@@ -1721,6 +2117,18 @@ private fun SectionHeader(title: String) {
     }
 }
 
+/**
+ * v1.5.3 — Sliding pill indicator (사용자 피드백 #6).
+ *
+ * 회귀 (v1.5.0~v1.5.2): `if (isActive) EjectSurfaceMid else Color.Transparent` 가 boolean step
+ * 으로 작동해서, 화면 스와이프 / 탭 전환 시 회색 음영이 한 탭에서 사라지면서 다른 탭에 즉시 jump.
+ *
+ * fix: pill 을 별도 Box 로 추출 → `animateFloatAsState` 로 slide 위치 보간.
+ *      text color / fontWeight 도 active fraction 비례해 lerp.
+ *      iOS UISegmentedControl / Material3 NavigationBar 톤.
+ *
+ * 코너 RoundedCornerShape(50), shadow, border 등 기존 디자인 시스템 그대로 유지.
+ */
 @Composable
 private fun BottomBar(
     current: AppScreen,
@@ -1729,7 +2137,19 @@ private fun BottomBar(
     onPremiumTap: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    Row(
+    val tabs = listOf(
+        AppScreen.COMMAND to strings.tabCommand,
+        AppScreen.HISTORY to strings.tabHistory,
+        AppScreen.SYSTEMS to strings.tabSystems,
+    )
+    val activeIndex = tabs.indexOfFirst { it.first == current }.coerceAtLeast(0)
+    val animatedIndex by animateFloatAsState(
+        targetValue = activeIndex.toFloat(),
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        label = "bottombar-pill-position",
+    )
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
@@ -1738,31 +2158,52 @@ private fun BottomBar(
             .background(EjectSurface.copy(alpha = 0.96f))
             .border(1.dp, EjectOutlineVar.copy(alpha = 0.5f), RoundedCornerShape(50))
             .padding(vertical = 6.dp, horizontal = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        listOf(
-            AppScreen.COMMAND to strings.tabCommand,
-            AppScreen.HISTORY to strings.tabHistory,
-            AppScreen.SYSTEMS to strings.tabSystems,
-        ).forEach { (screen, label) ->
-            val isActive = screen == current
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isActive) EjectSurfaceMid else Color.Transparent)
-                    .clickable { onSelect(screen) }
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text          = label,
-                    fontSize      = 11.sp,
-                    color         = if (isActive) EjectOnSurface else EjectSecondary,
-                    fontWeight    = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
-                    letterSpacing = 1.5.sp,
-                )
+        // 슬라이딩 pill — 한 탭에서 다른 탭으로 부드럽게 이동.
+        // BoxWithConstraints 의 maxWidth = 6+6dp horizontal padding 빼고 남은 가용 폭 (3 탭 동등 분할).
+        // v1.5.4 — fillMaxHeight() 회귀 fix: BoxWithConstraints 가 wrap-content 인 상황에서
+        // child 의 fillMaxHeight 가 unbounded 로 측정되어 BottomBar 전체 height 가
+        // 화면 거의 전체로 확장됐던 문제. 명시 height(40.dp) 로 안정화 (Row padding 12+12 +
+        // text 11sp ≈ 37dp 와 일치, 약간 여유).
+        val tabWidth = maxWidth / tabs.size
+        val pillHeight = 40.dp
+        Box(
+            modifier = Modifier
+                .offset(x = tabWidth * animatedIndex)
+                .width(tabWidth)
+                .height(pillHeight)
+                .clip(RoundedCornerShape(50))
+                .background(EjectSurfaceMid),
+        )
+        // 텍스트 row — pill 위에 layered. 각 탭의 active fraction 으로 color/weight 보간.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { idx, (screen, label) ->
+                val activeFrac = (1f - abs(animatedIndex - idx)).coerceIn(0f, 1f)
+                val textColor = lerp(EjectSecondary, EjectOnSurface, activeFrac)
+                // FontWeight 보간: SemiBold(600) ↔ ExtraBold(800)
+                val weightInt = (600 + (800 - 600) * activeFrac).toInt()
+                // v1.5.6 — clickable area 와 sliding pill area 정확히 일치 (호버/클릭 음영 크기 통일).
+                // 3 탭 모두 weight(1f) + height(pillHeight) → tabWidth × 40dp 동일.
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(pillHeight)
+                        .clip(RoundedCornerShape(50))
+                        .clickable { onSelect(screen) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text          = label,
+                        fontSize      = 11.sp,
+                        color         = textColor,
+                        fontWeight    = FontWeight(weightInt),
+                        letterSpacing = 1.5.sp,
+                    )
+                }
             }
         }
     }
@@ -1954,6 +2395,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
 // 따라서 한 줄 배너이긴 하지만 NativeAdView 안에 LinearLayout (icon +
 // headline + AD 뱃지) 를 구성하고 각 View 를 NativeAdView 의 슬롯에 바인드한다.
 
+@SuppressLint("SetTextI18n") // "AD" is required ad disclosure label per Google AdMob policy — must not be localized
 @Composable
 private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
     val surfaceColor   = EjectSurface.toArgb()

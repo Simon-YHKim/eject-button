@@ -47,13 +47,33 @@ dist/
 .agents/
 HANDOFF_*.md
 
-# v1.5.x — temp 파일 / cowork-tmp / instruction docs
+# Cowork session 임시 파일 (v1.5.1+)
 .cowork-tmp/
-COMMIT_*.md
-build_v*.log
-cleanup_*.ps1
-commit_msg_*.txt
-release_v*.ps1
-test-result.log
+/commit_msg_*.txt
+/build_*.log
+/test-result.log
+/COMMIT_*_INSTRUCTIONS.md
+/release_*.ps1
+/cleanup_*.ps1
+/install_*.ps1
+
+# v1.5.12 — turn-key 작업 중 생성되는 temp 파일들 (logs / dumps / screenshots / commit msgs)
 *.out.log
 *.err.log
+billing-log.txt
+check*.log
+commit-msg*.txt
+commit-mil.txt
+dump.xml
+eject_prefs.xml
+logcat-*.txt
+inst*.log
+install*.log
+pm-dump.txt
+test_v*.log
+release_notes_v*.md
+v1.5.12-*.png
+artifacts-v*/
+extracted/
+extracted-final/
+rn-*.txt

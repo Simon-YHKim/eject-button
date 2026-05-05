@@ -145,7 +145,8 @@ fun SettingsScreen(
                 }
                 Spacer(Modifier.width(16.dp))
                 Text(
-                    "SYSTEMS",
+                    // v1.5.5 — hard-coded "SYSTEMS" → strings.systemsTitle (한국어 = "설정")
+                    strings.systemsTitle.uppercase(),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = EjectOnSurface,

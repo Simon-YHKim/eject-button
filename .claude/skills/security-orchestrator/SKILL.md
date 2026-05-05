@@ -1,6 +1,6 @@
 ---
 name: security-orchestrator
-description: Sequentially runs the full 5-stage security audit (security-checklist → authz-designer → paid-api-guard → /cso comprehensive → /codex challenge) and produces a consolidated SUMMARY report with issues sorted by severity. Use this skill PROACTIVELY whenever the user says things like "보안 점검", "보안 감사", "배포 전 보안", "전체 보안 확인", "comprehensive security review", "security audit", "production readiness security check", "check for vulnerabilities"—even without explicit framing. Use ONLY for whole-stack audits. For narrower scopes, delegate to the specific skill: RLS only → security-checklist, RBAC design → authz-designer, payment API → paid-api-guard, infrastructure → /cso.
+description: "Sequentially runs the full 5-stage security audit (security-checklist → authz-designer → paid-api-guard → /cso comprehensive → /codex challenge) and produces a consolidated SUMMARY report with issues sorted by severity. Use this skill PROACTIVELY whenever the user says things like \"보안 점검\", \"보안 감사\", \"배포 전 보안\", \"전체 보안 확인\", \"comprehensive security review\", \"security audit\", \"production readiness security check\", \"check for vulnerabilities\"—even without explicit framing. Use ONLY for whole-stack audits. For narrower scopes, delegate to the specific skill: RLS only → security-checklist, RBAC design → authz-designer, payment API → paid-api-guard, infrastructure → /cso."
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 version: 1.0.0
 author: simon

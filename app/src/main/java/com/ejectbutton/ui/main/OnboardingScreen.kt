@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ejectbutton.data.LocalAppStrings
@@ -296,6 +297,8 @@ private fun OnboardingPageContent(page: OnboardingPage) {
             fontWeight = FontWeight.ExtraBold,
             color      = EjectOnSurface,
             letterSpacing = 1.sp,
+            textAlign  = TextAlign.Center,
+            modifier   = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -303,7 +306,8 @@ private fun OnboardingPageContent(page: OnboardingPage) {
             fontSize   = 15.sp,
             color      = EjectSecondary,
             fontWeight = FontWeight.Medium,
-            modifier   = Modifier.padding(horizontal = 8.dp),
+            textAlign  = TextAlign.Center,
+            modifier   = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
     }
 }
@@ -337,6 +341,8 @@ private fun OnboardingFinalContent() {
             fontWeight = FontWeight.ExtraBold,
             color      = EjectCoral,
             letterSpacing = 2.sp,
+            textAlign  = TextAlign.Center,
+            modifier   = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(12.dp))
         Text(
@@ -344,6 +350,8 @@ private fun OnboardingFinalContent() {
             fontSize   = 17.sp,
             fontWeight = FontWeight.SemiBold,
             color      = EjectOnSurface,
+            textAlign  = TextAlign.Center,
+            modifier   = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
     }
 }

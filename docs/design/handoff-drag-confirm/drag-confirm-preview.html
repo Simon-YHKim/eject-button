@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>drag_confirm.json — One UI 8.5 Drag-to-Confirm v3</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0b0d;
+    --panel: #16171a;
+    --border: #2a2c31;
+    --text: #e6e7ea;
+    --dim: #8a8d94;
+    --accent: #4c8bf5;
+    --accept: #1abc54;
+    --decline: #e8453a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--dim); font-size: 13px; margin: 0 0 24px; max-width: 800px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: 320px 320px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } .panel-col { grid-column: 1 / -1; } }
+  @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+
+  /* ── Stage (incoming-call mock) ─────────────────────────────────────── */
+  .stage {
+    background:
+      radial-gradient(ellipse at 50% 0%, #3a2a22 0%, #1a1410 60%, #0a0807 100%);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    aspect-ratio: 9 / 18;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+  .stage-label {
+    position: absolute; top: 10px; left: 0; right: 0; text-align: center;
+    color: rgba(255,255,255,0.4); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; pointer-events: none;
+  }
+  .ctx-text {
+    position: absolute; top: 38px; left: 0; right: 0;
+    text-align: center; color: rgba(255,255,255,0.55); font-size: 11px;
+  }
+
+  /* Faux call-screen body */
+  .ringer {
+    position: absolute; top: 70px; left: 0; right: 0;
+    display: flex; flex-direction: column; align-items: center;
+    color: white; font-size: 11px; pointer-events: none;
+  }
+  .ringer .name { font-size: 13px; font-weight: 500; margin-bottom: 4px; opacity: 0.95; }
+  .ringer .num { color: rgba(255,255,255,0.55); font-size: 9px; margin-bottom: 10px; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #c9a98a, #6b4e3a);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* Bottom action row — accept on left, decline on right */
+  .actions {
+    position: absolute; left: 0; right: 0; bottom: 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 28px;
+  }
+  .call-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    position: relative; z-index: 2;
+    cursor: grab;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .call-btn:active { cursor: grabbing; }
+  .call-btn svg { width: 24px; height: 24px; fill: white; }
+  .call-btn.accept { background: var(--accept); }
+  .call-btn.decline { background: var(--decline); }
+  .call-btn.decline svg { transform: rotate(135deg); }
+
+  /* Lottie hosts — one per button, anchored on the button */
+  .lottie-host {
+    position: absolute;
+    width: 200px; height: 200px;
+    pointer-events: none;
+    z-index: 1; /* under the button so it doesn't dim it */
+    opacity: 0;
+  }
+  .lottie-host.on { opacity: 1; }
+  .lottie-host svg { display: block; overflow: visible !important; }
+
+  /* Touch tracker dot */
+  .touch-dot {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 0 6px rgba(255,255,255,0.5);
+    pointer-events: none; z-index: 4;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+  }
+  .touch-dot.on { opacity: 1; }
+
+  /* ── Right side: panel ─────────────────────────────────────────────── */
+  .panel-col { display: flex; flex-direction: column; gap: 16px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .panel h3 { margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: 0; }
+  .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .row:last-child { margin-bottom: 0; }
+  label { font-size: 10px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .progress-readout { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .progress-readout .frame { color: var(--dim); font-size: 11px; font-weight: 500; margin-left: 8px; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 5px; border-radius: 999px;
+    background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--p, 0%), #2a2c31 var(--p, 0%), #2a2c31 100%);
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: white; border: 2px solid var(--accent);
+    cursor: grab;
+  }
+
+  .seg {
+    display: inline-flex; background: #1f2125; border: 1px solid var(--border);
+    border-radius: 8px; padding: 2px; gap: 2px;
+  }
+  .seg button {
+    background: transparent; color: var(--dim); border: 0;
+    padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+  }
+  .seg button.on { background: var(--accent); color: white; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn {
+    background: #1f2125; border: 1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius: 7px; font-size: 11px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn:hover { background: #25272c; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .meta {
+    font-size: 11px; color: var(--dim); line-height: 1.7;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    background: #0f1012; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .meta b { color: var(--text); font-weight: 600; }
+  .ok { color: #4ade80; }
+
+  .legend { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--dim); }
+  .legend-row { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
+
+  /* Reference grid for sanity */
+  .refgrid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    margin-top: 8px;
+  }
+  .refgrid img { width: 100%; border-radius: 6px; border: 1px solid var(--border); }
+  .refgrid .lbl { font-size: 9px; color: var(--dim); text-align: center; margin-top: 2px; }
+
+  details { margin-top: 24px; }
+  summary { cursor: pointer; color: var(--dim); font-size: 13px; padding: 8px 0; }
+  pre { background: #0f1012; border: 1px solid var(--border); border-radius: 10px;
+        padding: 12px; overflow-x: auto; font-size: 11px; line-height: 1.5; max-height: 300px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>drag_confirm.json &nbsp;v3 &nbsp;·&nbsp; 양쪽 버튼 + 정확한 정렬</h1>
+  <p class="sub">
+    실제 One UI 프레임 3–9 기반 재캘리브레이션:
+    outer ring(연한 회색)이 누른 버튼 중심에서 100→180dp로 grow,
+    inner ring(진한 회색)이 30→160dp로 grow, 둘 다 시작/끝에서 부드럽게 페이드.
+    좌측은 동화(accept), 우측은 거절(decline) 시뮬레이션 — Compose에서 동일한 JSON을 양쪽에 적용.
+  </p>
+
+  <div class="grid">
+    <!-- Accept stage -->
+    <div class="stage" id="stageAccept">
+      <div class="stage-label">ACCEPT (동화) DRAG</div>
+      <div class="ctx-text">왼쪽 녹색 버튼을 우측으로 드래그</div>
+      <div class="ringer">
+        <div class="name">♡쪼꼬미소하♡</div>
+        <div class="num">폰 010-2484-1120</div>
+        <div class="avatar"></div>
+      </div>
+      <div class="lottie-host" id="dcHostA"></div>
+      <div class="actions">
+        <div class="call-btn accept" data-side="accept" id="btnA">
+          <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+        </div>
+        <div class="call-btn decline" data-side="decline-passive" id="btnAd">
+          <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+        </div>
+      </div>
+      <div class="touch-dot" id="dotA"></div>
+    </div>
+
+    <!-- Decline stage -->
+    <div class="stage" id="stageDecline">
+      <div class="stage-label">DECLINE (거절) DRAG</div>
+      <div class="ctx-text">오른쪽 빨간 버튼을 좌측으로 드래그</div>
+      <div class="ringer">
+        <div class="name">♡쪼꼬미소하♡</div>
+        <div class="num">폰 010-2484-1120</div>
+        <div class="avatar"></div>
+      </div>
+      <div class="lottie-host" id="dcHostD"></div>
+      <div class="actions">
+        <div class="call-btn accept" data-side="accept-passive" id="btnDa">
+          <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+        </div>
+        <div class="call-btn decline" data-side="decline" id="btnD">
+          <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+        </div>
+      </div>
+      <div class="touch-dot" id="dotD"></div>
+    </div>
+
+    <!-- Panel -->
+    <div class="panel-col">
+      <div class="panel">
+        <h3>Driver</h3>
+        <div class="row">
+          <label>Active side</label>
+          <div class="seg" id="sideSeg">
+            <button data-side="accept" class="on">Accept</button>
+            <button data-side="decline">Decline</button>
+            <button data-side="both">Both</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>Progress (drag fraction)</label>
+          <div class="progress-readout">
+            <span id="pVal">0.00</span><span class="frame" id="fVal">f 0 / 100</span>
+          </div>
+          <input id="prog" type="range" min="0" max="1000" value="0" step="1" />
+        </div>
+        <div class="row">
+          <label>Quick scrub</label>
+          <div class="btn-row">
+            <button class="btn" data-jump="0">0.0</button>
+            <button class="btn" data-jump="0.05">0.05</button>
+            <button class="btn" data-jump="0.2">0.2</button>
+            <button class="btn" data-jump="0.5">0.5</button>
+            <button class="btn" data-jump="0.75">0.75</button>
+            <button class="btn" data-jump="0.95">0.95</button>
+            <button class="btn" data-jump="1">1.0</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>Demo</label>
+          <div class="btn-row">
+            <button class="btn primary" id="dragSim">Simulate full drag (1.6s)</button>
+            <button class="btn" id="dragPartial">Partial then release</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Layers</h3>
+        <div class="legend">
+          <div class="legend-row">
+            <div class="swatch" style="background: rgba(200,200,200,0.30);"></div>
+            <span><b style="color:#e6e7ea">Outer</b> &nbsp;rgba(200,200,200,0.30) &nbsp;r=100→180dp</span>
+          </div>
+          <div class="legend-row">
+            <div class="swatch" style="background: rgba(150,150,150,0.55);"></div>
+            <span><b style="color:#e6e7ea">Inner</b> &nbsp;rgba(150,150,150,0.45) &nbsp;r=30→160dp</span>
+          </div>
+        </div>
+        <div class="meta" id="metaBox" style="margin-top: 12px;">loading…</div>
+      </div>
+
+      <div class="panel">
+        <h3>Compose-side fade rules (시뮬)</h3>
+        <div class="legend">
+          <div class="legend-row">
+            <span><b style="color:#e6e7ea">Pressed btn</b>: opacity = 1 − p (선형)</span>
+          </div>
+          <div class="legend-row">
+            <span><b style="color:#e6e7ea">Opposite btn</b>: opacity = 1 (p≤0.85), 그 후 페이드</span>
+          </div>
+          <div class="legend-row" style="color: #666;">
+            <span>※ 이 fade는 Lottie가 아닌 Compose 영역</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>drag_confirm.json (raw)</summary>
+    <pre id="dump"></pre>
+  </details>
+</div>
+
+<script>
+(async function () {
+  const res = await fetch('drag_confirm.json');
+  const dcJson = await res.json();
+  document.getElementById('dump').textContent = JSON.stringify(dcJson, null, 2);
+
+  function makeAnim(container) {
+    return lottie.loadAnimation({
+      container,
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      animationData: dcJson,
+    });
+  }
+  const animA = makeAnim(document.getElementById('dcHostA'));
+  const animD = makeAnim(document.getElementById('dcHostD'));
+
+  // Position each Lottie host so its CENTER aligns with the pressed button center.
+  // Each host is 200×200 px (we render at half scale of the 400dp canvas for tighter UI),
+  // but Lottie SVG scales with our CSS width, so r=180dp displays as 90px on screen.
+  // We want the OUTER center on the button center.
+  function alignHost(stage, btn, host, hostSize) {
+    const sR = stage.getBoundingClientRect();
+    const bR = btn.getBoundingClientRect();
+    const cx = bR.left - sR.left + bR.width / 2;
+    const cy = bR.top  - sR.top  + bR.height / 2;
+    host.style.left = (cx - hostSize / 2) + 'px';
+    host.style.top  = (cy - hostSize / 2) + 'px';
+  }
+  function alignAll() {
+    alignHost(
+      document.getElementById('stageAccept'),
+      document.getElementById('btnA'),
+      document.getElementById('dcHostA'), 200,
+    );
+    alignHost(
+      document.getElementById('stageDecline'),
+      document.getElementById('btnD'),
+      document.getElementById('dcHostD'), 200,
+    );
+  }
+  alignAll();
+  window.addEventListener('resize', alignAll);
+  // also after a tick so layout settles
+  setTimeout(alignAll, 50);
+  setTimeout(alignAll, 200);
+
+  // State
+  let activeSide = 'accept'; // 'accept' | 'decline' | 'both'
+
+  function setProgress(p) {
+    p = Math.max(0, Math.min(1, p));
+    const total = animA.totalFrames;
+    const f = p * total;
+
+    const slider = document.getElementById('prog');
+    slider.value = Math.round(p * 1000);
+    slider.style.setProperty('--p', (p * 100) + '%');
+    document.getElementById('pVal').textContent = p.toFixed(2);
+    document.getElementById('fVal').textContent = `f ${f.toFixed(1)} / ${total}`;
+
+    const showA = activeSide === 'accept' || activeSide === 'both';
+    const showD = activeSide === 'decline' || activeSide === 'both';
+
+    // Drive Lottie + host visibility
+    animA.goToAndStop(f, true);
+    animD.goToAndStop(f, true);
+    document.getElementById('dcHostA').classList.toggle('on', showA && p > 0);
+    document.getElementById('dcHostD').classList.toggle('on', showD && p > 0);
+
+    // Compose-side button fades
+    function fadePressed(btn, on) {
+      const o = on ? Math.max(0, 1 - p) : 1;
+      btn.style.opacity = o;
+      btn.style.transform = on ? `scale(${1 - 0.05 * p})` : 'scale(1)';
+    }
+    function fadeOpposite(btn, otherOn) {
+      // opposite stays full until p > 0.85, then fades
+      let o = 1;
+      if (otherOn && p > 0.85) o = Math.max(0, 1 - (p - 0.85) / 0.15);
+      btn.style.opacity = o;
+      btn.style.transform = 'scale(1)';
+    }
+    // Stage A buttons
+    fadePressed (document.getElementById('btnA'),  showA);
+    fadeOpposite(document.getElementById('btnAd'), showA);
+    // Stage D buttons
+    fadeOpposite(document.getElementById('btnDa'), showD);
+    fadePressed (document.getElementById('btnD'),  showD);
+    // For decline svg, keep its rotated transform when scaled
+    const btnD = document.getElementById('btnD');
+    if (showD) btnD.style.transform = `scale(${1 - 0.05 * p})`;
+
+    // Touch dots — move from pressed-button center toward opposite button center
+    function moveDot(stage, fromBtn, toBtn, dot, on) {
+      if (!on || p === 0) { dot.classList.remove('on'); return; }
+      const sR = stage.getBoundingClientRect();
+      const fR = fromBtn.getBoundingClientRect();
+      const tR = toBtn.getBoundingClientRect();
+      const fx = fR.left - sR.left + fR.width / 2;
+      const fy = fR.top  - sR.top  + fR.height / 2;
+      const tx = tR.left - sR.left + tR.width / 2;
+      const ty = tR.top  - sR.top  + tR.height / 2;
+      const x = fx + (tx - fx) * p;
+      const y = fy + (ty - fy) * p;
+      dot.style.left = x + 'px';
+      dot.style.top  = y + 'px';
+      dot.classList.add('on');
+    }
+    moveDot(
+      document.getElementById('stageAccept'),
+      document.getElementById('btnA'),
+      document.getElementById('btnAd'),
+      document.getElementById('dotA'),
+      showA,
+    );
+    moveDot(
+      document.getElementById('stageDecline'),
+      document.getElementById('btnD'),
+      document.getElementById('btnDa'),
+      document.getElementById('dotD'),
+      showD,
+    );
+  }
+
+  // Side switcher
+  document.querySelectorAll('#sideSeg button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#sideSeg button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      activeSide = b.dataset.side;
+      setProgress(parseInt(document.getElementById('prog').value, 10) / 1000);
+    });
+  });
+
+  document.getElementById('prog').addEventListener('input', e => {
+    setProgress(parseInt(e.target.value, 10) / 1000);
+  });
+  document.querySelectorAll('[data-jump]').forEach(b => {
+    b.addEventListener('click', () => setProgress(parseFloat(b.dataset.jump)));
+  });
+
+  // 1.6s simulation matching reference timing (frames 3..9 of 48-frame GIF)
+  document.getElementById('dragSim').addEventListener('click', () => {
+    const start = performance.now();
+    const upDur = 1300, hold = 100, downDur = 200; // ~1.6s total
+    function step(now) {
+      const e = now - start;
+      let p;
+      if (e < upDur) {
+        const u = e / upDur;
+        p = 1 - Math.pow(1 - u, 1.8);
+      } else if (e < upDur + hold) {
+        p = 1.0;
+      } else if (e < upDur + hold + downDur) {
+        const u = (e - upDur - hold) / downDur;
+        p = 1 - u;
+      } else {
+        setProgress(0);
+        return;
+      }
+      setProgress(p);
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+
+  document.getElementById('dragPartial').addEventListener('click', () => {
+    const start = performance.now();
+    const upDur = 700, hold = 200, downDur = 500;
+    const peak = 0.6;
+    function step(now) {
+      const e = now - start;
+      let p;
+      if (e < upDur) p = peak * (1 - Math.pow(1 - e / upDur, 1.8));
+      else if (e < upDur + hold) p = peak;
+      else if (e < upDur + hold + downDur) p = peak * (1 - (e - upDur - hold) / downDur);
+      else { setProgress(0); return; }
+      setProgress(p);
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+
+  // Drag interaction on the buttons themselves
+  function bindDrag(btn, otherBtn, side) {
+    let dragging = false;
+    let startX = 0;
+    let dist = 0;
+    btn.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      startX = e.clientX;
+      btn.setPointerCapture(e.pointerId);
+      // switch active side
+      activeSide = side;
+      document.querySelectorAll('#sideSeg button').forEach(x => x.classList.remove('on'));
+      const segBtn = document.querySelector(`#sideSeg button[data-side="${side}"]`);
+      if (segBtn) segBtn.classList.add('on');
+      // distance budget = horizontal distance to other button center
+      const aR = btn.getBoundingClientRect();
+      const bR = otherBtn.getBoundingClientRect();
+      dist = Math.abs((bR.left + bR.width/2) - (aR.left + aR.width/2));
+    });
+    btn.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const delta = Math.abs(e.clientX - startX);
+      setProgress(delta / dist);
+    });
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      // animate back to 0
+      const startP = parseInt(document.getElementById('prog').value, 10) / 1000;
+      const t0 = performance.now();
+      const dur = 280;
+      function step(now) {
+        const u = Math.min(1, (now - t0) / dur);
+        setProgress(startP * (1 - u));
+        if (u < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointercancel', end);
+  }
+  bindDrag(document.getElementById('btnA'), document.getElementById('btnAd'), 'accept');
+  bindDrag(document.getElementById('btnD'), document.getElementById('btnDa'), 'decline');
+
+  // Meta
+  const bytes = new Blob([JSON.stringify(dcJson)]).size;
+  document.getElementById('metaBox').innerHTML = `
+    <b>drag_confirm.json</b><br>
+    size&nbsp;<span class="ok">${bytes.toLocaleString()} B</span> / 25,000 B budget<br>
+    canvas&nbsp;${dcJson.w}×${dcJson.h}dp<br>
+    fps&nbsp;${dcJson.fr} &nbsp; op&nbsp;${dcJson.op}f<br>
+    layers&nbsp;${dcJson.layers.length} (Outer + Inner)
+  `;
+
+  setProgress(0);
+})();
+</script>
+</body>
+</html>

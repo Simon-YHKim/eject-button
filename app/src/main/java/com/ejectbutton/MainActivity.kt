@@ -165,14 +165,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // v1.1.5 — FLAG_SECURE: Eject Button 핵심 가치는 "옆사람에게 들키지 않는 탈출".
-        // 이 플래그가 없으면 가해자가 Recents (최근 앱) 멀티태스킹 화면에서 시나리오/
-        // 발신자 이름/SETTINGS 내용을 다 볼 수 있음 → 위기 사용자 안전 직격.
-        // 또한 스크린샷·화면녹화도 시스템에서 차단되어 의도치 않은 PII 유출 방지.
-        window.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        // v1.4.2 — FLAG_SECURE 임시 비활성화 (Closed Testing 사용자가 스크린샷
+        // 으로 버그 신고 / UX 피드백 가능하게). production 출시 전 v1.5+ 에서
+        // debug 빌드에만 비활성화 + release 빌드는 다시 활성화하는 토글로 재구성 예정.
+        //
+        // 원래 의도 (재활성화 시 복원):
+        // FLAG_SECURE: Eject Button 핵심 가치 = "옆사람에게 들키지 않는 탈출".
+        // 이 플래그가 없으면 가해자가 Recents (최근 앱) 멀티태스킹 화면에서
+        // 시나리오/발신자 이름/SETTINGS 내용 노출. 또한 스크린샷·화면녹화 차단.
+        // (현재 비활성 — 테스터 편의 우선)
 
         // 상태표시줄/네비게이션바 색상은 아래 setContent 안에서 themeMode 에
         // 반응해 [applySystemBars] 로 동적으로 설정한다. 여기서는 edge-to-edge
@@ -515,6 +516,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SplashScreen(initLabel: String, catchphrase: String) {
+    val strings = LocalAppStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -539,7 +541,8 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
             Spacer(Modifier.height(32.dp))
 
             Text(
-                text       = "EJECT BUTTON",
+                // v1.5.2 — 스플래시 brand label 도 다국어
+                text       = strings.appBrandLabel,
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = TacticalOnSurface,

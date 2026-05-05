@@ -11,8 +11,9 @@ ump = "3.0.0"
 firebaseBom = "33.5.1"
 googleServices = "4.4.2"
 firebaseCrashlyticsPlugin = "3.0.2"
-# v1.4.0 — Geofencing API. FusedLocationProvider + GeofencingClient.
-playServicesLocation = "21.3.0"
+# v1.4.0 ??Geofencing API. FusedLocationProvider + GeofencingClient.
+# v1.4.2 — Lottie animation for drag-to-confirm rings on call buttons.
+lottieCompose = "6.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,21 +32,22 @@ androidx-lifecycle-common = { group = "androidx.lifecycle", name = "lifecycle-co
 play-review = { group = "com.google.android.play", name = "review-ktx", version = "2.0.2" }
 play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
 google-admob = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "admob" }
-# v1.2 — UMP (User Messaging Platform) SDK. GDPR/EEA 사용자 광고 동의 다이얼로그.
-# AdMob 대시보드 GDPR Message가 'Published' 상태여야 실제 노출됨.
+# v1.2 ??UMP (User Messaging Platform) SDK. GDPR/EEA ?ъ슜??愿묎퀬 ?숈쓽 ?ㅼ씠?쇰줈洹?
+# AdMob ??쒕낫??GDPR Message媛 'Published' ?곹깭?ъ빞 ?ㅼ젣 ?몄텧??
 google-ump = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "ump" }
 ms-clarity = { group = "com.microsoft.clarity", name = "clarity-compose", version = "3.1.2" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
-# v1.0.10 — Crashlytics: 자체 CrashReportManager (메일 의존) 보완. 자동 클라우드 수집.
+# v1.0.10 ??Crashlytics: ?먯껜 CrashReportManager (硫붿씪 ?섏〈) 蹂댁셿. ?먮룞 ?대씪?곕뱶 ?섏쭛.
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
-# v1.4.0 — Geofencing 기반 시나리오 자동 전환 (특정 위치 진입 시 sidebtn 모드 ON).
-google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+# v1.4.0 ??Geofencing 湲곕컲 ?쒕굹由ъ삤 ?먮룞 ?꾪솚 (?뱀젙 ?꾩튂 吏꾩엯 ??sidebtn 紐⑤뱶 ON).
+# v1.4.2 — Lottie for Compose. drag_confirm.json 재생.
+lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottieCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
-# v1.0.10 — Crashlytics gradle plugin: ProGuard mapping 자동 업로드 (난독화 스택 trace 자동 deobfuscate).
+# v1.0.10 ??Crashlytics gradle plugin: ProGuard mapping ?먮룞 ?낅줈??(?쒕룆???ㅽ깮 trace ?먮룞 deobfuscate).
 google-firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
