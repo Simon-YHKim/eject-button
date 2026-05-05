@@ -12,7 +12,6 @@ firebaseBom = "33.5.1"
 googleServices = "4.4.2"
 firebaseCrashlyticsPlugin = "3.0.2"
 # v1.4.0 ??Geofencing API. FusedLocationProvider + GeofencingClient.
-playServicesLocation = "21.3.0"
 # v1.4.2 — Lottie animation for drag-to-confirm rings on call buttons.
 lottieCompose = "6.4.0"
 
@@ -42,7 +41,6 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 # v1.0.10 ??Crashlytics: ?먯껜 CrashReportManager (硫붿씪 ?섏〈) 蹂댁셿. ?먮룞 ?대씪?곕뱶 ?섏쭛.
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
 # v1.4.0 ??Geofencing 湲곕컲 ?쒕굹由ъ삤 ?먮룞 ?꾪솚 (?뱀젙 ?꾩튂 吏꾩엯 ??sidebtn 紐⑤뱶 ON).
-google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 # v1.4.2 — Lottie for Compose. drag_confirm.json 재생.
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottieCompose" }
 

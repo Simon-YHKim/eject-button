@@ -104,6 +104,11 @@ private fun CoachmarkOverlay(
         Triple(12.dp, 10.0.dp, 0.08f),
     )
 
+    // v1.5.10 — UnrememberedMutableInteractionSource lint error fix.
+    // 이전: clickable(interactionSource = MutableInteractionSource(), ...) 매 recomposition
+    // 마다 새 instance 생성 → 메모리 누수 + indication state lost. remember 로 감싸 한 번만 생성.
+    val swallowTapInteraction = remember { MutableInteractionSource() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -111,7 +116,7 @@ private fun CoachmarkOverlay(
             // offscreen 컴포지팅 layer 가 필수. 디자인 zip 코드에서 누락된 부분 — 추가.
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .clickable(
-                interactionSource = MutableInteractionSource(),
+                interactionSource = swallowTapInteraction,
                 indication = null,
             ) { /* swallow taps */ }
             // v1.5.6 — drawWithContent 순서 변경: dim 먼저 → cutout → drawContent (tooltip).

@@ -1,6 +1,7 @@
-﻿package com.ejectbutton.ui.main
+package com.ejectbutton.ui.main
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.activity.compose.BackHandler
@@ -2156,6 +2157,7 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
 // 따라서 한 줄 배너이긴 하지만 NativeAdView 안에 LinearLayout (icon +
 // headline + AD 뱃지) 를 구성하고 각 View 를 NativeAdView 의 슬롯에 바인드한다.
 
+@SuppressLint("SetTextI18n") // "AD" is required ad disclosure label per Google AdMob policy — must not be localized
 @Composable
 private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
     val surfaceColor   = EjectSurface.toArgb()

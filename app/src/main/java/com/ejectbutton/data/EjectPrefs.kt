@@ -343,6 +343,7 @@ object EjectPrefs {
 
     // ── Premium ──────────────────────────────────────────────────────────────
 
+    @Suppress("ApplySharedPref") // 의도된 동기 commit (BillingManager 결제 콜백 크래시 대비)
     fun savePremium(ctx: Context, premium: Boolean) {
         // v1.0.10 — apply() 가 아닌 commit() 사용.
         // BillingManager.onPurchasesUpdated 콜백 직후에 앱이 크래시 되면
@@ -364,6 +365,7 @@ object EjectPrefs {
     // INAPP 결제는 한 번 acknowledged 되면 영구 — 디바이스 재설치 시 restorePurchases() 가
     // 자동 복원. KEY_PREMIUM 과 분리되어 premium 구독 없어도 광고만 제거 가능.
 
+    @Suppress("ApplySharedPref") // 의도된 동기 commit (BillingManager 결제 콜백 크래시 대비)
     fun saveAdsRemoved(ctx: Context, removed: Boolean) {
         // v1.0.10 패턴 — apply() 가 아닌 commit() 사용. BillingManager.onPurchasesUpdated
         // 콜백 직후 앱 크래시 대비. 단일 키 commit() 은 1-5ms 라 ANR 임계 (5초) 와

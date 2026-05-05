@@ -7,6 +7,19 @@
 
 ## [Unreleased]
 
+## [1.5.10] - 2026-05-05
+
+### Fixed
+- **lint release: 1 ERROR → 0 ERROR** — `UnrememberedMutableInteractionSource` (CoachmarkOverlay.kt). 매 recomposition마다 새 `MutableInteractionSource()` 생성하던 것을 `remember { }` 로 감싸 안정화.
+- **lint release: SetTextI18n** — `NativeAdCard` 의 `text = "AD"` 광고 disclosure 라벨 (Google AdMob 정책상 영어 유지). `@SuppressLint("SetTextI18n")` + `import android.annotation.SuppressLint` 추가, 정책 근거 인라인 주석 명시.
+- **lint release: ApplySharedPref** — `EjectPrefs.savePremium` / `saveAdsRemoved` 의 `.commit()` 의도된 동기 호출 (BillingManager 결제 콜백 직후 크래시 시 `.apply()` 의 비동기 disk write 유실 → 결제했는데 `is_premium=false` 사고 가능). `@Suppress("ApplySharedPref")` 추가, 의도 인라인 주석 명시.
+
+### Removed
+- **dead dependency: `play-services-location`** — v1.5.8 패치에서 ACCESS_FINE_LOCATION + ACCESS_BACKGROUND_LOCATION + GeofenceManager 모두 제거됐는데, `app/build.gradle.kts` 에 `implementation(libs.google.location)` 만 남아있던 잔재. `gradle/libs.versions.toml` 의 `playServicesLocation` 버전 + `google-location` 라이브러리 정의도 정리. 코드에 사용처 0건 확인 후 제거.
+
+### Notes
+- **검증**: SimonK Stack v85 풀스택 검증 → `compileDebugKotlin` SUCCESSFUL, `lintRelease` 0 errors / 48 warnings (모두 Information level 또는 BoM 안정성 우선의 의도된 outdated dep, 즉 ship-blocker 아님). 시크릿 스캔 0건.
+
 ## [1.5.9] - 2026-05-04
 
 ### Added

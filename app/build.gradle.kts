@@ -140,8 +140,9 @@ dependencies {
     // v1.0.10 ??Crashlytics 異붽?. ?먯껜 CrashReportManager (?ъ슜??硫붿씪 ?꾩넚 ?섏〈, 蹂닿퀬??1-5%)
     // ? 蹂묓뻾 ?댁쁺. Crashlytics ??100% ?먮룞 ?대씪?곕뱶 ?섏쭛 ??誘몃컻寃??щ옒??利됱떆 ?몄?.
     implementation(libs.firebase.crashlytics)
-    // v1.4.0 ??Geofencing API. ?뱀젙 GPS 踰붿쐞 吏꾩엯/?댄깉 媛먯? ???쒕굹由ъ삤 紐⑤뱶 ?먮룞 ?꾪솚.
-    implementation(libs.google.location)
+    // v1.5.10 — Removed Geofencing dependency (libs.google.location).
+    //   Reason: v1.5.8 patch removed all GPS-trigger features after Play Console rejected
+    //   ACCESS_FINE_LOCATION + ACCESS_BACKGROUND_LOCATION. Confirmed 0 usages in code.
     // v1.4.2 — Lottie for drag-to-confirm rings overlay.
     implementation(libs.lottie.compose)
     debugImplementation(libs.androidx.ui.tooling)
