@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import kotlin.math.abs
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -1074,6 +1075,45 @@ private fun StitchTopBar(
     onSettingsBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val strings = LocalAppStrings.current
+    val ctx = LocalContext.current
+
+    // v1.5.11 — 위장 모드 감지. EjectPrefs 동기 read (1ms 미만, main thread 안전).
+    //   isDisguised == false (DEFAULT) → "위장 복구" 아이콘 자체가 렌더 안 됨 → 일반 사용자 노출 0.
+    //   isDisguised == true (계산기/메모/날씨/시계) → Settings 왼쪽에 위장 복구 IconButton 노출.
+    //   탭하면 확인 다이얼로그 → DecoyManager.setActive(ctx, DEFAULT) → 즉시 currentDecoy state 업데이트하여 아이콘 사라짐.
+    var currentDecoy by remember { mutableStateOf(EjectPrefs.loadDecoy(ctx)) }
+    val isDisguised = currentDecoy != DecoyManager.Decoy.DEFAULT
+    var showUnmaskDialog by remember { mutableStateOf(false) }
+
+    if (showUnmaskDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showUnmaskDialog = false },
+            title = { Text(strings.unmaskConfirmTitle, fontWeight = FontWeight.Bold) },
+            text  = { Text(strings.unmaskConfirmBody) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        DecoyManager.setActive(ctx, DecoyManager.Decoy.DEFAULT)
+                        currentDecoy = DecoyManager.Decoy.DEFAULT
+                        showUnmaskDialog = false
+                    },
+                ) {
+                    Text(
+                        strings.unmaskConfirmCta,
+                        color      = EjectCoral,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showUnmaskDialog = false }) {
+                    Text(strings.dialogCancel, color = EjectSecondary)
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1094,6 +1134,23 @@ private fun StitchTopBar(
                 fontSize = 12.sp,
                 color    = EjectSecondary,
             )
+        }
+        // v1.5.11 — 위장 복구 (Unmask) IconButton. Settings 왼쪽.
+        // 위장 모드 (계산기/메모/날씨/시계) 에서만 노출.
+        if (isDisguised) {
+            IconButton(
+                onClick  = { showUnmaskDialog = true },
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    painter            = painterResource(id = R.drawable.ic_unmask),
+                    contentDescription = strings.actionUnmask,
+                    // tint Unspecified → vector drawable 의 hard-coded fillColor (deep red + ink) 그대로 노출.
+                    // 메인 EJECT 버튼 톤과 동일해 위장 모드에서 "이 색이 진짜다" 시그니처 역할.
+                    tint               = androidx.compose.ui.graphics.Color.Unspecified,
+                    modifier           = Modifier.size(24.dp),
+                )
+            }
         }
         // v1.1.5 — SETTINGS 탭에서는 톱니바퀴를 숨김 (이미 SETTINGS 안이라 의미 X).
         // COMMAND/HISTORY 탭에서만 톱니바퀴를 보여 SETTINGS 로 점프 가능하게.

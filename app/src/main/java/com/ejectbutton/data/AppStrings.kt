@@ -277,6 +277,12 @@ data class AppStrings(
     val record: String,
     val transcribing: String,
     val callAssistActive: String,
+
+    // v1.5.11 — 위장 복구 (unmask) action icon · TopAppBar 에 위장 모드일 때만 노출.
+    val actionUnmask: String,         // IconButton contentDescription
+    val unmaskConfirmTitle: String,   // 확인 다이얼로그 제목
+    val unmaskConfirmBody: String,    // 다이얼로그 본문 (위장 해제 시 결과 안내)
+    val unmaskConfirmCta: String,     // 확인 버튼 라벨
 )
 
 // Round 27 — English rewritten to match the Korean "superior-officer
@@ -504,6 +510,12 @@ private val en = AppStrings(
     record                   = "Record",
     transcribing             = "Transcribing…",
     callAssistActive         = "Call Assist active",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "Restore original",
+    unmaskConfirmTitle   = "Restore Eject Button?",
+    unmaskConfirmBody    = "Your launcher icon and app name will return to the original. Anyone with this device will see the real app.",
+    unmaskConfirmCta     = "Restore",
 )
 
 // Round 18 — 한국어 전체 "상사 → 존중받는 파일럿" 말투로 개편.
@@ -728,6 +740,12 @@ private val ko = AppStrings(
     record                   = "녹음",
     transcribing             = "텍스트로 변환 중…",
     callAssistActive         = "통화 어시스트 사용 중",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "위장 복구",
+    unmaskConfirmTitle   = "원래 아이콘으로 복구할까요?",
+    unmaskConfirmBody    = "런처 아이콘과 앱 이름이 원래대로 돌아갑니다. 이 폰을 보는 사람이 진짜 앱을 보게 됩니다.",
+    unmaskConfirmCta     = "복구",
 )
 
 private val zhCN = AppStrings(
@@ -950,6 +968,12 @@ private val zhCN = AppStrings(
     record                   = "录音",
     transcribing             = "正在转换为文本…",
     callAssistActive         = "通话助手已启用",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "恢复原图标",
+    unmaskConfirmTitle   = "恢复为 Eject Button？",
+    unmaskConfirmBody    = "启动图标和应用名将恢复为原始名称。任何看到这部手机的人都会看到真实的应用。",
+    unmaskConfirmCta     = "恢复",
 )
 
 private val zhTW = AppStrings(
@@ -1172,6 +1196,12 @@ private val zhTW = AppStrings(
     record                   = "錄音",
     transcribing             = "正在轉換為文字…",
     callAssistActive         = "通話助理使用中",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "復原原圖示",
+    unmaskConfirmTitle   = "復原為 Eject Button？",
+    unmaskConfirmBody    = "啟動圖示和應用程式名稱將復原為原始名稱。任何看到此手機的人都會看到真正的應用程式。",
+    unmaskConfirmCta     = "復原",
 )
 
 private val ja = AppStrings(
@@ -1394,6 +1424,12 @@ private val ja = AppStrings(
     record                   = "録音",
     transcribing             = "テキスト変換中…",
     callAssistActive         = "通話アシスタント使用中",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "元に戻す",
+    unmaskConfirmTitle   = "Eject Button に戻しますか？",
+    unmaskConfirmBody    = "ランチャーアイコンとアプリ名が元の状態に戻ります。この端末を見ている人に本当のアプリが見えるようになります。",
+    unmaskConfirmCta     = "戻す",
 )
 
 private val es = AppStrings(
@@ -1617,6 +1653,12 @@ private val es = AppStrings(
     record                   = "Grabar",
     transcribing             = "Transcribiendo…",
     callAssistActive         = "Asistente de llamada activo",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "Restaurar original",
+    unmaskConfirmTitle   = "¿Restaurar Eject Button?",
+    unmaskConfirmBody    = "El icono y el nombre de la aplicación volverán al original. Cualquier persona con este dispositivo verá la aplicación real.",
+    unmaskConfirmCta     = "Restaurar",
 )
 
 private val hi = AppStrings(
@@ -1839,6 +1881,12 @@ private val hi = AppStrings(
     record                   = "रिकॉर्ड",
     transcribing             = "टेक्स्ट में बदल रहा है…",
     callAssistActive         = "कॉल असिस्ट सक्रिय",
+
+    // v1.5.11 — 위장 복구 (unmask) toolbar action.
+    actionUnmask         = "मूल पुनर्स्थापित करें",
+    unmaskConfirmTitle   = "Eject Button पुनर्स्थापित करें?",
+    unmaskConfirmBody    = "लॉन्चर आइकन और ऐप का नाम मूल पर वापस आ जाएगा। इस डिवाइस वाला कोई भी असली ऐप देख सकता है।",
+    unmaskConfirmCta     = "पुनर्स्थापित करें",
 )
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(

@@ -7,6 +7,18 @@
 
 ## [Unreleased]
 
+
+## [1.5.11] - 2026-05-05
+
+### Added
+- **위장 복구 (Unmask) TopAppBar IconButton** — 위장 모드 (계산기/메모/날씨/시계) 일 때만 ⚙ Settings 왼쪽에 노출되는 액션 아이콘.  탭 → 확인 다이얼로그 → `DecoyManager.setActive(ctx, Decoy.DEFAULT)` 호출로 launcher 가 즉시 원래 "Eject Button" 아이콘+이름으로 복구. `EjectPrefs.loadDecoy(ctx)` 동기 read 로 재추적, 상태 변경 시 즉시 아이콘 사라짐.
+- **`res/drawable/ic_unmask.xml`** — 24×24 vector drawable. Design: handoff-unmask/preview-v2.html V1 (PICK).  ⏏ 글리프 (ink `#1A1A1A` solid + 1.8 stroke 가로 바, 메인 EJECT 버튼과 동일 비율) + 베네치아 가면 (deep red `#A82430`, -10° 회전 + (0.4, 0.4) translate, 가로 띠 + V 컷 코 + 양 끝 살짝 솟음 + 아몬드 슬릿 눈).
+- **7개 언어 strings 4종 추가** — `actionUnmask` (icon contentDescription), `unmaskConfirmTitle`, `unmaskConfirmBody`, `unmaskConfirmCta`. ko: "위장 복구" / "원래 아이콘으로 복구할까요?" / "런처 아이콘과 앱 이름이 원래대로 돌아갑니다…" / "복구". en/ja/zh-CN/zh-TW/es/hi 모두 동일 의미로 번역. `dialogCancel` 은 기존 키 재사용 (중복 선언 안 함).
+
+### Notes
+- 위장 안 한 일반 사용자에게는 아이콘 자체가 렌더되지 않아 **TopAppBar 시각 무게 변화 0** — 위장 사용자만 눈에 띄게 표시되어 가장 빠르게 복구 가능.
+- `tint = Color.Unspecified` 로 vector drawable 의 hard-coded fillColor (deep red + ink) 를 그대로 노출. 메인 EJECT 버튼과 동일 톤이라 위장 모드에서 "이 색이 진짜다" 라는 시그니처 역할.
+- 디자인 출처: Claude Design (api.anthropic.com/v1/design/h/gOL7DQKFwGE_CsQvoqKmaQ) → handoff-unmask/preview-v2.html V1 (PICK).
 ## [1.5.10] - 2026-05-05
 
 ### Fixed
