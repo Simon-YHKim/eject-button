@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
+import com.ejectbutton.BuildConfig
 import com.ejectbutton.R
 import com.ejectbutton.ads.AdManager
 import com.ejectbutton.data.AppLanguage
@@ -257,6 +258,14 @@ fun MainScreen(
                 id = "settings",
                 title = strings.coachmarkStep4Title,
                 body  = strings.coachmarkStep4Desc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            // v1.5.12 — Step 6: 위장 토글 IconButton spotlight.
+            // settings 다음에 둠 (시각적으로 settings 왼쪽에 위치한 버튼이라 흐름이 자연스럽다).
+            CoachmarkStep(
+                id = "disguise",
+                title = strings.coachmarkStepDisguiseTitle,
+                body  = strings.coachmarkStepDisguiseDesc,
                 primaryLabel = strings.onboardingFinalDismiss,
             ),
         )
@@ -790,6 +799,15 @@ fun MainScreen(
                         deletedPresetIds = emptySet()
                         EjectPrefs.clearDeletedPresetIds(ctx)
                     },
+                    // v1.5.12 — "사용 설명서" 클릭 시 코치마크 강제 재시작.
+                    //   EjectPrefs.saveCoachmarkSeen(false) → COMMAND 탭 진입 시 자동 트리거 다시 가능
+                    //   coachmark.start() → SETTINGS 탭에서는 spotlight target 이 없으므로,
+                    //     COMMAND 로 자동 이동 후 시작하도록 currentScreen 도 함께 변경.
+                    onShowGuide = {
+                        EjectPrefs.saveCoachmarkSeen(ctx, false)
+                        currentScreen = AppScreen.COMMAND
+                        coachmark.start()
+                    },
                 )
             }
             }
@@ -881,6 +899,10 @@ private fun CommandContent(
             // v1.5.1 — 코치마크 Step 4 spotlight 등록 (라운드 사각형 — IconButton 자체가 정사각형이라 RoundRect 로).
             onSettingsBoundsChanged = { rect ->
                 coachmark.register("settings", rect, SpotShape.RoundRect)
+            },
+            // v1.5.12 — 코치마크 Step 6 (위장 토글) spotlight 등록.
+            onDisguiseBoundsChanged = { rect ->
+                coachmark.register("disguise", rect, SpotShape.RoundRect)
             },
         )
 
@@ -1073,18 +1095,28 @@ private fun StitchTopBar(
     showSettingsIcon: Boolean = true,
     // v1.5.1 — 코치마크 Step 4 (⚙ 설정 spotlight) 등록용. COMMAND 탭에서만 전달.
     onSettingsBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
+    // v1.5.12 — 코치마크 Step 6 (위장 토글 spotlight) 등록용. COMMAND 탭에서만 전달.
+    onDisguiseBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val strings = LocalAppStrings.current
     val ctx = LocalContext.current
 
-    // v1.5.11 — 위장 모드 감지. EjectPrefs 동기 read (1ms 미만, main thread 안전).
-    //   isDisguised == false (DEFAULT) → "위장 복구" 아이콘 자체가 렌더 안 됨 → 일반 사용자 노출 0.
-    //   isDisguised == true (계산기/메모/날씨/시계) → Settings 왼쪽에 위장 복구 IconButton 노출.
-    //   탭하면 확인 다이얼로그 → DecoyManager.setActive(ctx, DEFAULT) → 즉시 currentDecoy state 업데이트하여 아이콘 사라짐.
+    // v1.5.12 — 위장 토글 IconButton. Settings 왼쪽에 항상 노출되며 두 상태로 토글:
+    //   STATE 1 (isDisguised=false, 일반 모드)
+    //     drawable: ic_disguise_off (가면 위 + ⏏ 아래)
+    //     contentDescription: actionDisguiseOn ("앱 위장")
+    //     onClick: 위장 picker 다이얼로그 → 4개 옵션 (계산기/메모/날씨/시계) 중 선택
+    //   STATE 2 (isDisguised=true, 위장 모드)
+    //     drawable: ic_disguise_on (⏏ 위 + 가면 떨어짐, 기울어짐)
+    //     contentDescription: actionUnmask ("위장 복구")
+    //     onClick: 복구 확인 다이얼로그 → 확인 시 DecoyManager.setActive(ctx, DEFAULT)
+    //   상태 변경 시 currentDecoy state 업데이트 → drawable + onClick 자동 토글.
     var currentDecoy by remember { mutableStateOf(EjectPrefs.loadDecoy(ctx)) }
     val isDisguised = currentDecoy != DecoyManager.Decoy.DEFAULT
     var showUnmaskDialog by remember { mutableStateOf(false) }
+    var showDisguisePicker by remember { mutableStateOf(false) }
 
+    // ── 위장 복구 확인 다이얼로그 ───────────────────────────────────────────────
     if (showUnmaskDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showUnmaskDialog = false },
@@ -1114,6 +1146,53 @@ private fun StitchTopBar(
         )
     }
 
+    // ── 위장 picker 다이얼로그 (일반 → 위장 활성화) ──────────────────────────────
+    if (showDisguisePicker) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDisguisePicker = false },
+            title = { Text(strings.settingsDecoy, fontWeight = FontWeight.Bold) },
+            text  = {
+                Column {
+                    Text(
+                        strings.settingsDecoyDesc,
+                        fontSize = 13.sp,
+                        color    = EjectSecondary,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    val options = listOf(
+                        DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
+                        DecoyManager.Decoy.MEMO       to stringResource(R.string.decoy_label_memo),
+                        DecoyManager.Decoy.WEATHER    to stringResource(R.string.decoy_label_weather),
+                        DecoyManager.Decoy.CLOCK      to stringResource(R.string.decoy_label_clock),
+                    )
+                    options.forEach { (decoy, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    DecoyManager.setActive(ctx, decoy)
+                                    currentDecoy = decoy
+                                    showDisguisePicker = false
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("🎭", fontSize = 18.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Text(label, fontSize = 15.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showDisguisePicker = false }) {
+                    Text(strings.dialogCancel, color = EjectSecondary)
+                }
+            },
+            containerColor = EjectSurface,
+        )
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1135,22 +1214,30 @@ private fun StitchTopBar(
                 color    = EjectSecondary,
             )
         }
-        // v1.5.11 — 위장 복구 (Unmask) IconButton. Settings 왼쪽.
-        // 위장 모드 (계산기/메모/날씨/시계) 에서만 노출.
-        if (isDisguised) {
-            IconButton(
-                onClick  = { showUnmaskDialog = true },
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(
-                    painter            = painterResource(id = R.drawable.ic_unmask),
-                    contentDescription = strings.actionUnmask,
-                    // tint Unspecified → vector drawable 의 hard-coded fillColor (deep red + ink) 그대로 노출.
-                    // 메인 EJECT 버튼 톤과 동일해 위장 모드에서 "이 색이 진짜다" 시그니처 역할.
-                    tint               = androidx.compose.ui.graphics.Color.Unspecified,
-                    modifier           = Modifier.size(24.dp),
-                )
-            }
+        // v1.5.12 — 위장 토글 IconButton. 항상 노출, drawable 만 상태에 따라 변경.
+        IconButton(
+            onClick  = {
+                if (isDisguised) showUnmaskDialog = true
+                else             showDisguisePicker = true
+            },
+            modifier = Modifier
+                .size(40.dp)
+                .onGloballyPositioned { coords ->
+                    onDisguiseBoundsChanged?.invoke(coords.boundsInRoot())
+                },
+        ) {
+            Icon(
+                painter = painterResource(
+                    id = if (isDisguised) R.drawable.ic_disguise_on
+                         else              R.drawable.ic_disguise_off,
+                ),
+                contentDescription = if (isDisguised) strings.actionUnmask
+                                     else              strings.actionDisguiseOn,
+                // tint Unspecified → vector drawable 의 hard-coded fillColor (deep red + ink) 그대로 노출.
+                // 메인 EJECT 버튼 톤과 동일해 시그니처 역할.
+                tint               = androidx.compose.ui.graphics.Color.Unspecified,
+                modifier           = Modifier.size(24.dp),
+            )
         }
         // v1.1.5 — SETTINGS 탭에서는 톱니바퀴를 숨김 (이미 SETTINGS 안이라 의미 X).
         // COMMAND/HISTORY 탭에서만 톱니바퀴를 보여 SETTINGS 로 점프 가능하게.
@@ -1353,6 +1440,8 @@ private fun SystemsContent(
     onLanguageChange: (AppLanguage) -> Unit,
     onThemeModeChange: (com.ejectbutton.data.ThemeMode) -> Unit,
     onRestorePresets: () -> Unit,
+    // v1.5.12 — 사용 설명서 (코치마크 다시 보기) 콜백.
+    onShowGuide: () -> Unit = {},
 ) {
     // v1.1.4 — SETTINGS 탭. 별도 SettingsScreen 진입 제거.
     // SettingsScreen 본문 전체 (Language / Theme / Notifications / SideButton /
@@ -1547,6 +1636,8 @@ private fun SystemsContent(
                 currentDecoy = EjectPrefs.loadDecoy(ctx)
                 showDecoyDialog = true
             })
+            // v1.5.12 — 사용 설명서 (코치마크 다시 보기). 코치마크 step 4 desc 가 안내하는 메뉴.
+            SystemsRow(icon = "📖", label = strings.settingsManual, onClick = onShowGuide)
             SystemsRow(icon = "💬", label = strings.settingsShare, onClick = {
                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "text/plain"
@@ -1651,7 +1742,10 @@ private fun SystemsContent(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text       = strings.settingsVersion,
+                    // v1.5.12 — BuildConfig.VERSION_NAME 으로 동적 표시.
+                    //   이전: strings.settingsVersion 하드코딩 ("v1.0 · ...") → 실제 v1.5.x 와 mismatch.
+                    //   이제: CI 가 -PversionNameOverride 로 주입한 실제 버전이 자동 반영.
+                    text       = "v" + BuildConfig.VERSION_NAME + "  ·  " + strings.catchphrase,
                     fontSize   = 11.sp,
                     color      = EjectSecondary,
                     fontWeight = FontWeight.Medium,

@@ -1,0 +1,13 @@
+<!-- res/drawable/ic_eject_mark_red.xml -->
+<!-- 헤더 "▲ EJECT BUTTON" 옆 작은 글리프, 브랜드 컬러 강조용. -->
+<!-- ic_eject_mark.xml 과 path 동일, fillColor 만 EjectRed 하드코드. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:pathData="M5.5,13 L12,5.5 L18.5,13 L5.5,13 Z M5.5,16 L18.5,16 L18.5,18.5 L5.5,18.5 Z"
+        android:fillColor="#A82430" />
+</vector>

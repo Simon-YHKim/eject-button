@@ -1,0 +1,35 @@
+<!-- res/drawable/ic_disguise_on.xml -->
+<!-- STATE 2 · 위장 해제 버튼 (위장 모드에서 노출). 마크 위쪽 + 가면 아래쪽 (살짝 기울어 떨어진 형태). -->
+<!-- 마크 path 는 ic_eject_mark.xml 과 동일. translateY(+1.5) 로 위쪽 정렬. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ===== Eject mark (top) ===== -->
+    <group android:translateY="1.5">
+        <path
+            android:pathData="M5.5,9 L12,1.5 L18.5,9 L5.5,9 Z M5.5,12 L18.5,12 L18.5,14.5 L5.5,14.5 Z"
+            android:fillColor="#1A1A1A" />
+    </group>
+
+    <!-- ===== Mask (bottom, fallen, tilted -8°) ===== -->
+    <group
+        android:pivotX="12"
+        android:pivotY="4"
+        android:scaleX="0.78"
+        android:scaleY="0.78"
+        android:translateY="12.4"
+        android:rotation="-8">
+        <path
+            android:pathData="M3.6,4.2 C3.6,3.2 4.4,2.4 5.4,2.4 L9.4,2.4 L11.2,1.4 C11.7,1.1 12.3,1.1 12.8,1.4 L14.6,2.4 L18.6,2.4 C19.6,2.4 20.4,3.2 20.4,4.2 L20.4,5.4 C20.4,7.2 19,8.6 17.2,8.6 L6.8,8.6 C5,8.6 3.6,7.2 3.6,5.4 Z"
+            android:fillColor="#A82430" />
+        <path
+            android:pathData="M6.8,4.4 C7.6,3.8 9.0,3.8 9.8,4.4 C9.0,5.2 7.6,5.2 6.8,4.4 Z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M14.2,4.4 C15.0,3.8 16.4,3.8 17.2,4.4 C16.4,5.2 15.0,5.2 14.2,4.4 Z"
+            android:fillColor="#FFFFFF" />
+    </group>
+</vector>

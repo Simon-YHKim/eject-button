@@ -75,6 +75,7 @@ data class AppStrings(
     val settingsDecoy: String,
     val settingsDecoyDesc: String,
     val settingsDecoyDefault: String,
+    val settingsManual: String,
     val settingsAbout: String,
     val settingsShare: String,
     // v1.2.0 — 친구에게 추천 시 share intent 의 EXTRA_TEXT 본문.
@@ -253,6 +254,8 @@ data class AppStrings(
     val coachmarkStep3Desc: String,
     val coachmarkStep4Title: String,
     val coachmarkStep4Desc: String,
+    val coachmarkStepDisguiseTitle: String,
+    val coachmarkStepDisguiseDesc: String,
     // v1.5.6 — 신규 5번째 step (발신 타이밍 — 시나리오 다음, 모드 전)
     val coachmarkStepTimingTitle: String,
     val coachmarkStepTimingDesc: String,
@@ -282,6 +285,7 @@ data class AppStrings(
     val actionUnmask: String,         // IconButton contentDescription
     val unmaskConfirmTitle: String,   // 확인 다이얼로그 제목
     val unmaskConfirmBody: String,    // 다이얼로그 본문 (위장 해제 시 결과 안내)
+    val actionDisguiseOn: String,         // 일반 모드일 때 위장 IconButton contentDescription ("앱 위장")
     val unmaskConfirmCta: String,     // 확인 버튼 라벨
 )
 
@@ -337,6 +341,7 @@ private val en = AppStrings(
     settingsDecoy        = "Decoy icon",
     settingsDecoyDesc    = "Disguise as Calculator/Memo/Weather/Clock",
     settingsDecoyDefault = "Eject Button (default)",
+    settingsManual       = "User guide",
     settingsAbout        = "About Eject Button",
     settingsShare        = "Share App",
     shareMessageBody     = "Found this 'escape from awkward gatherings' app — shake your phone, fake call rings, slip out naturally.\nDoesn't show in Recents either, so people next to you can't tell.\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -492,6 +497,8 @@ private val en = AppStrings(
     coachmarkStep3Desc       = "One tap. Fake call deploys. Anyone watching just sees you taking a call.",
     coachmarkStep4Title      = "Mission HQ",
     coachmarkStep4Desc       = "Decoy icon · language · full briefing — all rear-line ops live here.",
+    coachmarkStepDisguiseTitle = "Disguise toggle",
+    coachmarkStepDisguiseDesc  = "One tap and your launcher icon + app name flip to a calculator, notes, weather, or clock app. Anyone watching the screen sees a normal-looking app.",
     coachmarkStepTimingTitle = "Launch countdown",
     coachmarkStepTimingDesc  = "Instant / 10 sec / custom — read the room. Leave enough time to bail out clean.",
     settingsShowManual       = "Show Tutorial",
@@ -515,6 +522,7 @@ private val en = AppStrings(
     actionUnmask         = "Restore original",
     unmaskConfirmTitle   = "Restore Eject Button?",
     unmaskConfirmBody    = "Your launcher icon and app name will return to the original. Anyone with this device will see the real app.",
+    actionDisguiseOn     = "Disguise app",
     unmaskConfirmCta     = "Restore",
 )
 
@@ -567,6 +575,7 @@ private val ko = AppStrings(
     settingsDecoy        = "위장 아이콘",
     settingsDecoyDesc    = "계산기/메모장/날씨/시계로 위장",
     settingsDecoyDefault = "비상 탈출 (기본)",
+    settingsManual       = "사용 설명서",
     settingsAbout        = "비상 탈출 정보",
     settingsShare        = "앱 공유",
     shareMessageBody     = "회식 탈출 앱 발견 ㅋㅋ\n폰 흔들기 한 번이면 가짜 전화 와서 자연스럽게 빠져나옴.\n멀티태스킹 화면에도 안 보여서 옆 사람이 폰 봐도 안 들킴.\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -722,6 +731,8 @@ private val ko = AppStrings(
     coachmarkStep3Desc       = "탭 한 번. 가짜 통화 발사. 옆 사람은 자네가 통화 받는 걸로만 본다.",
     coachmarkStep4Title      = "막사 정비",
     coachmarkStep4Desc       = "위장 아이콘 · 언어 · 사용 설명서 — 후방 정비는 모두 여기서 한다.",
+    coachmarkStepDisguiseTitle = "위장 모드",
+    coachmarkStepDisguiseDesc  = "한 번 탭하면 앱 아이콘과 이름이 계산기/메모/날씨/시계로 바뀝니다. 옆 사람이 폰을 봐도 평범한 앱으로 보입니다.",
     coachmarkStepTimingTitle = "발사 카운트다운",
     coachmarkStepTimingDesc  = "즉시 / 10초 / 커스텀 — 상황 보고 결정한다. 자리 빠져나갈 시간은 충분히 잡는다.",
     settingsShowManual       = "📖 튜토리얼 보기",
@@ -745,6 +756,7 @@ private val ko = AppStrings(
     actionUnmask         = "위장 복구",
     unmaskConfirmTitle   = "원래 아이콘으로 복구할까요?",
     unmaskConfirmBody    = "런처 아이콘과 앱 이름이 원래대로 돌아갑니다. 이 폰을 보는 사람이 진짜 앱을 보게 됩니다.",
+    actionDisguiseOn     = "앱 위장",
     unmaskConfirmCta     = "복구",
 )
 
@@ -795,6 +807,7 @@ private val zhCN = AppStrings(
     settingsDecoy        = "伪装图标",
     settingsDecoyDesc    = "伪装成计算器/备忘录/天气/时钟",
     settingsDecoyDefault = "紧急脱身 (默认)",
+    settingsManual       = "使用手册",
     settingsAbout        = "关于 紧急脱身",
     settingsShare        = "分享应用",
     shareMessageBody     = "发现一款'聚餐脱身'神器 哈哈\n摇一摇手机就有假来电，自然脱身。\n最近任务画面也不显示，旁人看了也察觉不到。\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -950,6 +963,8 @@ private val zhCN = AppStrings(
     coachmarkStep3Desc       = "按下后假来电立即开始。神不知鬼不觉地离开。",
     coachmarkStep4Title      = "深入了解",
     coachmarkStep4Desc       = "伪装图标、语言、使用手册 — 都在设置里。",
+    coachmarkStepDisguiseTitle = "伪装切换",
+    coachmarkStepDisguiseDesc  = "一次点击即可将启动图标和应用名换成计算器、备忘录、天气或时钟。即使有人看到屏幕，也只会看到一个普通的应用。",
     coachmarkStepTimingTitle = "发射倒计时",
     coachmarkStepTimingDesc  = "立即 / 10秒 / 自定义 — 视情况决定。留足脱身时间。",
     settingsShowManual       = "📖 查看教程",
@@ -973,6 +988,7 @@ private val zhCN = AppStrings(
     actionUnmask         = "恢复原图标",
     unmaskConfirmTitle   = "恢复为 Eject Button？",
     unmaskConfirmBody    = "启动图标和应用名将恢复为原始名称。任何看到这部手机的人都会看到真实的应用。",
+    actionDisguiseOn     = "伪装应用",
     unmaskConfirmCta     = "恢复",
 )
 
@@ -1023,6 +1039,7 @@ private val zhTW = AppStrings(
     settingsDecoy        = "偽裝圖示",
     settingsDecoyDesc    = "偽裝成計算機/備忘錄/天氣/時鐘",
     settingsDecoyDefault = "緊急脫身 (預設)",
+    settingsManual       = "使用手冊",
     settingsAbout        = "關於 緊急脫身",
     settingsShare        = "分享 App",
     shareMessageBody     = "發現一款『聚餐脫身』神器 哈哈\n搖一搖手機就有假來電，自然脫身。\n最近任務畫面也不顯示，旁人看了也察覺不到。\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -1178,6 +1195,8 @@ private val zhTW = AppStrings(
     coachmarkStep3Desc       = "按下後假來電立即開始。神不知鬼不覺地離開。",
     coachmarkStep4Title      = "深入了解",
     coachmarkStep4Desc       = "偽裝圖示、語言、使用手冊 — 都在設定裡。",
+    coachmarkStepDisguiseTitle = "偽裝切換",
+    coachmarkStepDisguiseDesc  = "一次點擊即可將啟動圖示和應用程式名稱換成計算機、記事、天氣或時鐘。即使有人看到螢幕，也只會看到一個普通的應用程式。",
     coachmarkStepTimingTitle = "發射倒數",
     coachmarkStepTimingDesc  = "立即 / 10秒 / 自訂 — 視情況決定。留足脫身時間。",
     settingsShowManual       = "📖 查看教學",
@@ -1201,6 +1220,7 @@ private val zhTW = AppStrings(
     actionUnmask         = "復原原圖示",
     unmaskConfirmTitle   = "復原為 Eject Button？",
     unmaskConfirmBody    = "啟動圖示和應用程式名稱將復原為原始名稱。任何看到此手機的人都會看到真正的應用程式。",
+    actionDisguiseOn     = "偽裝應用程式",
     unmaskConfirmCta     = "復原",
 )
 
@@ -1251,6 +1271,7 @@ private val ja = AppStrings(
     settingsDecoy        = "偽装アイコン",
     settingsDecoyDesc    = "電卓/メモ/天気/時計に偽装",
     settingsDecoyDefault = "緊急脱出 (デフォルト)",
+    settingsManual       = "ユーザーガイド",
     settingsAbout        = "緊急脱出 について",
     settingsShare        = "アプリをシェア",
     shareMessageBody     = "「飲み会脱出」アプリ見つけたwww\nスマホを振ると偽電話がかかってきて自然に抜け出せる。\n最近使用したアプリ画面にも表示されないから隣の人にもバレない。\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -1406,6 +1427,8 @@ private val ja = AppStrings(
     coachmarkStep3Desc       = "押すと偽通話が開始。誰にも気づかれずに離脱できます。",
     coachmarkStep4Title      = "もっと深く",
     coachmarkStep4Desc       = "デコイアイコン、言語、使い方ガイド — すべて設定にあります。",
+    coachmarkStepDisguiseTitle = "偽装トグル",
+    coachmarkStepDisguiseDesc  = "ワンタップでランチャーアイコンとアプリ名が電卓・メモ・天気・時計に変わります。画面を見られても普通のアプリに見えます。",
     coachmarkStepTimingTitle = "発射カウントダウン",
     coachmarkStepTimingDesc  = "即時 / 10秒 / カスタム — 状況を見て決定。離脱時間は十分に確保。",
     settingsShowManual       = "📖 チュートリアルを見る",
@@ -1429,6 +1452,7 @@ private val ja = AppStrings(
     actionUnmask         = "元に戻す",
     unmaskConfirmTitle   = "Eject Button に戻しますか？",
     unmaskConfirmBody    = "ランチャーアイコンとアプリ名が元の状態に戻ります。この端末を見ている人に本当のアプリが見えるようになります。",
+    actionDisguiseOn     = "アプリを偽装",
     unmaskConfirmCta     = "戻す",
 )
 
@@ -1479,6 +1503,7 @@ private val es = AppStrings(
     settingsDecoy        = "Icono camuflado",
     settingsDecoyDesc    = "Disfrazar como Calculadora/Notas/Tiempo/Reloj",
     settingsDecoyDefault = "Salida de Emergencia (predeterminado)",
+    settingsManual       = "Guía de uso",
     settingsAbout        = "Acerca de Salida de Emergencia",
     settingsShare        = "Compartir app",
     shareMessageBody     = "Encontré una app para 'escapar de cenas incómodas' jaja.\nAgitas el móvil y llega una llamada falsa, sales naturalmente.\nNi aparece en la pantalla de apps recientes, no se enteran.\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -1634,6 +1659,8 @@ private val es = AppStrings(
     coachmarkStep3Desc       = "Tócalo para iniciar la llamada falsa. Sal sin que nadie lo note.",
     coachmarkStep4Title      = "Profundiza aquí",
     coachmarkStep4Desc       = "Icono señuelo, idioma, manual completo — todo en Ajustes.",
+    coachmarkStepDisguiseTitle = "Camuflaje",
+    coachmarkStepDisguiseDesc  = "Con un toque, el icono y el nombre de la aplicación cambian a calculadora, notas, clima o reloj. Quien vea la pantalla solo verá una aplicación normal.",
     coachmarkStepTimingTitle = "Cuenta atrás de despegue",
     coachmarkStepTimingDesc  = "Inmediato / 10 seg / personalizado — lee la sala. Deja tiempo suficiente para escapar.",
     settingsShowManual       = "📖 Ver tutorial",
@@ -1658,6 +1685,7 @@ private val es = AppStrings(
     actionUnmask         = "Restaurar original",
     unmaskConfirmTitle   = "¿Restaurar Eject Button?",
     unmaskConfirmBody    = "El icono y el nombre de la aplicación volverán al original. Cualquier persona con este dispositivo verá la aplicación real.",
+    actionDisguiseOn     = "Camuflar app",
     unmaskConfirmCta     = "Restaurar",
 )
 
@@ -1708,6 +1736,7 @@ private val hi = AppStrings(
     settingsDecoy        = "छिपाने वाला आइकन",
     settingsDecoyDesc    = "कैल्क्युलेटर/नोट्स/मौसम/घड़ी के रूप में छिपाएं",
     settingsDecoyDefault = "आपातकालीन निकास (डिफ़ॉल्ट)",
+    settingsManual       = "उपयोग गाइड",
     settingsAbout        = "आपातकालीन निकास के बारे में",
     settingsShare        = "ऐप शेयर करें",
     shareMessageBody     = "एक 'अनचाही पार्टी से निकलने वाला' ऐप मिला, मज़ेदार है!\nफ़ोन हिलाओ, नकली कॉल आती है, आराम से निकल जाते हो।\nहाल के ऐप्स में भी नहीं दिखता, पास वाले को पता नहीं चलता।\n\nhttps://play.google.com/store/apps/details?id=com.simonykim.ejectbutton",
@@ -1863,6 +1892,8 @@ private val hi = AppStrings(
     coachmarkStep3Desc       = "इसे दबाते ही फ़र्ज़ी कॉल शुरू। बिना किसी को पता चले निकलिए।",
     coachmarkStep4Title      = "गहराई से जानें",
     coachmarkStep4Desc       = "डिकॉय आइकन, भाषा, उपयोग गाइड — सब सेटिंग्स में।",
+    coachmarkStepDisguiseTitle = "छिपाव टॉगल",
+    coachmarkStepDisguiseDesc  = "एक टैप में लॉन्चर आइकन और ऐप का नाम कैलकुलेटर, नोट्स, मौसम या घड़ी ऐप में बदल जाता है। स्क्रीन देखने वाले को सामान्य ऐप ही दिखेगा।",
     coachmarkStepTimingTitle = "लॉन्च काउंटडाउन",
     coachmarkStepTimingDesc  = "तुरंत / 10 सेकंड / कस्टम — स्थिति देख तय करें। निकलने का समय पर्याप्त रखें।",
     settingsShowManual       = "📖 ट्यूटोरियल देखें",
@@ -1886,6 +1917,7 @@ private val hi = AppStrings(
     actionUnmask         = "मूल पुनर्स्थापित करें",
     unmaskConfirmTitle   = "Eject Button पुनर्स्थापित करें?",
     unmaskConfirmBody    = "लॉन्चर आइकन और ऐप का नाम मूल पर वापस आ जाएगा। इस डिवाइस वाला कोई भी असली ऐप देख सकता है।",
+    actionDisguiseOn     = "ऐप छिपाएँ",
     unmaskConfirmCta     = "पुनर्स्थापित करें",
 )
 

@@ -8,6 +8,32 @@
 ## [Unreleased]
 
 
+
+## [1.5.12] - 2026-05-05
+
+### Changed
+- **위장 아이콘을 토글 방식으로 변경** — TopAppBar 의 위장 IconButton 이 항상 노출되며 두 상태로 토글:
+  - 일반 모드: `ic_disguise_off` (가면 위 + ⏏ 아래) → 클릭 시 4개 위장 옵션 picker (계산기/메모/날씨/시계).
+  - 위장 모드: `ic_disguise_on` (⏏ 위 + 가면 떨어짐, 기울어짐) → 클릭 시 복구 확인 다이얼로그.
+- 디자인 출처: Claude Design (api.anthropic.com/v1/design/h/t6dOk8pOvqHBzXGxgN00IQ) → handoff-unmask/preview-final.html.
+- 이전 v1.5.11 의 단방향 (위장 모드일 때만 노출) 동작 폐기.
+
+### Added
+- **`res/drawable/ic_disguise_off.xml`** — STATE 1 vector drawable (가면 + ⏏, 미위장 상태).
+- **`res/drawable/ic_disguise_on.xml`** — STATE 2 vector drawable (⏏ + 떨어진 가면 -8° rotation, 위장 상태).
+- **`res/drawable/ic_eject_mark.xml`** + **`ic_eject_mark_red.xml`** — master ⏏ glyph (tintable + 빨강 hard-coded).
+- **코치마크 Step 6 (disguise)** — TopAppBar 위장 토글 spotlight 추가. settings step 다음에 배치되어 시각적 흐름 자연스러움. 이전 마지막 step (settings) primary label 을 "다음" 으로 변경, 새 disguise step 의 primary label 이 "옛썰!" (마지막).
+- **설정 → 사용 설명서 메뉴** — 코치마크 step 4 desc ("사용 설명서") 가 안내하는 메뉴를 실제로 추가. 클릭 시 EjectPrefs.saveCoachmarkSeen(false) → COMMAND 탭 자동 전환 → coachmark.start() 으로 6-step 투어 재실행.
+- **`actionDisguiseOn`** strings 키 (7개 언어) — 일반 모드 IconButton contentDescription ("앱 위장").
+- **`coachmarkStepDisguiseTitle/Desc`** strings 키 (7개 언어) — Step 6 코치마크 카피.
+- **`settingsManual`** strings 키 (7개 언어) — "사용 설명서" 메뉴 라벨.
+
+### Fixed
+- 🐛 **버전 표시 버그** — 모든 언어에서 `settingsVersion = "v1.0 · ..."` 하드코딩 (실제 v1.5.x 와 mismatch). `BuildConfig.VERSION_NAME` 으로 동적 표시 (`"v" + BuildConfig.VERSION_NAME + "  ·  " + strings.catchphrase`). CI가 `-PversionNameOverride` 로 주입한 실제 버전이 자동 반영.
+
+### Notes
+- preview-final.html 은 phantom half-mask 디자인 제안이지만 4개 vector XML 은 venetian symmetric mask 로 production-ready 상태. HANDOFF.md 가 canonical 이라 그대로 ship.
+- 검증: compileDebugKotlin SUCCESSFUL.
 ## [1.5.11] - 2026-05-05
 
 ### Added
