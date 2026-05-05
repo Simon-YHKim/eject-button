@@ -85,14 +85,14 @@
             </intent-filter>
         </activity>
 
-        <!-- 위장 아이콘 1: 계산기 -->
+        <!-- 위장 아이콘 1: 계산기 (v1.5.9: 자체 아이콘 적용) -->
         <activity-alias
             android:name=".launcher.Calculator"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
+            android:icon="@mipmap/ic_decoy_calculator"
+            android:roundIcon="@mipmap/ic_decoy_calculator"
             android:label="@string/decoy_label_calculator">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -100,14 +100,14 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- 위장 아이콘 2: 메모장 -->
+        <!-- 위장 아이콘 2: 메모장 (v1.5.9: 자체 아이콘 적용) -->
         <activity-alias
             android:name=".launcher.Memo"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
+            android:icon="@mipmap/ic_decoy_memo"
+            android:roundIcon="@mipmap/ic_decoy_memo"
             android:label="@string/decoy_label_memo">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -115,14 +115,14 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- 위장 아이콘 3: 날씨 -->
+        <!-- 위장 아이콘 3: 날씨 (v1.5.9: 자체 아이콘 적용) -->
         <activity-alias
             android:name=".launcher.Weather"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
+            android:icon="@mipmap/ic_decoy_weather"
+            android:roundIcon="@mipmap/ic_decoy_weather"
             android:label="@string/decoy_label_weather">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -130,14 +130,14 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- 위장 아이콘 4: 시계 -->
+        <!-- 위장 아이콘 4: 시계 (v1.5.9: 자체 아이콘 적용) -->
         <activity-alias
             android:name=".launcher.Clock"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
+            android:icon="@mipmap/ic_decoy_clock"
+            android:roundIcon="@mipmap/ic_decoy_clock"
             android:label="@string/decoy_label_clock">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

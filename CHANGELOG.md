@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+## [1.5.9] - 2026-05-04
+
+### Added
+- **위장 아이콘 디자인 4종**: 위장(decoy) 기능이 이전엔 앱 *이름*만 변경하고 아이콘은 그대로 ic_launcher를 썼던 한계 해결. 각 alias에 자체 vector drawable 적용:
+  - 계산기 (다크 그레이 + display + 4×3 버튼 grid + orange 연산자)
+  - 메모장 (소프트 옐로 + paper sheet with dog-ear + 텍스트 라인)
+  - 날씨 (하늘색 + sun with rays + cloud)
+  - 시계 (다크 그린 + analog face + 12/3/6/9 markers + hour/minute hands + center dot)
+- 각 위장에 adaptive-icon (background + foreground + monochrome for Android 13+ Material You) + manifest 4개 alias의 `android:icon`/`android:roundIcon` 변경.
+
+### Changed
+- **설정 - 업그레이드 카드 혜택 표시**: 카드에 어떤 혜택이 있는지 사용자에게 명확히 알림. `premiumFeature1`/`Feature2`/`Feature3` (이미 7개 언어 정의됨)을 ✓ 아이콘 + 텍스트로 list 표시 (광고 제거 / 무제한 호출 대상 / 통화 중 대사 힌트).
+- **하단 "광고 제거" 결제 버튼을 업그레이드 카드와 통합**: SystemsRow의 별도 광고 제거 결제 옵션 제거. 광고 제거는 이제 프리미엄 업그레이드 혜택 중 하나로만 노출 — 두 결제 path 사이 사용자 혼란 해소. 이미 광고 제거 결제한 기존 사용자는 "✅ 광고 제거됨" 행이 그대로 유지되어 결제 인식이 영구 보존됨 (BillingManager 결제 흐름 자체는 모두 보존).
+
+[1.5.9]: https://github.com/Simon-YHKim/eject-button/releases/tag/v1.5.9
+
 ## [1.5.8] - 2026-05-04
 
 ### Removed

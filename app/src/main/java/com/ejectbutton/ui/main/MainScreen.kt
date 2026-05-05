@@ -1379,6 +1379,33 @@ private fun SystemsContent(
                         fontSize = 14.sp,
                         color    = EjectOnPrimaryContainer,
                     )
+                    // v1.5.9 — 프리미엄 혜택 리스트. premiumFeature1/2/3 (이미 7개 언어 string)
+                    // 을 카드에 표시해 "업그레이드하면 무엇을 얻는가" 명확화.
+                    Spacer(Modifier.height(16.dp))
+                    listOf(
+                        strings.premiumFeature1,
+                        strings.premiumFeature2,
+                        strings.premiumFeature3,
+                    ).forEach { feature ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        ) {
+                            Text(
+                                "✓",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = EjectCoral,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                feature,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick  = onUpgradePremium,
@@ -1450,20 +1477,12 @@ private fun SystemsContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SystemsRow(icon = "🗑", label = strings.settingsClearHistory, onClick = onClearHistory)
-            // v1.3.0 — 광고 제거 일회성 (eject_remove_ads_lifetime ₩3,300).
-            // premium 구독자도 자동으로 광고 비활성이라 굳이 또 살 필요 없음 → 숨김.
-            // 이미 구매한 사람은 "광고 제거됨 ✓" 상태로 표시 (재구매 차단).
-            if (!isPremium) {
-                if (isAdsRemoved) {
-                    SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
-                } else {
-                    val priceLabel = removeAdsPrice?.let { " — $it" } ?: ""
-                    SystemsRow(
-                        icon = "🚫",
-                        label = "${strings.settingsRemoveAdsBuy}$priceLabel",
-                        onClick = onPurchaseRemoveAds,
-                    )
-                }
+            // v1.5.9 — "광고 제거" 일회성 결제 버튼 제거. 광고 제거는 프리미엄 업그레이드
+            // 카드의 혜택(premiumFeature1)으로 통합 — 사용자가 두 결제 옵션 중 선택해야
+            // 하던 혼란 제거. 이미 광고 제거 결제한 사용자는 isAdsRemoved=true 가 그대로
+            // 유지되어 광고 비활성 상태로 계속 사용 가능 (BillingManager 결제 path 유지).
+            if (!isPremium && isAdsRemoved) {
+                SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
             }
             // v1.2.0 — 위장 아이콘 토글. 다이얼로그에서 5개 옵션 중 선택.
             SystemsRow(icon = "🎭", label = strings.settingsDecoy, onClick = {
