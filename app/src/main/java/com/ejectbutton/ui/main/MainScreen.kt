@@ -1574,29 +1574,116 @@ private fun SystemsContent(
             }
             Spacer(Modifier.height(20.dp))
         } else {
-            // 프리미엄 사용자 배지
-            Row(
+            // v1.5.12 — 프리미엄 사용자 카드 (구독 중).
+            // 이전엔 단순 ⭐ + "MAYDAY" 텍스트 한 줄 배지였음. 사용자 요청으로 풍부한
+            // "구독 중 카드" 로 변경 — features 활성 표시 + Play 스토어 구독 관리 진입점.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(EjectPrimaryContainer)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                EjectPrimaryContainer,
+                                EjectPrimaryContainer.copy(alpha = 0.92f),
+                            )
+                        )
+                    )
+                    .padding(24.dp),
             ) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint               = EjectCoral,
-                    modifier           = Modifier.size(22.dp),
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    strings.premiumBadge,
-                    fontSize      = 13.sp,
-                    fontWeight    = FontWeight.ExtraBold,
-                    color         = Color.White,
-                    letterSpacing = 2.sp,
-                )
+                Column {
+                    // 활성 배지 — 코랄 배경 + ✓ 아이콘
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EjectCoral)
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint               = Color.White,
+                            modifier           = Modifier.size(12.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            strings.premiumActiveBadge,
+                            fontSize      = 10.sp,
+                            fontWeight    = FontWeight.ExtraBold,
+                            color         = Color.White,
+                            letterSpacing = 2.sp,
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        strings.premiumActiveTitle,
+                        fontSize   = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = Color.White,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        strings.premiumActiveSubtitle,
+                        fontSize = 14.sp,
+                        color    = EjectOnPrimaryContainer,
+                    )
+                    // 활성 features 리스트 (premium 카드와 동일 키 재사용, ✓ 아이콘으로 활성 강조)
+                    Spacer(Modifier.height(16.dp))
+                    listOf(
+                        strings.premiumFeature1,
+                        strings.premiumFeature2,
+                        strings.premiumFeature3,
+                    ).forEach { feature ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        ) {
+                            Text(
+                                "✓",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = EjectCoral,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                feature,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    // 구독 관리 버튼 — Play 스토어 Subscriptions 페이지로 deep link.
+                    //   url 패턴: https://play.google.com/store/account/subscriptions?sku=<sku>&package=<pkg>
+                    //   sku 가 없어도 일반 subscriptions 페이지로 fallback 가능.
+                    OutlinedButton(
+                        onClick  = {
+                            val url = "https://play.google.com/store/account/subscriptions?package=${ctx.packageName}"
+                            runCatching {
+                                ctx.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(url),
+                                    )
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White,
+                        ),
+                        border   = androidx.compose.foundation.BorderStroke(1.dp, EjectCoral),
+                        shape    = RoundedCornerShape(50),
+                    ) {
+                        Text(
+                            strings.premiumManageBtn,
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 14.sp,
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(20.dp))
         }

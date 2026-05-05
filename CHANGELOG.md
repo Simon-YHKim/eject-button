@@ -19,6 +19,7 @@
 - 이전 v1.5.11 의 단방향 (위장 모드일 때만 노출) 동작 폐기.
 
 ### Added
+- **프리미엄 "구독 중" 카드** — 결제 후 사용자에게 노출되던 단순 ⭐ + "MAYDAY" 한 줄 배지를 풍부한 구독 중 카드로 교체.  활성 배지 (✓ + "구독 중") + 제목 ("탈출 Mayday — 활성") + features 활성 표시 (✓ × 3) + "구독 관리" 버튼 (Play Store Subscriptions deep link). 4개 신규 strings 키 (actionDisguiseOn 외 — premiumActiveBadge / premiumActiveTitle / premiumActiveSubtitle / premiumManageBtn) × 7개 언어.
 - **`res/drawable/ic_disguise_off.xml`** — STATE 1 vector drawable (가면 + ⏏, 미위장 상태).
 - **`res/drawable/ic_disguise_on.xml`** — STATE 2 vector drawable (⏏ + 떨어진 가면 -8° rotation, 위장 상태).
 - **`res/drawable/ic_eject_mark.xml`** + **`ic_eject_mark_red.xml`** — master ⏏ glyph (tintable + 빨강 hard-coded).
