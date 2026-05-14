@@ -7,7 +7,30 @@
 
 ## [Unreleased]
 
+### Changed — Theme Refactor (Navy + Cream)
+- **브랜드 톤 재정렬: 빨강 → 딥 네이비 + 웜 크림.** 앱 아이콘(Deep Navy + Cream)과 앱 내부 UI 톤 단절 해소. "조용히 작동하는 사회 안전 도구" 포지셔닝 강화.
+- **Theme.kt — TacticalRed* 상수 값을 네이비로 재정의** (변수명은 호환 유지). `TacticalRedInv` `#BA1A20` → `#1B2D4A` (brand navy), `TacticalRedDeep` `#6A0008` → `#0A1525` (deep navy), 외 3개.
+- **Light Palette — Cool gray → Warm cream + Navy ink.** `bg` `#F4F5F7` → `#F2EDE0`, `surface` `#FFFFFF` → `#FBF7EC`, `onSurface` `#1A1C1E` → `#1B2D4A`, `primaryContainer` `#1A1C1E` → `#0F1929` (MAYDAY 카드 deep navy), 등.
+- **Dark Palette — Cockpit Dark → Navy Dark + Cream CTA 인버전.** `bg` `#121416` → `#0A1525`, `surface` `#1E2022` → `#13223D`, `red(=CTA)` `#BA1A20` → `#F2EDE0` (cream, "달처럼 빛나는" 효과 의도).
+- **Material3 ColorScheme — Light/Dark 동기화.** 모든 surface/background/outline 토큰 새 톤으로.
+- **드로어블 빨강 → 네이비**: `ic_eject_mark_red.xml`, `ic_disguise_off.xml`, `ic_disguise_on.xml` 의 fillColor `#A82430` → `#1B2D4A`. 위장 4종 아이콘(계산기/메모/날씨/시계) 고유색 보존.
+- **카운트다운/사이드버튼/흔들기 대기 배너 alpha** `0.10f` → `0.14f` — 어두운 네이비 강조색에 맞춰 가시성 미세 보강.
 
+### Preserved
+- **error 시맨틱은 빨강 보존** — Material3 `error/onError/errorContainer/onErrorContainer` 슬롯은 4곳 모두 hex 명시 고정 (`#BA1A20`, `#FFB4A8` 등). TacticalRed* 상수 참조 제거.
+- **TacticalCyan `#00DAF3` (SHAKE 시그니처) 보존, TacticalYellow `#F8BD2A` (SIDE_BUTTON 시그니처) 보존.**
+- **`FakeIncomingCallScreenV2`, `InCallScreenV2` 통화 화면은 한 줄도 미변경** — 의도된 격리.
+- **TacticalTypography, TacticalShapes 그대로** — 시스템 SansSerif + 0dp 정사각 모서리 유지.
+
+### Known Issues
+- ⚠ 라이트 모드에서 가짜 통화 화면이 여전히 다크 그라데이션 → 메인 UI(크림) 와 톤 단절. 별도 PR `refactor(call-screen): theme-aware gradient` 로 후속 처리 예정.
+- ⚠ 다크 모드 `outlineVariant` `#3A4A66` 가 deep navy bg 에 대해 ~2.1:1 — 디바이더 용도면 허용, 클릭 윤곽선으로 쓰는 경우 발견 시 `#4A5F82` 상향 검토.
+
+### Design Source
+- `docs/design/DESIGN_KNOWLEDGE_TRANSFER.md` — 전체 디자인 시스템 컨텍스트.
+- `docs/design/NAVY_CREAM_THEME_REFACTOR_PROMPT.md` — 본 변경의 의도/매핑/검증 명세.
+
+---
 
 ## [1.5.12] - 2026-05-05
 
