@@ -15,6 +15,8 @@
 - **Material3 ColorScheme — Light/Dark 동기화.** 모든 surface/background/outline 토큰 새 톤으로.
 - **드로어블 빨강 → 네이비**: `ic_eject_mark_red.xml`, `ic_disguise_off.xml`, `ic_disguise_on.xml` 의 fillColor `#A82430` → `#1B2D4A`. 위장 4종 아이콘(계산기/메모/날씨/시계) 고유색 보존.
 - **카운트다운/사이드버튼/흔들기 대기 배너 alpha** `0.10f` → `0.14f` — 어두운 네이비 강조색에 맞춰 가시성 미세 보강.
+- **앱 런처 아이콘 재디자인** — `ic_launcher_background.xml` 빨강 `#B6191A` → 네이비 `#1B2D4A`. `ic_launcher_foreground.xml` ⏏ 글리프 → 도망치는 사람 + 휴대폰 + 신호 arcs + 말풍선/문 픽토그램. minSdk 26 이므로 adaptive icon 만으로 충분 — raster PNG 없음.
+- **EJECT 버튼 글리프 교체** — `EjectButton` composable 의 ⏏ Text(108sp) → 새 vector `ic_hangup_eject.xml` (흰색 수화기 down, 96dp Icon). 메타포가 "eject from situation" → "hang up the call" 로 일관됨. "탈출" 텍스트 + pulse 애니메이션 보존.
 
 ### Preserved
 - **error 시맨틱은 빨강 보존** — Material3 `error/onError/errorContainer/onErrorContainer` 슬롯은 4곳 모두 hex 명시 고정 (`#BA1A20`, `#FFB4A8` 등). TacticalRed* 상수 참조 제거.

@@ -1940,12 +1940,16 @@ private fun EjectButton(
                         letterSpacing = 4.sp,
                     )
                 } else {
-                    Text(
-                        // v1.5.6 — 50% 키움 (72 → 108sp)
-                        "⏏",
-                        fontSize   = 108.sp,
-                        color      = Color.White,
-                        fontWeight = FontWeight.ExtraBold,
+                    // v1.6.0 — ⏏ 글리프 → 흰색 hangup 아이콘 (수화기 down).
+                    // 브랜드가 빨강 EJECT 메타포에서 네이비 + hangup CTA 메타포로 변경됨.
+                    // 크기는 기존 108sp 글리프 시각 비중을 보존하도록 96dp 정도로 설정.
+                    androidx.compose.material3.Icon(
+                        painter = androidx.compose.ui.res.painterResource(
+                            id = com.ejectbutton.R.drawable.ic_hangup_eject
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(96.dp),
+                        tint = Color.White,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
