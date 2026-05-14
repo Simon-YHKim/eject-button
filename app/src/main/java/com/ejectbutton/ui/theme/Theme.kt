@@ -35,11 +35,14 @@ val TacticalHighest   = Color(0xFF333537)  // container-highest (housing)
 val TacticalBright    = Color(0xFF37393B)  // surface-bright (press hit)
 
 // Accents — 희소 사용
-val TacticalRed       = Color(0xFFFFB3AC)
-val TacticalRedDeep   = Color(0xFF6A0008)  // EJECT 버튼 바디
-val TacticalRedInv    = Color(0xFFBA1A20)
-val TacticalRedFixed  = Color(0xFFFFDAD6)
-val TacticalOnRed     = Color(0xFF680008)
+// v1.6.0: 브랜드 톤을 빨강 → 네이비로 재정렬 (앱 아이콘 = Deep Navy + Cream).
+// 변수명은 호환을 위해 유지하되 값은 네이비. error 시맨틱은 ColorScheme.error
+// 슬롯에 빨강 hex 명시 고정 (TacticalRed* 참조 금지).
+val TacticalRed       = Color(0xFFA8B5CC)  // soft navy (구 FFB3AC)
+val TacticalRedDeep   = Color(0xFF0A1525)  // deep navy — EJECT 음영
+val TacticalRedInv    = Color(0xFF1B2D4A)  // brand navy — primary CTA
+val TacticalRedFixed  = Color(0xFFE0E5F0)  // light navy accent
+val TacticalOnRed     = Color(0xFF0A1525)  // on-navy ink
 val TacticalYellow    = Color(0xFFF8BD2A)  // hazard stripes / SIDE_BUTTON
 val TacticalCyan      = Color(0xFF00DAF3)  // LED / SHAKE / section bar
 
@@ -77,42 +80,46 @@ data class EjectPalette(
     val secondaryContainer: Color,
 )
 
+// Dark mode 톤 — v1.6.0: Cockpit Dark → Navy Dark + Cream CTA (라이트와 인버전).
+// 라이트 모드의 deep-navy CTA 가 다크 모드에서 cream 으로 반전되며 "달처럼 빛나는"
+// 시각 효과를 의도. 다크 배경 자체도 near-black → deep navy 로 톤 정렬.
 private val DarkEjectPalette = EjectPalette(
-    red                = TacticalRedInv,
-    coral              = TacticalRedInv,
-    coralDim           = TacticalRedDeep,
-    bg                 = TacticalBase,
-    surface            = TacticalContainer,
-    surfaceLow         = TacticalLow,
-    surfaceMid         = TacticalHigh,
-    surfaceHigh        = TacticalHigh,
-    surfaceHighest     = TacticalHighest,
-    onSurface          = TacticalOnSurface,
-    secondary          = TacticalOnVariant,
-    outlineVar         = TacticalOutlineVar,
-    secContainer       = TacticalHigh,
-    primaryContainer   = TacticalLowest,
-    onPrimaryContainer = TacticalOnVariant,
-    secondaryContainer = TacticalRedInv,
+    red                = Color(0xFFF2EDE0),   // cream CTA (라이트와 인버전)
+    coral              = Color(0xFFF2EDE0),
+    coralDim           = Color(0xFFD8CDA9),   // 어두운 크림 — 그림자/음영
+    bg                 = Color(0xFF0A1525),   // deep navy background
+    surface            = Color(0xFF13223D),   // navy surface (card body)
+    surfaceLow         = Color(0xFF0F1A2E),
+    surfaceMid         = Color(0xFF1F324F),
+    surfaceHigh        = Color(0xFF1F324F),
+    surfaceHighest     = Color(0xFF2A4063),
+    onSurface          = Color(0xFFE5E0D0),   // warm cream ink
+    secondary          = Color(0xFFA8B0BD),   // slate
+    outlineVar         = Color(0xFF3A4A66),   // navy line (디바이더 전용)
+    secContainer       = Color(0xFF1F324F),
+    primaryContainer   = Color(0xFF050A18),   // deepest navy — MAYDAY 카드
+    onPrimaryContainer = Color(0xFFA8B0BD),
+    secondaryContainer = Color(0xFFF2EDE0),   // cream
 )
 
-// Light mode 톤 — 라이트 배경/어두운 텍스트로 반전. 강조색 (coral/red) 은 공통.
+// Light mode 톤 — v1.6.0: Cool gray → Warm cream + Navy ink.
+// 앱 아이콘(Deep Navy + Cream)과 톤 정렬. 강조색은 위 TacticalRed* 상수가 네이비로 변경됨.
 private val LightEjectPalette = EjectPalette(
     red                = TacticalRedInv,
     coral              = TacticalRedInv,
     coralDim           = TacticalRedDeep,
-    bg                 = Color(0xFFF4F5F7),  // page background
-    surface            = Color(0xFFFFFFFF),  // card body
-    surfaceLow         = Color(0xFFEBECEF),  // module bg
-    surfaceMid         = Color(0xFFDDDEE2),  // container high
-    surfaceHigh        = Color(0xFFDDDEE2),
-    surfaceHighest     = Color(0xFFCFD0D5),  // housing
-    onSurface          = Color(0xFF1A1C1E),  // primary text
-    secondary          = Color(0xFF55575B),  // secondary text
-    outlineVar         = Color(0xFFC0C1C5),  // dividers
-    secContainer       = Color(0xFFDDDEE2),
-    primaryContainer   = Color(0xFF1A1C1E),  // PRO 배너 는 라이트 모드에서도 강한 대비 유지
-    onPrimaryContainer = Color(0xFFC6C6CB),
+    bg                 = Color(0xFFF2EDE0),  // page background — warm cream
+    surface            = Color(0xFFFBF7EC),  // card body — soft cream
+    surfaceLow         = Color(0xFFEDE7D4),  // module bg
+    surfaceMid         = Color(0xFFDFD8C2),  // container high
+    surfaceHigh        = Color(0xFFDFD8C2),
+    surfaceHighest     = Color(0xFFCFC6AC),  // housing
+    onSurface          = Color(0xFF1B2D4A),  // primary text — navy ink
+    secondary          = Color(0xFF5A6478),  // secondary text — slate
+    outlineVar         = Color(0xFFD5D0BD),  // dividers — warm beige
+    secContainer       = Color(0xFFDFD8C2),
+    primaryContainer   = Color(0xFF0F1929),  // MAYDAY 카드 — deep navy
+    onPrimaryContainer = Color(0xFFD5DCE8),  // cream-tinted text on deep navy
     secondaryContainer = TacticalRedInv,
 )
 
@@ -140,29 +147,31 @@ val EjectPrimaryContainer: Color   @Composable @ReadOnlyComposable get() = Local
 val EjectOnPrimaryContainer: Color @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.onPrimaryContainer
 val EjectSecondaryContainer: Color @Composable @ReadOnlyComposable get() = LocalEjectPalette.current.secondaryContainer
 
+// Dark mode 용 ColorScheme — v1.6.0: Navy BG + Cream CTA 인버전.
 private val TacticalDarkColors = darkColorScheme(
-    primary             = TacticalRedInv,
-    onPrimary           = Color.White,
-    primaryContainer    = TacticalLowest,
-    onPrimaryContainer  = TacticalOnVariant,
-    secondary           = TacticalOnVariant,
-    onSecondary         = TacticalBase,
-    secondaryContainer  = TacticalHigh,
-    onSecondaryContainer= TacticalOnSurface,
-    tertiary            = TacticalCyan,
-    onTertiary          = TacticalBase,
-    background          = TacticalBase,
-    onBackground        = TacticalOnSurface,
-    surface             = TacticalContainer,
-    onSurface           = TacticalOnSurface,
-    surfaceVariant      = TacticalHigh,
-    onSurfaceVariant    = TacticalOnVariant,
-    outline             = TacticalOutline,
-    outlineVariant      = TacticalOutlineVar,
-    error               = TacticalRed,
-    onError             = TacticalOnRed,
-    errorContainer      = TacticalRedDeep,
-    onErrorContainer    = TacticalRedFixed,
+    primary             = Color(0xFFF2EDE0),    // cream CTA
+    onPrimary           = Color(0xFF0A1525),    // deep navy on cream
+    primaryContainer    = Color(0xFF050A18),    // deepest navy
+    onPrimaryContainer  = Color(0xFFE5E0D0),
+    secondary           = Color(0xFFA8B0BD),    // slate
+    onSecondary         = Color(0xFF0A1525),
+    secondaryContainer  = Color(0xFF1F324F),
+    onSecondaryContainer= Color(0xFFE5E0D0),
+    tertiary            = TacticalCyan,         // 보존 (SHAKE 시그니처)
+    onTertiary          = Color(0xFF0A1525),
+    background          = Color(0xFF0A1525),    // deep navy background
+    onBackground        = Color(0xFFE5E0D0),
+    surface             = Color(0xFF13223D),    // navy surface
+    onSurface           = Color(0xFFE5E0D0),
+    surfaceVariant      = Color(0xFF1F324F),
+    onSurfaceVariant    = Color(0xFFA8B0BD),
+    outline             = Color(0xFF6A7B96),
+    outlineVariant      = Color(0xFF3A4A66),
+    // ── error 슬롯: 빨강 명시 고정 — error 시맨틱 보존 ─────────────────────
+    error               = Color(0xFFFFB4A8),
+    onError             = Color(0xFF680008),
+    errorContainer      = Color(0xFF6A0008),
+    onErrorContainer    = Color(0xFFFFDAD6),
 )
 
 // ── Tactical Typography — Space Grotesk 의존성 없이 시스템 폰트 + 타이트한
@@ -199,31 +208,33 @@ private val TacticalShapes = Shapes(
     extraLarge = Square,
 )
 
-// Light mode 용 ColorScheme — Material3 컴포넌트 기본값에 최소한의 대비만 제공.
+// Light mode 용 ColorScheme — v1.6.0: Navy + Cream 톤 정렬.
 // 앱 내부 화면은 위의 [LightEjectPalette] 를 통해 팔레트 전체가 반전된다.
+// error 슬롯은 TacticalRed* 참조 대신 빨강 hex 로 명시 고정 — error 시맨틱 보존.
 private val TacticalLightColors = lightColorScheme(
-    primary             = TacticalRedInv,
+    primary             = TacticalRedInv,           // navy
     onPrimary           = Color.White,
-    primaryContainer    = Color(0xFF1A1C1E),
-    onPrimaryContainer  = Color(0xFFE2E2E5),
-    secondary           = Color(0xFF55575B),
+    primaryContainer    = Color(0xFF0F1929),        // deep navy
+    onPrimaryContainer  = Color(0xFFD5DCE8),
+    secondary           = Color(0xFF5A6478),        // slate
     onSecondary         = Color.White,
-    secondaryContainer  = Color(0xFFDDDEE2),
-    onSecondaryContainer= Color(0xFF1A1C1E),
-    tertiary            = TacticalCyan,
-    onTertiary          = Color(0xFF1A1C1E),
-    background          = Color(0xFFF4F5F7),
-    onBackground        = Color(0xFF1A1C1E),
-    surface             = Color(0xFFFFFFFF),
-    onSurface           = Color(0xFF1A1C1E),
-    surfaceVariant      = Color(0xFFDDDEE2),
-    onSurfaceVariant    = Color(0xFF55575B),
-    outline             = Color(0xFF909095),
-    outlineVariant      = Color(0xFFC0C1C5),
-    error               = TacticalRedInv,
+    secondaryContainer  = Color(0xFFDFD8C2),        // warm beige
+    onSecondaryContainer= Color(0xFF1B2D4A),
+    tertiary            = TacticalCyan,             // 보존 (SHAKE 시그니처)
+    onTertiary          = Color(0xFF1B2D4A),
+    background          = Color(0xFFF2EDE0),        // warm cream
+    onBackground        = Color(0xFF1B2D4A),
+    surface             = Color(0xFFFBF7EC),
+    onSurface           = Color(0xFF1B2D4A),
+    surfaceVariant      = Color(0xFFDFD8C2),
+    onSurfaceVariant    = Color(0xFF5A6478),
+    outline             = Color(0xFF9098A8),
+    outlineVariant      = Color(0xFFD5D0BD),
+    // ── error 슬롯: 빨강 명시 고정 (TacticalRed* 참조 금지) ─────────────────
+    error               = Color(0xFFBA1A20),
     onError             = Color.White,
-    errorContainer      = TacticalRedFixed,
-    onErrorContainer    = TacticalOnRed,
+    errorContainer      = Color(0xFFFFDAD6),
+    onErrorContainer    = Color(0xFF680008),
 )
 
 @Composable

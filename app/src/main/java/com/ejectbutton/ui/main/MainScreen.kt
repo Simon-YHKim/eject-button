@@ -918,7 +918,7 @@ private fun CommandContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(EjectCoral.copy(alpha = 0.1f))
+                    .background(EjectCoral.copy(alpha = 0.14f))
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -943,7 +943,7 @@ private fun CommandContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(EjectCoral.copy(alpha = 0.1f))
+                    .background(EjectCoral.copy(alpha = 0.14f))
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -965,7 +965,7 @@ private fun CommandContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(EjectCoral.copy(alpha = 0.1f))
+                    .background(EjectCoral.copy(alpha = 0.14f))
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
