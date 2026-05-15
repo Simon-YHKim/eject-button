@@ -1892,39 +1892,39 @@ private fun EjectButton(
         label = "s",
     )
 
-    // v1.5.6 — 일반 모드 + 취소 모드 모두 채우기 색을 외곽선과 통일 (EjectCoral 빨강).
-    // 안의 ⏏ 아이콘 + "탈출" 텍스트는 흰색으로 잘 보이게.
+    // v1.5.13 — EJECT 버튼 비주얼: 런처 아이콘과 통일된 비상구 픽토그램 비트맵 사용.
+    // 일반 모드(EJECT): 라운드 스퀘어 비트맵 이미지 (red bg + 흰 문 + 빨간 figure).
+    // 취소 모드(CANCEL): 기존 빨간 원 + ✕ UI 유지 (취소는 단순 정지 메타포).
     Box(
         modifier = Modifier
             .size(260.dp)
             .scale(scale),
         contentAlignment = Alignment.Center,
     ) {
-        // Outer halo
-        Box(
-            modifier = Modifier
-                .size(252.dp)
-                .clip(CircleShape)
-                .background(EjectCoral.copy(alpha = 0.10f))
-        )
-        // Main circle — 항상 EjectCoral 채우기
-        Box(
-            modifier = Modifier
-                .size(232.dp)
-                .shadow(
-                    elevation    = 18.dp,
-                    shape        = CircleShape,
-                    ambientColor = EjectCoral.copy(alpha = 0.35f),
-                    spotColor    = EjectCoral.copy(alpha = 0.35f),
-                )
-                .clip(CircleShape)
-                .background(EjectCoral)
-                .border(4.dp, EjectCoral, CircleShape)
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (isCancelMode) {
+        if (isCancelMode) {
+            // Cancel 모드: 기존 빨간 원 ✕
+            Box(
+                modifier = Modifier
+                    .size(252.dp)
+                    .clip(CircleShape)
+                    .background(EjectCoral.copy(alpha = 0.10f))
+            )
+            Box(
+                modifier = Modifier
+                    .size(232.dp)
+                    .shadow(
+                        elevation    = 18.dp,
+                        shape        = CircleShape,
+                        ambientColor = EjectCoral.copy(alpha = 0.35f),
+                        spotColor    = EjectCoral.copy(alpha = 0.35f),
+                    )
+                    .clip(CircleShape)
+                    .background(EjectCoral)
+                    .border(4.dp, EjectCoral, CircleShape)
+                    .clickable(onClick = onClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "✕",
                         fontSize   = 72.sp,
@@ -1939,29 +1939,35 @@ private fun EjectButton(
                         fontWeight    = FontWeight.ExtraBold,
                         letterSpacing = 4.sp,
                     )
-                } else {
-                    // v1.6.0 — ⏏ 글리프 → 흰색 hangup 아이콘 (수화기 down).
-                    // 브랜드가 빨강 EJECT 메타포에서 네이비 + hangup CTA 메타포로 변경됨.
-                    // 크기는 기존 108sp 글리프 시각 비중을 보존하도록 96dp 정도로 설정.
-                    androidx.compose.material3.Icon(
-                        painter = androidx.compose.ui.res.painterResource(
-                            id = com.ejectbutton.R.drawable.ic_hangup_eject
-                        ),
-                        contentDescription = null,
-                        modifier = Modifier.size(96.dp),
-                        tint = Color.White,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        // v1.5.6 — 50% 키움 (13 → 20sp), letterSpacing 약간 줄임
-                        strings.ejectButtonLabel,
-                        fontSize      = 20.sp,
-                        color         = Color.White,
-                        fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 5.sp,
-                    )
                 }
             }
+        } else {
+            // EJECT 모드: 신규 비상구 픽토그램 비트맵 (런처 아이콘과 통일).
+            // 라운드 스퀘어 형태로 사용자가 앱 아이콘과 즉시 연관 인식하도록.
+            val haloShape = androidx.compose.foundation.shape.RoundedCornerShape(48.dp)
+            Box(
+                modifier = Modifier
+                    .size(252.dp)
+                    .clip(haloShape)
+                    .background(EjectCoral.copy(alpha = 0.10f))
+            )
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(
+                    id = com.ejectbutton.R.drawable.ic_eject_button
+                ),
+                contentDescription = strings.ejectButtonLabel,
+                modifier = Modifier
+                    .size(232.dp)
+                    .shadow(
+                        elevation    = 18.dp,
+                        shape        = haloShape,
+                        ambientColor = EjectCoral.copy(alpha = 0.35f),
+                        spotColor    = EjectCoral.copy(alpha = 0.35f),
+                    )
+                    .clip(haloShape)
+                    .clickable(onClick = onClick),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            )
         }
     }
 }

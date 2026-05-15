@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Adaptive launcher icon. The <monochrome> slot (Android 13+) lets the
-  system tint/mask the icon to match the user's Material You palette.
-  The ⏏ foreground is already a solid white glyph so we can reuse it —
-  the system ignores its color and applies its own tint.
+    Eject Button v1.5.13 — Adaptive 런처 아이콘.
+    배경: EmergencyRed 단색 (@drawable/ic_launcher_background)
+    전경: 비상구 픽토그램 비트맵 (@mipmap/ic_launcher_foreground, 5개 density)
+    monochrome: 동일 비트맵 (Android 13+ 테마 아이콘 시스템 마스킹)
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background"/>
-    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-    <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <monochrome android:drawable="@mipmap/ic_launcher_foreground"/>
 </adaptive-icon>

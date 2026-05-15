@@ -34,6 +34,34 @@
 
 ---
 
+## [1.5.13] - 2026-05-12
+
+### Changed — Brand Icon Refresh (EmergencyRed Pictogram)
+
+- **앱 런처 아이콘 신규 픽토그램 도입** — 흰 비상문(말풍선/문 결합 형상) + 빨간 사람(휴대폰을 귀에 대고 신호선 3 arc + 달리는 자세) 디자인. ISO 7010 비상구 표지의 시각 언어를 유지하면서 "통화 중 탈출" 메타포를 직접적으로 표현. SVG 원본 `docs/design/icon-v1.5.13.svg` (1254×1254 viewBox, 47 paths, EmergencyRed `#B71720` 단색 + 흰색).
+- **Adaptive icon 자산 일괄 교체** — `ic_launcher_background.xml` 단색 EmergencyRed `#B71720` 로 갱신 (`#1B2D4A` 네이비 → 빨강 환원). 전경은 비트맵으로 전환: 5개 density mipmap PNG (mdpi 48 / hdpi 72 / xhdpi 96 / xxhdpi 144 / xxxhdpi 192). `mipmap-anydpi-v26/ic_launcher.xml` + `ic_launcher_round.xml` 의 foreground 참조 `@drawable/ic_launcher_foreground` → `@mipmap/ic_launcher_foreground` 로 변경. monochrome 슬롯도 동일 비트맵 사용 (Android 13+ 테마 아이콘 시스템이 자동 마스킹/틴트).
+- **Legacy mipmap PNG 자산 추가** — `mipmap-mdpi`~`mipmap-xxxhdpi` 각 폴더에 `ic_launcher.png` + `ic_launcher_round.png` 추가 (Android 7 이하 단말이 adaptive icon 대신 사용).
+- **메인 화면 EJECT 버튼 비주얼 통일** — `EjectButton` composable 의 빨간 원 + 흰 hangup 글리프 → 라운드 스퀘어 비상구 픽토그램 이미지 (`ic_eject_button` drawable, 5 density)로 교체. 앱 아이콘과 즉시 시각 연관되도록 동일 디자인 적용. pulse 애니메이션 + halo + shadow는 보존. CANCEL 모드(빨간 원 + ✕)는 미변경 — "정지" 단순 메타포 유지.
+- **Play Store 아이콘 갱신** — `store-assets/ic_play_store_512.png` 신 디자인 512×512 PNG 로 교체.
+
+### Added
+- **`res/drawable-{density}/ic_eject_button.png`** — 5 density 인앱 EJECT 버튼 비트맵 (192~768 px).
+- **`res/mipmap-{density}/ic_launcher_foreground.png`** — 5 density adaptive foreground 비트맵.
+
+### Removed
+- `res/drawable/ic_launcher_foreground.xml` — 벡터 전경 (도망 사람 vector) 사용 중단. 비트맵 전경으로 대체.
+
+### Migration Notes
+- v1.6.0 Navy + Cream theme refactor (Unreleased 섹션)는 별도 브랜치(`feat/v1.6.0-navy-cream`)로 분리 검토 — 본 v1.5.13 은 EmergencyRed 브랜드 정체성 유지.
+- monochrome 슬롯 호환성: Android 13+ 의 themed icon 기능은 비트맵을 grayscale 마스크로 자동 변환. 시각적 일관성을 위해 향후 vector monochrome 자산 별도 제작 권장.
+- versionCode: CI `versionCodeOverride` 가 빌드 시 결정 (수동 변경 불필요).
+
+### Design Source
+- `docs/design/icon-v1.5.13.svg` — 디자이너 원본 SVG (1254×1254, EmergencyRed 단색 + 흰색).
+- `docs/design/ICON_REDESIGN_v1.5.13.md` — 디자인 근거 + 색상 사양 + density 매트릭스.
+
+---
+
 ## [1.5.12] - 2026-05-05
 
 ### Changed
