@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Eject Button v1.5.13 — Adaptive 런처 아이콘.
-    배경: EmergencyRed 단색 (@drawable/ic_launcher_background)
-    전경: 비상구 픽토그램 비트맵 (@mipmap/ic_launcher_foreground, 5개 density)
-    monochrome: 동일 비트맵 (Android 13+ 테마 아이콘 시스템 마스킹)
+    비상탈출 v1.5.14 — Adaptive 런처 아이콘.
+    배경: EmergencyRed 단색 (@drawable/ic_launcher_background) — 전체 마스크 fill
+    전경: 흰 비상구 + 빨강 인물, 외부 빨강 투명화 (자체 배경 제거), 108dp 표준 dimensions
+    monochrome: 인물 + 신호 silhouette only (Android 13+ 테마 아이콘 wallpaper tint)
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background"/>
     <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-    <monochrome android:drawable="@mipmap/ic_launcher_foreground"/>
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>
 </adaptive-icon>
