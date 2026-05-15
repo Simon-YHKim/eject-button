@@ -34,6 +34,30 @@
 
 ---
 
+## [1.5.14] - 2026-05-16
+
+### Fixed — Splash Screen Icon
+
+- **시스템 스플래시 화면에 구형 아이콘이 노출되던 회귀 수정.** v1.5.13에서 adaptive launcher icon foreground/background를 신규 EmergencyRed 픽토그램으로 교체했으나, `themes.xml`에 `windowSplashScreen*` 속성이 명시되지 않아 Android 12+ 가 디바이스 캐시·OEM 런처 폴백 경로에 따라 이전 리비전 아이콘을 끌어다 쓰는 케이스 발생. ("앱 실행 시 로딩 화면에 구형 아이콘이 아직 들어가있어" v1.5.13 dogfood 보고).
+- **`res/values-v31/themes.xml` 신규 추가** — `Theme.EjectButton` 을 v31 (Android 12, API 31) 한정 오버라이드로 재선언하고 다음 splash 속성 명시:
+  - `windowSplashScreenAnimatedIcon = @mipmap/ic_launcher` (adaptive icon XML 자체 지정 → OS 가 foreground + background 합성 후 system splash mask 적용)
+  - `windowSplashScreenIconBackgroundColor = #B71720` (EmergencyRed)
+  - `windowSplashScreenBackground = #B71720` (브랜드 동일색 → 화면 전체 EmergencyRed + 중앙 글리프).
+- **minSdk 26 호환 보장** — Android 8.0~11 (API 26~30) 은 system splash screen API 가 없으므로 `values/themes.xml` 의 기존 정의가 그대로 적용. v31 분기는 system splash 가 실제로 적용되는 디바이스만 영향.
+- **라이브러리 의존성 변경 없음** — `androidx.core:core-splashscreen` 도입 없이 OS 네이티브 속성으로만 처리. AGP/Gradle 빌드 그래프·ProGuard rule 모두 영향 없음. 롤백은 `res/values-v31/themes.xml` 단일 파일 삭제로 즉시 가능.
+
+### Migration Notes
+
+- 디바이스에 구버전 APK 가 캐시된 경우 새 splash icon 이 적용되려면 1회 uninstall + reinstall 필요 (Android 12+ system splash icon 은 install 시점에 캐시된다). Closed Testing tester 에게는 Play Store 자동 업데이트로 over-install 강제되므로 별도 안내 불필요.
+- adaptive icon foreground PNG (`mipmap-{density}/ic_launcher_foreground.png`) 는 v1.5.13 에서 이미 신규 EmergencyRed 픽토그램으로 교체 완료. 본 패치는 OS 레벨 splash icon 라우팅 명시화만 담당.
+
+### Build / Release
+
+- 태그 `v1.5.14` push 로 `.github/workflows/release-aab.yml` 트리거 → `versionCode = 1000 + GITHUB_RUN_NUMBER`, `versionName = 1.5.14` 로 AAB + APK 빌드 후 GitHub Release 게시.
+- Play Console upload: 본 빌드의 AAB 를 Closed Testing 트랙에 promote → 12명 테스터에게 자동 배포.
+
+---
+
 ## [1.5.13] - 2026-05-12
 
 ### Changed — Brand Icon Refresh (EmergencyRed Pictogram)
