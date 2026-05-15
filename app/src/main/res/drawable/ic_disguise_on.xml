@@ -24,7 +24,7 @@
         android:rotation="-8">
         <path
             android:pathData="M3.6,4.2 C3.6,3.2 4.4,2.4 5.4,2.4 L9.4,2.4 L11.2,1.4 C11.7,1.1 12.3,1.1 12.8,1.4 L14.6,2.4 L18.6,2.4 C19.6,2.4 20.4,3.2 20.4,4.2 L20.4,5.4 C20.4,7.2 19,8.6 17.2,8.6 L6.8,8.6 C5,8.6 3.6,7.2 3.6,5.4 Z"
-            android:fillColor="#1B2D4A" />
+            android:fillColor="#A82430" />
         <path
             android:pathData="M6.8,4.4 C7.6,3.8 9.0,3.8 9.8,4.4 C9.0,5.2 7.6,5.2 6.8,4.4 Z"
             android:fillColor="#FFFFFF" />
