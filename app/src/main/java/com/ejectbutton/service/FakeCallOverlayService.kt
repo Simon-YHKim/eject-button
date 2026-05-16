@@ -595,29 +595,33 @@ class FakeCallOverlayService : Service() {
     private fun buildNotif(delayMs: Long = 0L): Notification {
         val strings = EjectPrefs.loadLanguage(this).strings()
 
-        // v1.5.23 — full-screen intent target = IncomingCallActivity.
-        //   잠금화면일 때 시스템이 이 PendingIntent 의 Activity 를 즉시 launch.
-        //   IncomingCallActivity 는 setShowWhenLocked(true) + setTurnScreenOn(true)
-        //   를 호출하고 즉시 finish — 그 한 액션이 키가드를 dismiss 하고 화면을
-        //   깨운다. 그 위에 본 Service 의 SYSTEM_ALERT_WINDOW overlay 가 그대로 표시.
-        val fullScreenIntent = Intent(this, com.ejectbutton.ui.call.IncomingCallActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val flagImmutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-        val fullScreenPI = PendingIntent.getActivity(this, 0, fullScreenIntent, flagImmutable)
-
-        return Notification.Builder(this, NOTIF_CHANNEL_CALL)
+        // v1.5.26 — Foreground-service notification reverted to the LOW
+        //   importance channel so it stays a silent status-bar icon and
+        //   does NOT pop up as a heads-up over the fake-call screen.
+        //
+        //   Why we no longer need setFullScreenIntent / HIGH channel here:
+        //     – v1.5.24 introduced launchIncomingCallActivity() — a direct
+        //       startActivity() call from the foreground service that
+        //       relies on the SYSTEM_ALERT_WINDOW + FGS background-activity-
+        //       start allowlist. That path is now the primary mechanism for
+        //       surfacing the call UI over a locked / screen-off device.
+        //     – v1.5.25 verified the path on a real Android 14 / Galaxy
+        //       pattern-lock phone: the fake call appears on top of the
+        //       keyguard without any credential prompt.
+        //     – The HIGH-importance channel + setFullScreenIntent that
+        //       v1.5.23 added was the fallback for OEMs that block direct
+        //       startActivity. Since v1.5.24+ works without it on the
+        //       reference device, and the heads-up sibling notification it
+        //       produced was visually intrusive ("앱 실행 중 / 백그라운드
+        //       서비스 활성화" pop-up at the top of the call screen), we
+        //       drop it for v1.5.26. The HIGH channel definition stays in
+        //       createChannel() in case a future iteration wants the
+        //       fallback back; only this builder no longer uses it.
+        return Notification.Builder(this, NOTIF_CHANNEL)
             .setContentTitle(strings.serviceNotifTitle)
             .setContentText(strings.serviceNotifText)
             .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setCategory(Notification.CATEGORY_CALL)
-            .setPriority(Notification.PRIORITY_HIGH)
             .setOngoing(true)
-            .setFullScreenIntent(fullScreenPI, /* highPriority = */ true)
             .build()
     }
 
