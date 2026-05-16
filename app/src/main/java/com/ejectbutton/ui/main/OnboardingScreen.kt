@@ -94,7 +94,10 @@ fun OnboardingScreen(
                 body  = strings.onboardingWelcomeBody,
             ),
             OnboardingPage(
-                emoji = "🏃",
+                // v1.5.20 — 🏃 → 👤 (caller chip default avatar emoji 와 통일).
+                // 사용자가 caller 추가 시 chip 에 보이는 emoji 와 같은 unicode 사용 →
+                // "DEPLOY 탭에서 누가 호출할지 정한다" 메타포가 시각적으로 일치.
+                emoji = "👤",
                 title = strings.onboardingCommandTitle,
                 body  = strings.onboardingCommandBody,
             ),

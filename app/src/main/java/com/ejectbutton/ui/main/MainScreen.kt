@@ -1185,7 +1185,21 @@ private fun StitchTopBar(
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("🎭", fontSize = 18.sp)
+                            // v1.5.20 — 🎭 placeholder emoji prefix → 사용자가 v1.5.16에 추가한
+                            // 신규 decoy launcher 아이콘 (Calculator/Memo/Weather/Clock) 노출.
+                            // picker dialog 안에서 옵션이 실제 어떻게 보이는지 시각 매핑.
+                            val iconRes = when (decoy) {
+                                DecoyManager.Decoy.CALCULATOR -> com.ejectbutton.R.mipmap.ic_decoy_calculator_foreground
+                                DecoyManager.Decoy.MEMO       -> com.ejectbutton.R.mipmap.ic_decoy_memo_foreground
+                                DecoyManager.Decoy.WEATHER    -> com.ejectbutton.R.mipmap.ic_decoy_weather_foreground
+                                DecoyManager.Decoy.CLOCK      -> com.ejectbutton.R.mipmap.ic_decoy_clock_foreground
+                                else                          -> com.ejectbutton.R.drawable.ic_eject_button
+                            }
+                            Image(
+                                painter = painterResource(iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                            )
                             Spacer(Modifier.width(12.dp))
                             Text(label, fontSize = 15.sp)
                         }
@@ -1801,6 +1815,22 @@ private fun SystemsContent(
                                     onClick = null,
                                 )
                                 Spacer(Modifier.width(8.dp))
+                                // v1.5.20 — Settings 의 위장 picker 다이얼로그도 첫 번째 picker
+                                // (StitchTopBar) 와 시각 일관성: 옵션 옆에 실제 decoy 아이콘 노출.
+                                // DEFAULT 옵션은 메인 앱 아이콘 (ic_eject_button) 으로.
+                                val iconRes = when (decoy) {
+                                    DecoyManager.Decoy.CALCULATOR -> com.ejectbutton.R.mipmap.ic_decoy_calculator_foreground
+                                    DecoyManager.Decoy.MEMO       -> com.ejectbutton.R.mipmap.ic_decoy_memo_foreground
+                                    DecoyManager.Decoy.WEATHER    -> com.ejectbutton.R.mipmap.ic_decoy_weather_foreground
+                                    DecoyManager.Decoy.CLOCK      -> com.ejectbutton.R.mipmap.ic_decoy_clock_foreground
+                                    else                          -> com.ejectbutton.R.drawable.ic_eject_button
+                                }
+                                Image(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                )
+                                Spacer(Modifier.width(12.dp))
                                 Text(label, fontSize = 15.sp)
                             }
                         }
