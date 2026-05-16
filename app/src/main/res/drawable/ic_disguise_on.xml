@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
-    v1.5.17 — ON state (위장 적용 중). 같은 Dedcoy.png raster 를 BitmapDrawable
-    로 wrap. 자세한 사정은 ic_disguise_off.xml 의 주석 참고.
--->
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/ic_disguise"
-    android:gravity="center" />
