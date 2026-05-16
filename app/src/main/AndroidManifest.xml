@@ -26,6 +26,17 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!--
+      v1.5.23 — Full-screen intent (잠금화면 우회 가짜 통화).
+      USE_FULL_SCREEN_INTENT 가 있어야만 NotificationCompat.Builder.setFullScreenIntent()
+      가 잠금화면 위에 즉시 Activity 를 launch 한다. Android 14+ (API 34) 부터는
+      "Default Phone/Calendar/Alarm" 카테고리 외 일반 앱은 시스템 설정의
+      "Special app access → Display over apps & full-screen notifications" 에서
+      사용자가 명시적으로 허용해야 작동. 첫 trigger 직전에 NotificationManager
+      .canUseFullScreenIntent() 체크 후 ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT
+      intent 로 사용자에게 권한 안내.
+    -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!--
       v1.5.8 — GPS 지오펜스 권한 제거.
       v1.4.0 에 추가된 GeofenceManager 코드는 호출하는 곳이 없는 dead code 였고,
       Play Console 비공개 테스트 검토에서 "선언되지 않은 민감한 권한" 오류 유발.
@@ -84,6 +95,35 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          v1.5.23 — IncomingCallActivity (transparent trampoline).
+
+          Why a separate activity:
+            – setFullScreenIntent(pendingIntent, true) requires the pending
+              intent to target an Activity (not a Service). When the device
+              is locked / screen-off and the trigger fires, the system uses
+              this Activity as the launch surface — it dismisses keyguard,
+              wakes the screen, then the foreground service overlay
+              (FakeCallOverlayService) renders the actual incoming-call UI
+              on top.
+            – Kept transparent + no-op so the overlay (which has all the
+              ringtone/vibration/Compose UI wiring) remains the single source
+              of truth. The Activity exists only to satisfy the full-screen
+              intent contract and to flip the keyguard / turnScreenOn flags.
+
+          android:excludeFromRecents — don't pollute the recents stack.
+          android:launchMode="singleTask" — collapse if launched twice.
+          android:theme — translucent so the overlay is visible through it.
+        -->
+        <activity
+            android:name=".ui.call.IncomingCallActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.EjectButton.Transparent" />
 
         <!-- 위장 아이콘 1: 계산기 (v1.5.9: 자체 아이콘 적용) -->
         <activity-alias

@@ -47,7 +47,16 @@ class FakeCallOverlayService : Service() {
         // Debug-only: start overlay directly in in-call state (skips incoming ring UI).
         // Used by UI screenshot tests via adb am start-service.
         const val EXTRA_START_IN_CALL = "debug_start_in_call"
+        // v1.2 — 기존 LOW importance 채널 (foreground service 상태바 아이콘 용).
+        //         새로 설치한 사용자는 _v2 채널만 보지만, 기존 사용자 디바이스에는
+        //         LOW 채널이 이미 등록돼 있어 importance 변경이 무시되므로 그대로 둠.
         private const val NOTIF_CHANNEL = "eject_call"
+        // v1.5.23 — full-screen intent 용 HIGH importance 채널.
+        //   Android 가 잠금화면 / 화면 꺼짐 상태에서 가짜 통화 UI 를 띄우려면
+        //   setFullScreenIntent + HIGH (이상) importance 채널 둘 다 필요.
+        //   LOW 채널에서는 setFullScreenIntent 가 fallback 으로 일반 알림이 되어
+        //   잠금화면 위 자동 launch 가 트리거 안 됨.
+        private const val NOTIF_CHANNEL_CALL = "eject_call_v2"
         private const val NOTIF_ID      = 1001
 
         // 전화 종료 후 전면 광고 표시용 플래그
@@ -500,17 +509,60 @@ class FakeCallOverlayService : Service() {
 
     private fun createChannel() {
         val strings = EjectPrefs.loadLanguage(this).strings()
-        val ch = NotificationChannel(NOTIF_CHANNEL, strings.serviceChannelName, NotificationManager.IMPORTANCE_LOW)
-            .apply { setSound(null, null) }
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        // Legacy LOW channel — foreground service 상태바 아이콘 전용. 사운드 무.
+        nm.createNotificationChannel(
+            NotificationChannel(NOTIF_CHANNEL, strings.serviceChannelName, NotificationManager.IMPORTANCE_LOW)
+                .apply { setSound(null, null) }
+        )
+
+        // v1.5.23 — HIGH importance channel for full-screen intent.
+        //   잠금화면 + 화면 꺼짐 상태에서 가짜 통화를 띄우는 경로:
+        //     1. setFullScreenIntent(pi, true)  ← 이번 패치
+        //     2. 알림 채널 importance >= HIGH    ← 이번 패치
+        //     3. USE_FULL_SCREEN_INTENT 권한      ← AndroidManifest
+        //   채널은 한 번 생성되면 사용자 설정이 우선이므로 ID 를 분리해서 신규
+        //   채널로 만든다 (기존 LOW 채널 자리에 HIGH 를 덮어쓸 수 없음).
+        nm.createNotificationChannel(
+            NotificationChannel(
+                NOTIF_CHANNEL_CALL,
+                strings.serviceChannelName + " · Call",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                setSound(null, null) // 자체 ringtone 으로 울리니까 채널 사운드는 무.
+                enableVibration(false)
+                setBypassDnd(false)
+            }
+        )
     }
 
     private fun buildNotif(delayMs: Long = 0L): Notification {
         val strings = EjectPrefs.loadLanguage(this).strings()
-        return Notification.Builder(this, NOTIF_CHANNEL)
+
+        // v1.5.23 — full-screen intent target = IncomingCallActivity.
+        //   잠금화면일 때 시스템이 이 PendingIntent 의 Activity 를 즉시 launch.
+        //   IncomingCallActivity 는 setShowWhenLocked(true) + setTurnScreenOn(true)
+        //   를 호출하고 즉시 finish — 그 한 액션이 키가드를 dismiss 하고 화면을
+        //   깨운다. 그 위에 본 Service 의 SYSTEM_ALERT_WINDOW overlay 가 그대로 표시.
+        val fullScreenIntent = Intent(this, com.ejectbutton.ui.call.IncomingCallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val flagImmutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        val fullScreenPI = PendingIntent.getActivity(this, 0, fullScreenIntent, flagImmutable)
+
+        return Notification.Builder(this, NOTIF_CHANNEL_CALL)
             .setContentTitle(strings.serviceNotifTitle)
             .setContentText(strings.serviceNotifText)
             .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setCategory(Notification.CATEGORY_CALL)
+            .setPriority(Notification.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setFullScreenIntent(fullScreenPI, /* highPriority = */ true)
             .build()
     }
 

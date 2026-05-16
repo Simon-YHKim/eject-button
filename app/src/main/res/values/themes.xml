@@ -5,4 +5,20 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <!--
+      v1.5.23 — Transparent variant for IncomingCallActivity.
+      The activity is a trampoline that only flips keyguard/turnScreenOn
+      flags; the actual fake-call UI is rendered by FakeCallOverlayService
+      using SYSTEM_ALERT_WINDOW. Making the activity translucent + no-title
+      keeps the overlay visible "through" it.
+    -->
+    <style name="Theme.EjectButton.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>
