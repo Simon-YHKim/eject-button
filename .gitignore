@@ -77,3 +77,7 @@ artifacts-v*/
 extracted/
 extracted-final/
 rn-*.txt
+# v1.5.15 - debug splash captures
+splash_*.png
+# v1.5.15 - intermediate scratch (changelog blocks, commit msgs)
+*.tmp

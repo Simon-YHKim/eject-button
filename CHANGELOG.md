@@ -34,6 +34,49 @@
 
 ---
 
+## [1.5.15] - 2026-05-16
+
+### Changed — Coachmark UX, Brand Icon, In-App i18n
+
+- **[#1] 코치마크 step 4 (EJECT 버튼) spotlight Circle → RoundRect.** v1.5.13에서 EJECT 메인 버튼이 빨간 원형(⏏ 텍스트 글리프)에서 둥근 사각형 픽토그램(`ic_eject_button` drawable)으로 바뀌었음. spotlight 모양도 동기화 — `MainScreen.kt`의 `coachmark.register("eject", ..., SpotShape.Circle)` → `SpotShape.RoundRect`.
+- **[#2] 코치마크 step 5 ↔ step 6 순서 교체.** 이전: settings(본부 정비) → disguise(위장 모드). 변경: disguise → settings. 시각 동선 좌→우(⏏ → ⚙) 자연스러워짐, 마지막 step에 모든 설정 진입점(settings) 두어 투어 마무리. primary 라벨도 함께 이동: disguise=`coachmarkNext`, settings=`onboardingFinalDismiss`.
+- **[#3] TopAppBar 좌측 ⏏ 글리프 → v1.5.13 EmergencyRed 픽토그램.** `StitchTopBar`의 `Text("⏏ ${strings.appBrandLabel}")` → `Row { Image(R.drawable.ic_eject_button, 28dp) + Spacer + Text(brandLabel) }`. 메인 EJECT 버튼과 같은 픽토그램 = 브랜드 정체성 일관성.
+- **[#4] '출동' 화면 "언제 올까?" → "얼마나 기다려?" (7개 언어).**
+  - en: `When?` → `How long?`
+  - ko: `언제 올까?` → `얼마나 기다려?` (sectionDelay + triggerTimer 둘 다)
+  - zh-CN: `什么时候？` → `等多久？`
+  - zh-TW: `什麼時候？` → `等多久？`
+  - ja: `いつ来る？` → `あとどれくらい？`
+  - es: `¿Cuándo?` → `¿Cuánto esperamos?`
+  - hi: `कब?` → `कितना इंतज़ार?`
+- **[#5] 위장 picker 영문 잔존 해소 (system locale → in-app 언어 동기화).** Root cause: 위장 옵션 라벨이 `R.string.decoy_label_*` (Android resource = system locale 기반)로 가져와짐 → 인앱 언어를 한국어로 바꿔도 system locale이 영어면 영문 라벨 노출.
+  - `AppStrings.kt`에 4개 신규 필드: `decoyLabelCalculator/Memo/Weather/Clock` × 7개 언어
+  - `MainScreen.kt` 두 군데(StitchTopBar + Settings AlertDialog)의 8개 `stringResource(R.string.decoy_label_*)` → `strings.decoyLabel*` 교체
+  - `res/values*/strings.xml`의 `decoy_label_*`는 그대로 — manifest activity-alias `android:label`(런처 표시명)은 system locale 기반이 맞음
+
+### Changed — i18n 카피라이팅 reframe (working tree 통합)
+
+- **zh-CN, zh-TW, es의 onboarding 카피 군용 톤 → 친근한 톤** reframe. 한국어 베이스("비상 탈출")와 일관성.
+- **`MainActivity.kt`의 in-app SplashScreen ⏏ Text → `R.mipmap.ic_launcher_foreground` Image** (28dp rounded EmergencyRed `#B71720`). v1.5.14 시스템 splash + v1.5.13 launcher 아이콘과 시각 일관성.
+- **fastlane/metadata 7개 언어 Play Store 설명·title 갱신** — "비상탈출" 브랜드 reframe.
+
+### Removed (cleanup)
+
+- 옛 핸드오프/계획 문서 8종 정리 (일부 `docs/archive/`·`docs/handoffs/` 이동, 일부 영구 삭제).
+- 옛 통화 화면 V1 (`FakeInCallScreen.kt`, `FakeIncomingCallScreen.kt`) — V2 마이그레이션 완료.
+- `.gitignore`에 `splash_*.png`, `*.tmp` 추가.
+
+### Build / Release
+
+- 태그 `v1.5.15` push로 `release-aab.yml` 트리거. versionName=1.5.15, versionCode=1000+RUN_NUMBER.
+- 라이브러리 의존성 변경 없음.
+
+### Known follow-up
+
+- v1.5.15 main commit `8091f41`에 임시 파일 `.commit_msg_v1515.tmp`가 의도치 않게 포함됐음 (다음 commit `38f2c28`에서 정리). v1.5.15 태그가 8091f41을 가리키므로 빌드 산출물에는 영향 없음 (`.tmp`는 컴파일에 영향 없음).
+
+---
+
 ## [1.5.14] - 2026-05-16
 
 ### Fixed — Splash Screen Icon
