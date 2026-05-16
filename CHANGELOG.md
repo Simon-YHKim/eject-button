@@ -34,6 +34,74 @@
 
 ---
 
+## [1.5.21] - 2026-05-17
+
+### Repository hygiene & cleanup
+
+코드/리포 정리 패치. **앱 기능 변경 없음** — 협업 친화성 + 빌드 무결성 + 리포 사이즈 정상화.
+
+### Removed
+- **Root 잡파일 45MB** — `app-debug.apk` (21.3MB, 4월 25일 옛 빌드), `app-release.aab` (24MB, 4월 25일), `splash_t0.png`/`splash_verify.png` (v1.5.15 디버그 캡처 425KB). 모두 git 미트래킹 + 코드 참조 0건.
+- **`store-assets/ic_play_store_512.png`** — `play-store-icon-512.png` 의 정확한 바이트 중복본 (md5 `03DDE964` 동일). 정상 명칭(`play-store-icon-512.png`) 쪽 보존.
+- **8개 미사용 drawables** (lint `UnusedResources` 신뢰 후 grep 재검증):
+  - `drawable/ic_decoy_calculator_fg.xml`, `ic_decoy_clock_fg.xml`, `ic_decoy_memo_fg.xml`, `ic_decoy_weather_fg.xml` — v1.5.20 의 mipmap `ic_decoy_*_foreground` 채택 후 잔재된 `_fg.xml` 구버전.
+  - `drawable-nodpi/ic_decoy_master.png` — v1.5.16 raster 일괄 적용 후 미참조 마스터.
+  - `drawable/ic_eject_mark.xml`, `ic_eject_mark_red.xml` — v1.5.13 rebrand 이전 글리프 잔재.
+  - `drawable/ic_hangup_eject.xml` — 롤백된 Navy+Cream theme 잔재 (`EjectButton` composable 이 `Text("⏏")` 로 복귀했음에도 vector 만 남아 있었음).
+- **`drawable-nodpi/` 빈 폴더** 제거 (마지막 파일 `ic_decoy_master.png` 삭제 후).
+
+### Changed
+- **`.gitignore` 강화** — `release-builds/` (260MB+ 로컬 빌드 산출물 7개 버전), `.kotlin/` (Kotlin daemon 세션 캐시), `ui*.xml` (uiautomator QA 덤프) 추가.
+- **`.gitattributes` 신규** — 텍스트 EOL LF 강제 (`*.kt`, `*.kts`, `*.xml`, `*.md`, `.gitignore` 등), Windows-only `*.bat`/`*.cmd`/`*.ps1`/`gradlew.bat` 만 CRLF, 바이너리 (`*.png`/`*.apk`/`*.aab`/`*.jks` 등) `-text`. **FakeCallOverlayService.kt 의 CRLF 부작용으로 발생했던 1,125줄 phantom diff 재발 방지**.
+- **`store-assets/play-store-feature-graphic-ko-1024x500 (2).png`** → `play-store-feature-graphic-ko-1024x500.png` 로 리네임 (Windows duplicate-copy `(2)` suffix 제거).
+
+### Fixed
+- 이전 세션 크래시로 미드-라인 truncate 된 6개 파일 (`MainScreen.kt` -121줄, `OnboardingScreen.kt` -62, `AppStrings.kt` -35, `MainActivity.kt` -11, `CHANGELOG.md` -172, `.gitignore` -5) 를 HEAD(v1.5.20) 상태로 `git checkout` 복구. 작업 트리 clean 확보 후 본 패치 적용.
+
+### Verification
+- `:app:assembleDebug` **BUILD SUCCESSFUL in 32s**, 0 errors, 기존 4건의 `Deprecated in Java` 경고 (PhoneStateListener / setMediaButtonReceiver / callState) 만 유지.
+- `:app:lintDebug` 88 warnings 0 errors. `UnusedResources` 8건 → 본 패치에서 모두 처리.
+- Emulator 설치 + 콜드스타트 splash 렌더 정상 → 8개 dead drawable 삭제 무관성 검증.
+- v1.5.20 decoy picker 4종 아이콘 (계산기 초록 / 메모 노랑 / 날씨 파랑 / 시계 보라) + onboarding step 2 `👤` 시각 검증 통과 (live emulator screencap).
+
+### Deferred (v1.6.x)
+- `MainScreen.kt` 2,612줄 god-object → 책임별 split (`StitchTopBar`, `DeployTab`, `HistoryTab`, `SettingsTab`, `DecoyDialogs`, `NativeAdCard` 등) 권장.
+- `AppStrings.kt` 2,006줄 → 언어별 파일 분리 (`strings_ko.kt`, `strings_en.kt` …) 검토.
+- 정체된 feature 브랜치 6개 (`feat/v1.4.2-ux-patches` ~ `feat/v1.5.16-asset-refresh`) → main 머지 검증 후 일괄 삭제.
+- 스테일 `[Unreleased]` 섹션 (롤백된 Navy+Cream theme) — 의도된 historical context vs noise 판단 후 정리.
+
+---
+
+## [1.5.20] - 2026-05-17
+
+### Fixed — Decoy picker 시각 매핑 + Onboarding emoji 통일
+
+- **Decoy icon picker 다이얼로그 (2곳)** 가 placeholder 이모지 `🎭` 대신 v1.5.16 사용자 디자인 아이콘을 노출.
+  - `MainScreen.kt` L1191-1202 — StitchTopBar IconButton 의 picker (4 옵션): `Text("🎭", 18sp)` 제거, `Image(painter = painterResource(R.mipmap.ic_decoy_{calculator,memo,weather,clock}_foreground), 36dp)` 로 교체.
+  - L1821-1832 — Settings AlertDialog picker (5 옵션 + DEFAULT): RadioButton 와 label 사이 동일 Image 삽입. DEFAULT 옵션은 `R.drawable.ic_eject_button` (메인 앱 아이콘) fallback.
+- **Onboarding page 2 emoji** `🏃` → `👤` — caller chip 기본 avatar (`MainScreen.kt` L2432, `emoji = "👤"`) 와 unicode 통일. "DEPLOY 탭에서 누가 호출할지 정한다" 메타포가 사용자가 caller 추가 후 실제 보게 되는 chip emoji 와 시각적으로 일치.
+
+### Notes
+- `painterResource(R.mipmap.ic_decoy_*_foreground)` 는 plain raster PNG (5 density) 라 안전 — v1.5.17 의 adaptive icon XML 시도가 BitmapDrawable wrapper 문제로 실패했던 케이스와 다름.
+- 라이브러리/build graph 변경 없음.
+
+---
+
+## [1.5.19] - 2026-05-17
+
+### Fixed
+- **Onboarding page 4 settings icon** — `Icons.Filled.Settings` 누락된 imports 추가 (v1.5.19 hotfix).
+- **AdMob native ad validator 32×32dp 정책 강화** → `iconView` 48dp + `ScaleType.CENTER_INSIDE` + `minimumWidth/Height` + `adjustViewBounds=false` 다중 안전장치 (v1.5.17 의 22→32dp 만으론 validator 가 여전히 violation 표시했음).
+
+---
+
+## [1.5.18] - 2026-05-17
+
+### Fixed
+- **`painterResource cannot load BitmapDrawable XML`** 크래시 — v1.5.17 의 `ic_disguise_off.xml`/`ic_disguise_on.xml` 를 BitmapDrawable wrapper 로 만든 시도가 `painterResource` 와 호환되지 않아 런타임 크래시 발생. vector drawable 직접 참조로 롤백.
+
+---
+
 ## [1.5.17] - 2026-05-17
 
 ### Fixed — AdMob native ad validator, onboarding icons, disguise toggle, splash crop
