@@ -34,6 +34,61 @@
 
 ---
 
+## [1.5.16] - 2026-05-17
+
+### Changed — User-provided final brand assets applied
+
+사용자 디자인 자산 (`App_assets/`) 을 5 density 로 일괄 적용. 모두 1024~1254px 정사각 RGBA 원본 (`App_assets/*.ai` Illustrator 원본 + 같은 이름 `.png` 익스포트).
+
+#### 1. 앱 런처 아이콘 (`App Icon.png`, 1254×1254)
+
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_foreground.png`** × 5 density (108/162/216/324/432 px). adaptive icon foreground.
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_monochrome.png`** × 5 density (동일 raster — Android 13+ themed icon 가 자동 grayscale).
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.png`** × 5 density (48/72/96/144/192 px). legacy raster fallback.
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_round.png`** × 5 density (48/72/96/144/192 px). round-launcher raster.
+- **`store-assets/ic_play_store_512.png`**, **`store-assets/play-store-icon-512.png`** (512×512).
+
+#### 2. 인앱 EJECT 메인 버튼 (`Eject Button.png`, 1254×1254)
+
+- **`drawable-{m,h,xh,xxh,xxxh}dpi/ic_eject_button.png`** × 5 density (192/288/384/576/768 px).
+
+#### 3. 4개 위장 launcher 아이콘 (`Decoy_{Calculator,Clock,Note,Weather}.png`, 1024~1042×같은)
+
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_decoy_{calculator,clock,memo,weather}_foreground.png`** × 4종 × 5 density = 20 raster.
+- **`mipmap-anydpi-v26/ic_decoy_{calculator,clock,memo,weather}.xml`** 4개 의 `<foreground>` 참조를 vector drawable (`@drawable/ic_decoy_*_fg`) → raster mipmap (`@mipmap/ic_decoy_*_foreground`) 로 갱신. `monochrome` 도 동일 raster 사용.
+- Naming: `Decoy_Note.png` → `ic_decoy_memo_foreground.png` (코드/manifest의 `memo` 명명 유지).
+- `background` 는 기존 vector drawable (`ic_decoy_*_bg.xml`, 단색) 그대로 — 위장 컨셉별 brand color 보존.
+
+#### 4. Decoy 마스터 (`Dedcoy.png`, 1024×1024) — 보존만, UI 미적용
+
+- **`drawable-nodpi/ic_decoy_master.png`** (432×432). 위장 picker dialog 헤더 또는 toggle 아이콘 후보로 보존. 어디에 적용할지 사용자 확정 후 별도 commit.
+
+#### 5. 자산 원본 보존
+
+- **`App_assets/`** 폴더 add — Illustrator 원본 (`.ai`) + export PNG. 향후 재익스포트 / 재리사이즈 시 truth source.
+
+### Resize 기술 세부
+
+- PowerShell + `System.Drawing.Graphics` (HighQualityBicubic + HighQuality SmoothingMode + HighQuality PixelOffsetMode + HighQuality CompositingQuality) 로 일괄 리사이즈.
+- 원본 RGBA 알파 채널 보존. 모든 출력 PNG 8-bit alpha.
+- 총 48 PNG 신규/재생성 + 4 XML 갱신.
+
+### Build / Release
+
+- 태그 `v1.5.16` push → `release-aab.yml` 트리거. versionName=1.5.16, versionCode=1000+RUN_NUMBER.
+- 라이브러리 의존성 변경 없음. AGP/Gradle 그래프 unchanged.
+
+### Verification (Android Studio 가상 디바이스 교차 검증)
+
+본 PR 머지 또는 sideload 검증 단계에서 확인할 시각 포인트:
+1. **런처 아이콘**: 홈/앱 서랍에서 v1.5.13 픽토그램 → 사용자 신규 디자인 (App Icon.png) 으로 교체된 모습.
+2. **시스템 splash screen** (Android 12+): launcher 아이콘과 같은 디자인으로 자동 노출 (v1.5.14 splash fix 와 결합).
+3. **인앱 EJECT 메인 버튼**: 메인 화면 중앙 빨강 버튼 = 사용자 신규 Eject Button.png 디자인.
+4. **위장 picker → 4개 옵션 선택 → 홈 화면 확인**: launcher 의 4개 위장 아이콘이 사용자 신규 디자인 (Calculator/Clock/Note=Memo/Weather) 으로 노출.
+5. **TopAppBar 좌측 leading icon**: v1.5.15 부터 ic_eject_button drawable 사용 → 새 디자인 자동 반영.
+
+---
+
 ## [1.5.15] - 2026-05-16
 
 ### Changed — Coachmark UX, Brand Icon, In-App i18n
