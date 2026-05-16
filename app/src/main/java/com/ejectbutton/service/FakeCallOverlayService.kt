@@ -438,6 +438,18 @@ class FakeCallOverlayService : Service() {
         overlay = null
         stopRing()
         releaseWake()
+
+        // v1.5.25 — Tell IncomingCallActivity (if it's still up) that the
+        // fake call has ended, so it can finish() and release the
+        // show-when-locked privilege. Sent as a non-exported local intent
+        // to match the activity's ContextCompat.RECEIVER_NOT_EXPORTED.
+        try {
+            sendBroadcast(
+                Intent(com.ejectbutton.ui.call.IncomingCallActivity.ACTION_FAKE_CALL_ENDED)
+                    .setPackage(packageName)
+            )
+        } catch (_: Exception) {}
+
         Handler(Looper.getMainLooper()).post {
             try { wm?.removeView(view) } catch (_: Exception) {}
             stopSelf()
