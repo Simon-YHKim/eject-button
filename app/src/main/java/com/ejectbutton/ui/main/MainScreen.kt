@@ -1752,7 +1752,19 @@ private fun SystemsContent(
                 SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
             }
             // v1.2.0 — 위장 아이콘 토글. 다이얼로그에서 5개 옵션 중 선택.
-            SystemsRow(icon = "🎭", label = strings.settingsDecoy, onClick = {
+            // v1.5.22 — Settings row prefix 가 placeholder 🎭 였던 것을 현재 활성화된
+            // decoy 아이콘 (또는 DEFAULT 시 메인 EmergencyRed) 으로 교체. 사용자가
+            // "위장 = 가면" 이라는 추상적 메타포 대신 "지금 내가 어떤 위장으로 설정돼
+            // 있나"를 한 눈에 알 수 있도록. picker dialog 안의 아이콘 + top-bar 의
+            // 위장 IconButton 과 시각 시그니처 통일.
+            val decoyRowIconRes = when (currentDecoy) {
+                DecoyManager.Decoy.CALCULATOR -> R.mipmap.ic_decoy_calculator_foreground
+                DecoyManager.Decoy.MEMO       -> R.mipmap.ic_decoy_memo_foreground
+                DecoyManager.Decoy.WEATHER    -> R.mipmap.ic_decoy_weather_foreground
+                DecoyManager.Decoy.CLOCK      -> R.mipmap.ic_decoy_clock_foreground
+                else                          -> R.drawable.ic_disguise_off
+            }
+            SystemsRow(iconRes = decoyRowIconRes, label = strings.settingsDecoy, onClick = {
                 currentDecoy = EjectPrefs.loadDecoy(ctx)
                 showDecoyDialog = true
             })
@@ -1893,6 +1905,41 @@ private fun SystemsContent(
 
 @Composable
 private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
+    SystemsRowScaffold(label = label, onClick = onClick) {
+        Text(icon, fontSize = 18.sp)
+    }
+}
+
+/**
+ * v1.5.22 — SystemsRow overload with a drawable resource prefix instead of
+ * an emoji string. Used by the 위장 (decoy) row in the Settings tab so the
+ * preview reflects the currently-active disguise icon (계산기/메모/날씨/시계
+ * 4종 또는 기본 EmergencyRed 픽토그램) — same visual signature as the picker
+ * dialog opened from this row and the top-bar disguise IconButton.
+ *
+ * Why an overload, not a nullable parameter:
+ *   – Existing 8 call sites pass `icon = "<emoji>"` and we don't want to
+ *     touch any of them.
+ *   – Keeps the call site type-safe: `SystemsRow(iconRes = R.drawable.x, …)`
+ *     vs `SystemsRow(icon = "🎭", …)` are visually distinct in source.
+ */
+@Composable
+private fun SystemsRow(iconRes: Int, label: String, onClick: () -> Unit) {
+    SystemsRowScaffold(label = label, onClick = onClick) {
+        Image(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+@Composable
+private fun SystemsRowScaffold(
+    label: String,
+    onClick: () -> Unit,
+    iconSlot: @Composable () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1909,7 +1956,7 @@ private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
                 .background(EjectSurfaceMid),
             contentAlignment = Alignment.Center,
         ) {
-            Text(icon, fontSize = 18.sp)
+            iconSlot()
         }
         Spacer(Modifier.width(14.dp))
         Text(
