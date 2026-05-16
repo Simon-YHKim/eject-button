@@ -1,23 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Eject Button v1.5.14 - Android 12+ system splash screen overrides.
+    Eject Button v1.5.17 - Android 12+ system splash screen overrides.
 
-    Without an explicit windowSplashScreen* declaration the Android 12+ system
-    splash screen falls back to the adaptive launcher icon foreground PNG at
-    its raw drawable bounds. With cached APK state on the device or on some
-    OEM launchers, this can render the previous (pre-v1.5.13) icon revision
-    or an off-center crop of the new icon - exactly the symptom reported as
-    "old icon still on loading screen".
+    History:
+    - v1.5.14 first introduced this v31 override to pin splash icon and fix
+      "old icon on loading screen" regression (windowSplashScreen* attrs missing
+      in base themes.xml -> Android 12+ fell back to adaptive icon foreground PNG
+      at raw bounds with potential edge cropping).
+    - v1.5.17 (this revision): user reported the new launcher art is still being
+      cropped on the system splash. Switching from @mipmap/ic_launcher (adaptive
+      icon XML at full size) to @drawable/ic_splash_logo (ic_launcher_foreground
+      wrapped in a 25% inset) guarantees the glyph sits inside the 192dp splash
+      safe area.
 
-    Fix: pin the splash icon explicitly to @mipmap/ic_launcher (the v1.5.13
-    adaptive icon XML, which references the new foreground/background
-    drawables) and brand the splash background with EmergencyRed so the
-    transition into Theme.EjectButton reads as "brand splash to app content"
-    rather than as an OEM default flash.
-
-    minSdk = 26 -> this v31 (API 31, Android 12) qualifier is the correct
-    cutoff. On API 26..30 the OS has no system splash screen so the base
-    values/themes.xml definition continues to apply unchanged.
+    minSdk = 26 -> v31 (API 31, Android 12) qualifier is the correct cutoff.
+    On API 26..30 the OS has no system splash; the base values/themes.xml
+    definition applies unchanged.
 -->
 <resources>
     <style name="Theme.EjectButton" parent="android:Theme.DeviceDefault.NoActionBar">
@@ -26,9 +24,12 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <!-- Android 12+ system splash screen attributes. -->
-        <!-- @mipmap/ic_launcher is the adaptive icon XML; the platform extracts
-             foreground+background and applies the system splash mask. -->
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- v1.5.17 — @drawable/ic_splash_logo wraps ic_launcher_foreground in
+             a 25% inset so the glyph fits within the 192dp splash safe area.
+             Previously @mipmap/ic_launcher (adaptive icon at full size)
+             caused edge cropping because adaptive foreground fills the 108dp
+             canvas without internal margin. -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <item name="android:windowSplashScreenIconBackgroundColor">#B71720</item>
         <item name="android:windowSplashScreenBackground">#B71720</item>
     </style>

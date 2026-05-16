@@ -2459,8 +2459,12 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
             }
 
             val iconView = ImageView(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply {
-                    marginEnd = dp(8)
+                // v1.5.17 — AdMob native ad validator 요구: 아이콘 영역 최소 32×32dp.
+                // 22dp 는 "Resolution less than 32x32dp or points" 경고를 발생시켜
+                // ad 서빙 자체가 차단될 수 있으므로 32dp 로 상향. 헤드라인 한 줄
+                // 배너 형태는 유지 (row 높이는 setPadding 으로 흡수).
+                layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply {
+                    marginEnd = dp(10)
                 }
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }

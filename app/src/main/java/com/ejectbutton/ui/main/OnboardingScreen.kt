@@ -76,20 +76,27 @@ fun OnboardingScreen(
 ) {
     val strings = LocalAppStrings.current
 
+    // v1.5.17 — onboarding 아이콘 매핑 갱신 (사용자 피드백 반영).
+    //  page 1 (Welcome)   : ⏏  → 🚨  (사이렌, 브랜드 컨셉 = 비상)
+    //  page 2 (Command)   : 🎯 → 🏃  (달리는 사람, "탈출" 메타포)
+    //  page 3 (Trigger)   : 🚨 → 📞  (전화기, "가짜 통화 발사" 메타포)
+    //  page 4 (Systems)   : ⚙ 유지   (앱 내 설정 아이콘 ⚙ 와 일관)
+    //  page 5 (final)     : 🚨 → Image(R.drawable.ic_eject_button)
+    //                       — OnboardingFinalContent 에서 별도 분기 (Mayday 페이지)
     val pages = remember(strings) {
         listOf(
             OnboardingPage(
-                emoji = "⏏",
+                emoji = "🚨",
                 title = strings.onboardingWelcomeTitle,
                 body  = strings.onboardingWelcomeBody,
             ),
             OnboardingPage(
-                emoji = "🎯",
+                emoji = "🏃",
                 title = strings.onboardingCommandTitle,
                 body  = strings.onboardingCommandBody,
             ),
             OnboardingPage(
-                emoji = "🚨",
+                emoji = "📞",
                 title = strings.onboardingTriggerTitle,
                 body  = strings.onboardingTriggerBody,
             ),
@@ -324,6 +331,9 @@ private fun OnboardingFinalContent() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        // v1.5.17 — 마지막 페이지 아이콘 = 앱 아이콘 (사용자 자산 ic_eject_button) 으로 변경.
+        // 이전 🚨 emoji 는 page 1 (Welcome) 으로 이동했고, 여기는 "비상탈출 완료 — 이제
+        // 시작" 마무리 페이지라 앱 아이덴티티를 직접 노출하는 게 자연스럽다.
         Box(
             modifier = Modifier
                 .size(160.dp)
@@ -332,7 +342,13 @@ private fun OnboardingFinalContent() {
                 .border(2.dp, EjectCoral, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text("🚨", fontSize = 72.sp)
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(
+                    com.ejectbutton.R.drawable.ic_eject_button
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+            )
         }
         Spacer(Modifier.height(24.dp))
         Text(

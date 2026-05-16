@@ -34,6 +34,68 @@
 
 ---
 
+## [1.5.17] - 2026-05-17
+
+### Fixed — AdMob native ad validator, onboarding icons, disguise toggle, splash crop
+
+사용자 4종 후속 피드백 반영.
+
+#### [A] AdMob NativeAdCard 32×32dp 위반 해소
+
+- AdMob native ad validator 가 "Resolution less than 32x32dp or points" 경고로 ad 서빙을 차단할 위험.
+- `MainScreen.kt` `NativeAdCard` 의 `iconView` 사이즈 **22dp → 32dp** (정책 최소치). marginEnd 8dp → 10dp 로 미세 조정.
+- 한 줄 배너 형태 유지 (row 자체 높이는 setPadding 으로 흡수, 시각적 변동 최소).
+
+#### [B] OnboardingScreen 5개 use-case 아이콘 매핑 갱신
+
+이전 → 이후 (사용자 피드백 매핑):
+
+| Page | 이전 | 이후 |
+|---|---|---|
+| 1 (Welcome) | `⏏` | `🚨` 사이렌 (브랜드 컨셉 = 비상) |
+| 2 (Command) | `🎯` | `🏃` 달리는 사람 ("탈출" 메타포) |
+| 3 (Trigger) | `🚨` | `📞` 전화기 ("가짜 통화 발사" 메타포) |
+| 4 (Systems) | `⚙` | `⚙` (유지 — 앱 내 설정 아이콘과 일관) |
+| 5 (Final Mayday) | `🚨` | `Image(R.drawable.ic_eject_button)` — 사용자 v1.5.16 자산 적용 (앱 아이덴티티 직접 노출) |
+
+#### [C] 위장 토글 아이콘 (ic_disguise_off/on) 신규 디자인 교체
+
+- 사용자가 제공한 `Dedcoy.png` (1024×1024 RGBA, v1.5.16 commit 의 `App_assets/`) 을 5 density raster 로 변환.
+  - `drawable-{m,h,xh,xxh,xxxh}dpi/ic_disguise.png` 신규 (24/36/48/72/96 px).
+- `drawable/ic_disguise_off.xml`, `ic_disguise_on.xml` 두 vector 를 **BitmapDrawable wrapper** 로 교체 — 같은 ic_disguise raster 참조.
+  - 기존: 가면 + ⏏ glyph vector (v1.5.12 design).
+  - 신규: 사용자 디자인 (Dedcoy.png) 통일.
+  - ON/OFF state 시각 차이는 동일 디자인. 사용자 요청 ("디코이 아이콘 변경") 그대로 적용 — state indicator 추가는 follow-up.
+
+#### [D] 시스템 splash icon 잘림 fix (inset drawable)
+
+- v1.5.14 부터 `windowSplashScreenAnimatedIcon = @mipmap/ic_launcher` (adaptive icon XML at full size) 사용 → adaptive foreground 108dp 캔버스 가득 차는 v1.5.16 사용자 디자인이 splash 192dp mask 가장자리에 잘림 발생 (사용자 보고: "로딩화면은 아이콘이 좀 잘려서 적용이 된듯").
+- **`drawable/ic_splash_logo.xml` 신규 추가** — `@mipmap/ic_launcher_foreground` 를 **25% inset** 으로 감싸 splash 안전영역 보장.
+  ```xml
+  <inset android:drawable="@mipmap/ic_launcher_foreground" android:inset="25%" />
+  ```
+- `values-v31/themes.xml` 의 `windowSplashScreenAnimatedIcon` 참조를 `@mipmap/ic_launcher` → `@drawable/ic_splash_logo` 로 갱신.
+- 결과: splash 192dp 캔버스 안에 글리프 ~96dp 영역 배치, 가장자리 잘림 0.
+
+### Build / Release
+
+- 태그 `v1.5.17` push → `release-aab.yml` 트리거. versionName=1.5.17, versionCode=1000+RUN_NUMBER.
+- 라이브러리 의존성 변경 없음.
+
+### Verification 계획
+
+1. **AdMob**: APK 설치 후 메인 화면 native ad 영역에 "AdMob native ad validator" 패널이 더 이상 빨강 ⚠ 경고 표시하지 않는지.
+2. **Onboarding**: 콜드스타트 → 5개 화면 각각의 아이콘 = 🚨 / 🏃 / 📞 / ⚙ / 앱 아이콘 순.
+3. **위장 토글**: TopBar 우상단 ⏏ 위치에 신규 Dedcoy 디자인 노출.
+4. **시스템 splash**: 콜드스타트 직후 1~2초간 EmergencyRed 화면 + 중앙 글리프 가장자리 잘림 없음.
+
+### Known follow-up
+
+- ic_disguise ON/OFF state 시각 차이 (selected 표시 / 색 tint / dot indicator) 추가 — UX 보강 차후 v1.5.18.
+- step 5 의 Image 와 step 1~4 의 emoji 가 시각 톤 차이 — 일관성을 위해 모든 step 을 vector drawable 또는 PNG 로 통일은 v1.5.18+ 검토.
+
+---
+
 ## [1.5.16] - 2026-05-17
 
 ### Changed — User-provided final brand assets applied
