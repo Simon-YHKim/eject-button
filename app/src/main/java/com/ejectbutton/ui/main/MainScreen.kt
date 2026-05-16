@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import kotlin.math.abs
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -254,18 +255,22 @@ fun MainScreen(
                 body  = strings.coachmarkStep3Desc,
                 primaryLabel = strings.coachmarkNext,
             ),
-            CoachmarkStep(
-                id = "settings",
-                title = strings.coachmarkStep4Title,
-                body  = strings.coachmarkStep4Desc,
-                primaryLabel = strings.coachmarkNext,
-            ),
-            // v1.5.12 — Step 6: 위장 토글 IconButton spotlight.
-            // settings 다음에 둠 (시각적으로 settings 왼쪽에 위치한 버튼이라 흐름이 자연스럽다).
+            // v1.5.15 — Step 5: 위장 토글 IconButton spotlight (변경: settings 보다 먼저).
+            // TopBar 좌측 위장(⏏) → 우측 설정(⚙) 시각 동선이 자연스럽다.
+            // 위장은 옵션적 기능이라 먼저 짧게 안내하고, 마지막에 settings(본부 정비)에서
+            // 모든 설정의 진입점을 보여주며 투어를 마무리한다.
             CoachmarkStep(
                 id = "disguise",
                 title = strings.coachmarkStepDisguiseTitle,
                 body  = strings.coachmarkStepDisguiseDesc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            // v1.5.15 — Step 6 (마지막): 본부 정비 = 모든 설정의 진입점.
+            // 마지막 step 이라 primary 라벨에 onboardingFinalDismiss ("받았다." 등) 사용.
+            CoachmarkStep(
+                id = "settings",
+                title = strings.coachmarkStep4Title,
+                body  = strings.coachmarkStep4Desc,
                 primaryLabel = strings.onboardingFinalDismiss,
             ),
         )
@@ -999,7 +1004,10 @@ private fun CommandContent(
         // v1.5.1 — 코치마크 Step 3 spotlight 등록 (원형).
         Box(
             modifier = Modifier.onGloballyPositioned { coords ->
-                coachmark.register("eject", coords.boundsInRoot(), SpotShape.Circle)
+                // v1.5.15 — EJECT 버튼이 v1.5.13 부터 둥근 사각형 픽토그램(ic_eject_button)
+                // 으로 바뀌었기 때문에 spotlight 도 RoundRect 로 같이 맞춰야 시각적으로 자연스럽다.
+                // 기존 Circle 은 v1.5.0~v1.5.12 (빨간 원형 + ⏏ 글리프) 시절의 잔재.
+                coachmark.register("eject", coords.boundsInRoot(), SpotShape.RoundRect)
             },
         ) {
             EjectButton(
@@ -1160,10 +1168,10 @@ private fun StitchTopBar(
                     )
                     Spacer(Modifier.height(16.dp))
                     val options = listOf(
-                        DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
-                        DecoyManager.Decoy.MEMO       to stringResource(R.string.decoy_label_memo),
-                        DecoyManager.Decoy.WEATHER    to stringResource(R.string.decoy_label_weather),
-                        DecoyManager.Decoy.CLOCK      to stringResource(R.string.decoy_label_clock),
+                        DecoyManager.Decoy.CALCULATOR to strings.decoyLabelCalculator,
+                        DecoyManager.Decoy.MEMO       to strings.decoyLabelMemo,
+                        DecoyManager.Decoy.WEATHER    to strings.decoyLabelWeather,
+                        DecoyManager.Decoy.CLOCK      to strings.decoyLabelClock,
                     )
                     options.forEach { (decoy, label) ->
                         Row(
@@ -1199,14 +1207,25 @@ private fun StitchTopBar(
         verticalAlignment = Alignment.Top,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                // v1.5.2 — strings.appBrandLabel 사용. 7개 언어 자동 분기 (한국어 = "비상 탈출" 등).
-                text          = "⏏ ${strings.appBrandLabel}",
-                fontSize      = 20.sp,
-                fontWeight    = FontWeight.ExtraBold,
-                color         = EjectCoral,
-                letterSpacing = 0.5.sp,
-            )
+            // v1.5.15 — 레거시 ⏏ 글리프 (Text "⏏") 를 v1.5.13 EmergencyRed 픽토그램
+            // (ic_eject_button) 으로 교체. EJECT 메인 버튼과 시각적으로 일치시켜
+            // 브랜드 정체성 강화. 28dp 사이즈로 brandLabel 옆 leading icon.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.ic_eject_button),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    // v1.5.2 — strings.appBrandLabel 사용. 7개 언어 자동 분기 (한국어 = "비상 탈출" 등).
+                    text          = strings.appBrandLabel,
+                    fontSize      = 20.sp,
+                    fontWeight    = FontWeight.ExtraBold,
+                    color         = EjectCoral,
+                    letterSpacing = 0.5.sp,
+                )
+            }
             Spacer(Modifier.height(2.dp))
             Text(
                 text     = strings.catchphrase,
@@ -1760,10 +1779,10 @@ private fun SystemsContent(
                         Spacer(Modifier.height(16.dp))
                         val options = listOf(
                             DecoyManager.Decoy.DEFAULT to strings.settingsDecoyDefault,
-                            DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
-                            DecoyManager.Decoy.MEMO to stringResource(R.string.decoy_label_memo),
-                            DecoyManager.Decoy.WEATHER to stringResource(R.string.decoy_label_weather),
-                            DecoyManager.Decoy.CLOCK to stringResource(R.string.decoy_label_clock),
+                            DecoyManager.Decoy.CALCULATOR to strings.decoyLabelCalculator,
+                            DecoyManager.Decoy.MEMO to strings.decoyLabelMemo,
+                            DecoyManager.Decoy.WEATHER to strings.decoyLabelWeather,
+                            DecoyManager.Decoy.CLOCK to strings.decoyLabelClock,
                         )
                         options.forEach { (decoy, label) ->
                             Row(

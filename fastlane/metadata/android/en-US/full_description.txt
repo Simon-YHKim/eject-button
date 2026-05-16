@@ -1,33 +1,99 @@
-﻿"I really need to leave..." A discreet fake call to escape drinking parties, awkward dates, and unwanted gatherings — without the people next to you noticing.
+Beep — anyone there?
+This is Emergency Exit HQ.
 
-Work dinners, blind dates, family obligations, hostile meetings — we all have moments when we wish "the phone would ring." Eject Button makes that phone ring.
+Where are you right now?
+A work dinner that won't end?
+A first date that just went south?
+A "quick 30-min" meeting that's already past an hour?
 
-▸ Four trigger modes: shake / side button / immediate / delayed
-▸ Recents thumbnail blocked — even if someone glances at your phone, the fake call is invisible
-▸ Randomized phone numbers every time — never suspicious
-▸ 7 languages supported — English, Korean, Japanese, Chinese (Simplified/Traditional), Spanish, Hindi
+Send us a signal. We're deploying. 🚨
 
-■ Who is this for?
-- Office workers escaping forced drinking parties
-- Anyone leaving awkward dates or social gatherings naturally
-- People declining unwanted plans without confrontation
-- Those needing discreet help in unsafe situations (Safety Mode)
 
-■ Why is this different from other fake call apps?
-"Invisible to bystanders" is the core principle. 99% of fake call apps are built as pranks — their fake screens leak through Recents, notifications, and multitasking views. Eject Button uses FLAG_SECURE so the fake call never appears anywhere except the active call screen.
+━━━━━━━━━━━━━━━━━━
+🆘 What is Emergency Exit?
+━━━━━━━━━━━━━━━━━━
 
-■ Safety Mode (optional, coming soon)
-In unsafe situations, automatically send your location, timestamp, and name to a registered emergency contact. (Requires both users to install + pair the app.)
+Emergency Exit is a "fake call" app that helps you slip out of
+awkward moments — gracefully.
 
-■ Smart Triggers (coming soon)
-Galaxy Watch integration — tap your wrist to trigger
-GPS scenario auto-switching — auto-enable mode when entering specific locations
+One tap. A real-feeling fake call rings in.
+Answer naturally. Walk out naturally.
+That's it.
 
-■ Privacy
-Names, phone numbers, and scenario content stay entirely on-device. Analytics data is PII-masked before any external transmission.
 
-■ Emergency
-For real emergencies, call your local emergency line (911 in US, 112 in EU/Korea, 1366 Korea Women's Hotline). This app is an assistive tool, not a replacement for real emergency services.
+━━━━━━━━━━━━━━━━━━
+✅ Key Features
+━━━━━━━━━━━━━━━━━━
 
-■ Supported devices
-Android 8.0 (Oreo) and above — phones, tablets, Chromebooks
+📞 Real-feeling fake call
+Same incoming-call screen as your phone. The person next to you
+won't notice.
+
+👥 Choose your caller
+Mom, Dad, your boss, a delivery driver — anyone you want.
+
+⏰ Three timing options
+"Right now!" / "in 10 sec" / "Custom" — pick what fits the moment.
+
+📳 Three trigger modes
+- One tap: big red button on screen
+- Shake: a gentle shake of the phone
+- Side button: discreet volume-button combo
+
+🌙 Works anywhere
+Auto dark mode. The screen stays low-key in dim restaurants,
+theaters, and cafes.
+
+
+━━━━━━━━━━━━━━━━━━
+🎯 Made for these moments
+━━━━━━━━━━━━━━━━━━
+
+✔️ Long work dinners that drag on
+✔️ First dates or meetings you need an exit from
+✔️ Anyone who has trouble saying "no"
+✔️ Introverts who find social situations draining
+✔️ Quiet people who need a polite way out
+✔️ Anyone who could use a safe alibi
+
+
+━━━━━━━━━━━━━━━━━━
+🚀 Takes 3 seconds to use
+━━━━━━━━━━━━━━━━━━
+
+1️⃣ Pick who'll call (Mom, Dad, your boss...)
+2️⃣ Pick the timing (now / 10 sec / custom)
+3️⃣ Tap the red button and take the call
+
+No sign-up. No complex setup.
+One tap. That's all.
+
+
+━━━━━━━━━━━━━━━━━━
+💬 Why Emergency Exit?
+━━━━━━━━━━━━━━━━━━
+
+✨ Built for social anxiety
+Introverts, conflict-avoiders, people-pleasers — we get it.
+
+✨ Stupid simple
+One big button. That's the whole interface.
+Easy to find even in your pocket.
+
+✨ Lightweight
+Fast launch. Works offline.
+
+
+━━━━━━━━━━━━━━━━━━
+
+📢 Emergency Exit is for getting out of awkward moments with grace.
+Please don't use it to deceive or harm anyone.
+
+Install now. Try it at your next dinner you don't want to be at.
+
+Beep beep! This was Emergency Exit HQ. 🚨
+
+
+━━━━━━━━━━━━━━━━━━
+#FakeCall #EmergencyExit #ExcuseCall #IntrovertApp
+#SocialAnxiety #AwkwardMoments #EscapePlan

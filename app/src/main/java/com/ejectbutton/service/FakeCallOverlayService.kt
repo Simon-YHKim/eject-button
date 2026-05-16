@@ -32,10 +32,9 @@ import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.strings
-import com.ejectbutton.ui.call.FakeInCallScreen
+import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
 import com.ejectbutton.ui.call.InCallScreenV2
 import com.ejectbutton.ui.call.rememberCallTimer
-import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
 import com.ejectbutton.ui.theme.LegacyCallTheme
 
 class FakeCallOverlayService : Service() {
@@ -259,14 +258,13 @@ class FakeCallOverlayService : Service() {
             setViewTreeViewModelStoreOwner(lifecycle)
             ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ -> WindowInsetsCompat.CONSUMED }
             setContent {
-                // 가짜 전화 화면은 Tactical Cockpit 테마 영향을 받지 않도록
-                // 전용 LegacyCallTheme 로 격리해서 래핑한다.
+                // 가짜 전화 화면은 앱 메인 테마 영향을 받지 않도록
+                // 전용 LegacyCallTheme 로 격리해서 래핑 (실제 통화 화면 톤 모방).
                 LegacyCallTheme {
                     androidx.compose.runtime.CompositionLocalProvider(LocalAppStrings provides strings) {
                         if (!callState.value) {
-                            // Round 17 — One UI 8.5 style V2 화면으로 교체.
-                            // V2 는 prompterHint 파라미터를 받지 않으므로 제거.
-                            // 힌트는 accept 이후 FakeInCallScreen 에서 계속 표시된다.
+                            // One UI 8.5 style 수신 화면. prompterHint 는 V2 에서 직접 지원하지 않으므로
+                            // accept 이후 in-call 화면의 transcribing 서브텍스트로 대체.
                             FakeIncomingCallScreenV2(
                                 callerName  = callerName,
                                 callerLabel = callerLabel,

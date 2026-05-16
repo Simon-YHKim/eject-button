@@ -10,9 +10,9 @@ Salida de Emergencia - Llamada
 
 ## Short Description (max 80)
 
-¡Bip bip! Una pulsación = llamada falsa realista. Sal de momentos incómodos con estilo.
+¡Bip bip! Un toque → llamada falsa realista. Sal con estilo de cualquier lío.
 
-(80 chars)
+(77 chars)
 
 ## Full Description (max 4000)
 

@@ -21,13 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-// ── Tactical Cockpit 디자인 시스템 토큰 ────────────────────────────────────────
-// 전투기 계기판 기반의 Machined Cockpit Interface 팔레트.
-// 색상 희소성: Red/Yellow/Cyan 은 경고/강조에만 — 나머지는 무채색 그레이.
+// ── 비상탈출 디자인 시스템 토큰 ───────────────────────────────────────────
+// 다크 톤 + 빨강 강조 팔레트.
+// 색상 희소성 원칙: Red/Yellow/Cyan 은 경고·강조용에만, 나머지는 무채색 그레이.
 //
-// v1.5.14 — 비상탈출 RED 롤백 (v1.6.0 Navy/Cream → 폐기).
-// 브랜드 RED 는 launcher 아이콘(#B71720)과 톤 정렬을 위해 #BA1A20 유지.
-// EmergencyRed 계열(B71720/BA1A20/6A0008)이 모두 동일 hue 의 그라데이션 한 가족.
+// v1.5.14 — RED 팔레트 복귀 (v1.6.0 Navy/Cream 폐기).
+// 브랜드 RED #BA1A20 — launcher 아이콘(#B71720)과 톤 정렬.
+// 변수명 Tactical* 은 호환성을 위해 유지 (외부 참조처 다수).
 
 // Surface hierarchy — 심도감은 Surface 레이어로만 표현
 val TacticalLowest    = Color(0xFF0C0E10)  // 최하위 — 구분선 역할 (1dp band)

@@ -11,9 +11,9 @@ Emergency Exit - Fake Call
 
 ## Short Description (max 80)
 
-Beep beep! One tap = a real-feeling fake call. Slip out of awkward moments — gracefully.
+Beep beep! One tap → realistic fake call. Exit awkward moments gracefully.
 
-(80 chars)
+(74 chars)
 
 ## Full Description (max 4000)
 
