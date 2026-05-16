@@ -2459,14 +2459,31 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
             }
 
             val iconView = ImageView(ctx).apply {
-                // v1.5.17 — AdMob native ad validator 요구: 아이콘 영역 최소 32×32dp.
-                // 22dp 는 "Resolution less than 32x32dp or points" 경고를 발생시켜
-                // ad 서빙 자체가 차단될 수 있으므로 32dp 로 상향. 헤드라인 한 줄
-                // 배너 형태는 유지 (row 높이는 setPadding 으로 흡수).
-                layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply {
+                // v1.5.19 — AdMob native ad validator 32×32dp 정책 강화.
+                //
+                // v1.5.17: layoutParams 22dp → 32dp 만 변경 → validator 여전히 violation.
+                //
+                // 진단:
+                //  (1) ScaleType.FIT_CENTER 가 작은 raster icon 을 view 안에 비율 유지
+                //      해서 그리니까 rendered content 가 32dp 미만으로 측정됨.
+                //  (2) update 람다에서 drawable null 일 때 view.GONE → 0×0 violation.
+                //  (3) layoutParams 만으론 measure 시 view 가 줄어들 수 있음.
+                //
+                // v1.5.19 다중 안전장치:
+                //  (a) 48dp 로 상향 (32dp 마진 안에서 보수적으로).
+                //  (b) minimumWidth/Height 명시 → measure 시 절대 줄어들지 않음.
+                //  (c) ScaleType.CENTER_INSIDE → image 가 view 안에서 비율 유지하며 fit,
+                //      view 자체 사이즈는 layoutParams 그대로.
+                //  (d) adjustViewBounds = false → image bitmap 따라 view 가 줄어들지 X.
+                //  (e) visibility = VISIBLE 유지 (update 람다에서 GONE 안 하고
+                //      placeholder drawable 사용).
+                layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply {
                     marginEnd = dp(10)
                 }
-                scaleType = ImageView.ScaleType.FIT_CENTER
+                minimumWidth = dp(48)
+                minimumHeight = dp(48)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                adjustViewBounds = false
             }
 
             val headlineView = TextView(ctx).apply {
@@ -2512,13 +2529,19 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
             val iconView     = adView.iconView as? ImageView
             val headlineView = adView.headlineView as? TextView
 
+            // v1.5.19 — drawable null 일 때도 view 를 GONE 으로 바꾸지 않는다.
+            // GONE 으로 바꾸면 view 사이즈가 0×0 으로 측정되어 AdMob native ad
+            // validator 가 "Resolution less than 32x32dp" 경고를 띄운다 (정책상
+            // iconView 등록된 view 는 항상 32dp 이상이어야 한다). drawable 이
+            // 비어있는 ad 의 경우 앱 아이콘 placeholder 로 보여주고 view 사이즈를
+            // 48dp 로 유지한다.
             val iconDrawable = ad.icon?.drawable
             if (iconDrawable != null) {
                 iconView?.setImageDrawable(iconDrawable)
-                iconView?.visibility = android.view.View.VISIBLE
             } else {
-                iconView?.visibility = android.view.View.GONE
+                iconView?.setImageResource(com.ejectbutton.R.drawable.ic_eject_button)
             }
+            iconView?.visibility = android.view.View.VISIBLE
             headlineView?.text = ad.headline ?: ad.body ?: ""
 
             // impression + click 집계를 위한 필수 호출.

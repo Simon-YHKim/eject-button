@@ -295,7 +295,20 @@ private fun OnboardingPageContent(page: OnboardingPage) {
                 .border(1.dp, EjectOutlineVar, RoundedCornerShape(28.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(page.emoji, fontSize = 64.sp)
+            // v1.5.19 — page 4 (⚙ Systems) 만 앱 내 설정 아이콘 (Material Icons.Filled.Settings)
+            // 로 분기. 이전엔 emoji "⚙" 가 시스템 폰트 글리프라 다른 step (사이렌/사람/전화기/
+            // 앱 아이콘 픽토그램) 과 시각 톤 차이가 컸음. 사용자 피드백 "앱 내 설정 아이콘
+            // 사용" 반영. tint 는 page 1~3 emoji 색과 비슷한 EjectOnSurface (정상 진하기).
+            if (page.emoji == "⚙") {
+                androidx.compose.material3.Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Filled.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = EjectOnSurface,
+                )
+            } else {
+                Text(page.emoji, fontSize = 64.sp)
+            }
         }
         Spacer(Modifier.height(32.dp))
         Text(
