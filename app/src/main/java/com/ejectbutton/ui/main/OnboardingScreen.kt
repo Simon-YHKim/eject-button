@@ -27,8 +27,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -300,8 +303,8 @@ private fun OnboardingPageContent(page: OnboardingPage) {
             // 앱 아이콘 픽토그램) 과 시각 톤 차이가 컸음. 사용자 피드백 "앱 내 설정 아이콘
             // 사용" 반영. tint 는 page 1~3 emoji 색과 비슷한 EjectOnSurface (정상 진하기).
             if (page.emoji == "⚙") {
-                androidx.compose.material3.Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Filled.Settings,
+                Icon(
+                    imageVector = Icons.Filled.Settings,
                     contentDescription = null,
                     modifier = Modifier.size(80.dp),
                     tint = EjectOnSurface,
