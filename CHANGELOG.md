@@ -34,6 +34,86 @@
 
 ---
 
+## [1.6.0] - 2026-05-17
+
+### 종합 정리·최종 출시 패치
+
+v1.5.x 시리즈의 누적 수정·점검·정리·출시 패치. **앱 핵심 기능 + 신뢰성 + 협업성 동시 정상화**.
+
+### Added — Lock-screen bypass infrastructure (v1.5.23 ~ v1.5.26 누적)
+
+화면 끄고 잠금 후 trigger 발동 시 가짜 통화가 즉시 표시되도록 4단계 진화:
+
+- **v1.5.23**: AndroidManifest `USE_FULL_SCREEN_INTENT` 권한 + `IncomingCallActivity` (transparent trampoline, `setShowWhenLocked + setTurnScreenOn`) + HIGH-importance 알림 채널 `eject_call_v2` + `Notification.Builder.setFullScreenIntent`.
+- **v1.5.24**: full-screen intent 권한 fallback 우회 — Service 의 trigger 발동 시점에 `IncomingCallActivity` 를 직접 `startActivity()` (SYSTEM_ALERT_WINDOW + foreground service notification 보유 → background activity start 정책 통과).
+- **v1.5.25**: secure keyguard (PIN/패턴) 환경에서 `requestDismissKeyguard` 가 인증 prompt 강제 trigger → 제거. Activity 의 `finish()` 도 제거하여 lifecycle 동안 show-when-locked 권한 유지. Service `dismiss()` 가 `ACTION_FAKE_CALL_ENDED` broadcast 발사 → Activity 자동 finish.
+- **v1.5.26**: standing FGS notification 의 HIGH 채널 + `setFullScreenIntent + CATEGORY_CALL + PRIORITY_HIGH` 가 sibling heads-up 으로 노출되는 부작용 → LOW 채널 + 단순 ongoing notification 으로 환원.
+
+결과: 패턴 잠금 상태에서 trigger 발동 → 잠금화면이 그대로 유지된 채 가짜 통화 UI 가 위에 표시, 인증 prompt 없음, sibling 알림 없음.
+
+### Changed — i18n military tone removed across 6 languages
+
+`de91b49` (v1.5.15) 의 ko-only (106 keys) 친근화 작업을 6국으로 확장:
+
+| 영역 | en | zh-CN | zh-TW | ja | es | hi |
+|---|---|---|---|---|---|---|
+| `tabCommand` | DEPLOY→DIAL | 出动 | 出動 | 出動 | DESPLEGAR→LLAMAR | कमांड→बुलाओ |
+| `historySubtitle` | Your escapes | 任务记录→脱身记录 | 任務記錄→脫身記錄 | 脱出履歴 | Registro de misiones→escapes | मिशन लॉग→निकास लॉग |
+| `systemsSubtitle` | HQ settings | 战术设置→总部设置 | 戰術設定→總部設定 | 本部設定 | Ajustes tácticos→del cuartel | टैक्टिकल→मुख्यालय |
+| `settingsManual` | Field manual→User guide | 任务手册→使用说明 | 任務手冊→使用說明 | 使い方ガイド | Manual de campo→Guía de uso | मिशन मैनुअल→उपयोग गाइड |
+| `premiumSubtitle` | Full escape kit | 战术装备→脱身工具包 | 戰術裝備→脫身工具包 | フル脱出装備 | Equipo táctico→Kit de escape | टैक्टिकल लोडआउट→निकास किट |
+| `premiumActiveSubtitle` | "deployed"→"ready" | 已部署→已就绪 | 已部署→已就緒 | 戦術装備配備完了→脱出装備準備完了 | desplegado→activado | तैनात→तैयार |
+| `premiumActiveBadge` | ACTIVE | (n/a) | (n/a) | (n/a) | OPERATIVO→ACTIVO | (n/a) |
+| `unmaskConfirmBody` | "mission profile"→"Emergency Exit icon" | (ko-equivalent ok) | (ok) | (ok) | (ok) | (ok) |
+| `actionDisguiseOn` | Engage→Turn on disguise | (ok) | (ok) | (ok) | (ok) | (ok) |
+| `coachmarkStepDisguise` (v1.5.22) | loadout→mode | 装备→模式 | 裝備→模式 | 装備→モード | Equipo→Modo | गियर→मोड |
+| onboardingCommandBody | DEPLOY tab→DIAL tab | (ok) | (ok) | (ok) | Desplegar→Llamar | (ok) |
+| sideModeArmedMsg | command/deploys→volume keys/rings | (ok) | (ok) | (ok) | (ok) | (ok) |
+
+각 언어 고유 의성어 보존 (Beep beep / 嘀嘀 / ピーポーピーポー / Bip bip / बीप बीप).
+
+### Changed — Settings 위장 row icon (v1.5.22)
+
+`MainScreen.kt` 의 `SystemsRow` 에 `iconRes: Int` overload 추가. 위장 row (`settingsDecoy`) 가 placeholder 🎭 emoji 대신 현재 활성화된 decoy 색깔 픽토그램 (계산기 초록 / 메모 노랑 / 날씨 파랑 / 시계 보라) 또는 DEFAULT 시 `ic_disguise_off` 표시. picker dialog · top-bar IconButton 과 시각 시그니처 통일.
+
+### Changed — Decoy picker dialog 아이콘 (v1.5.20)
+
+`MainScreen.kt` L1191-1202 (StitchTopBar picker) + L1821-1832 (Settings picker) 의 `Text("🎭", 18sp)` placeholder 제거 → `Image(painter = painterResource(R.mipmap.ic_decoy_*_foreground), 36dp)` 로 교체. v1.5.16 user-provided raster (1024px) 가 picker 안에 실제 노출.
+
+### Changed — Onboarding step 2 emoji (v1.5.20)
+
+`OnboardingScreen.kt` L100: `🏃` → `👤` — caller chip 기본 avatar (`MainScreen.kt` L2432) 와 unicode 통일.
+
+### Repository hygiene (v1.5.21)
+
+- **Root 잡파일 45MB** — `app-debug.apk` / `app-release.aab` (Apr 25 stale) / `splash_t0.png` / `splash_verify.png` 삭제.
+- **8개 미사용 drawables** — `ic_decoy_*_fg.xml`, `ic_decoy_master.png`, `ic_eject_mark{,_red}.xml`, `ic_hangup_eject.xml`. `drawable-nodpi/` 빈 폴더 제거.
+- **`store-assets/ic_play_store_512.png`** — `play-store-icon-512.png` 와 md5 동일 dup. 정상 명칭 보존.
+- **`.gitignore` 강화** — `release-builds/` (260MB+ 로컬 빌드), `.kotlin/`, `ui*.xml` 추가.
+- **`.gitattributes` 신규** — 텍스트 EOL LF 강제 / `*.bat`·`*.cmd`·`*.ps1` 만 CRLF / 바이너리 `-text`. FakeCallOverlayService.kt 의 CRLF phantom-diff (1,125 lines) 재발 방지.
+
+### Fixed (v1.5.18 ~ v1.5.19)
+
+- **v1.5.18**: v1.5.17 의 `ic_disguise_off.xml`/`ic_disguise_on.xml` BitmapDrawable wrapper 가 `painterResource` 호환 안 됨 → vector drawable 직접 참조 롤백.
+- **v1.5.19**: Onboarding page 4 `Icons.Filled.Settings` 누락 import 추가. AdMob native ad validator 32×32dp 정책 → `iconView` 48dp + `ScaleType.CENTER_INSIDE` + `minimumWidth/Height` + `adjustViewBounds=false`.
+
+### Verification
+
+- `:app:assembleDebug` BUILD SUCCESSFUL ~31s, 0 errors.
+- `:app:lintDebug` 88 warnings, 0 errors. UnusedResources 0.
+- Live emulator + 실제 Android 14 phone (Galaxy / LG U+ pattern lock) field test 통과: 잠금화면 + 화면 꺼짐 → trigger → 인증 prompt 없이 fake call UI 즉시 노출 + heads-up sibling 알림 없음.
+
+### Deferred to v1.6.1 / v1.7.0
+
+- `MainScreen.kt` 2,612줄 → 책임별 split (`StitchTopBar`, `DeployTab`, `HistoryTab`, `SettingsTab`, `DecoyDialogs`, `NativeAdCard`).
+- `AppStrings.kt` 2,006줄 → 언어별 파일 분리.
+- 7국 톤의 잔여 군용 어휘 (en `command`/`HQ panel`, hi `कमांड`/`टैक्टिकल`/`मिशन मैनुअल` 등 secondary keys) 최종 정리.
+- Post-call 광고 사이클 (Interstitial every call, RewardedDialog every 3rd call, Premium excluded).
+- 구독료 ₩1,900 → ₩3,000 인상 + 14국 PPP fallback (Play Console 가격 정책 변경 + 코드 `localizedFallbackPrice()` 갱신 병행).
+- Android 14+ `canUseFullScreenIntent()` Settings deep-link 안내 카드 (rare OEM 대응).
+
+---
+
 ## [1.5.21] - 2026-05-17
 
 ### Repository hygiene & cleanup

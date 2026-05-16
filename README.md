@@ -16,10 +16,11 @@
 ## ✨ 주요 기능
 
 - **진짜 같은 가짜 전화** — 실제 수신 화면 그대로
+- **잠금화면 우회 (v1.5.23+)** — 화면 끈 상태·패턴/PIN 잠금 위에서도 즉시 통화 화면 노출 (인증 prompt 없이)
 - **3가지 출동 방식** — 탭 한 번 / 폰 흔들기 / 옆면 버튼 꾹
 - **3가지 타이밍** — 지금 당장 / 10초 뒤 / 내 맘대로
-- **위장 아이콘** — 계산기·메모·날씨·시계로 위장 가능
-- **7개 언어 지원** — ko · en · ja · zh-CN · zh-TW · es · hi
+- **위장 아이콘 (v1.5.20+)** — 계산기·메모·날씨·시계 4종 색깔 픽토그램 picker, 메인 + 설정 양쪽 시각 시그니처 일관
+- **7개 언어 지원** — ko · en · ja · zh-CN · zh-TW · es · hi (모두 친근한 본부 무전사 voice 톤)
 - **다크 모드** — 어두운 식당·영화관·카페에서도 자연스럽게
 
 ## 🏗️ 기술 스택
@@ -92,9 +93,19 @@
 
 ## 📦 출시
 
-- **현재 트랙**: 비공개 테스트 (Internal Testing)
-- **다음 단계**: 프로덕션 신청 (12명 이상 비공개 테스트 14일 완료 후)
+- **현재 버전**: v1.6.0 (2026-05-17)
+- **현재 트랙**: 프로덕션 출시 준비 (closed testing 14일 충족)
 - **출시 listing**: 7개 언어 완료 ([`playconsole-assets/listings/`](playconsole-assets/listings/))
+- **APK 사이드로드**: [GitHub Releases](https://github.com/Simon-YHKim/eject-button/releases) 의 최신 태그에서 `app-debug-v*.apk` 다운로드
+
+### v1.6.0 주요 변경 (vs v1.5.x 시리즈 종합)
+
+| 영역 | 변경 |
+|---|---|
+| 잠금화면 우회 | full-screen intent + `IncomingCallActivity` trampoline + secure keyguard passive overlay 전략 (인증 prompt 없이 통화 화면 노출) |
+| Decoy picker | placeholder 🎭 emoji → v1.5.16 사용자 디자인 4종 launcher 아이콘 (계산기·메모·날씨·시계) 채택 (메인 + 설정 + picker dialog 일관) |
+| 7국 i18n 톤 | de91b49 의 ko-only 친근화를 6국 (en/zhCN/zhTW/ja/es/hi) 으로 확장. 군용 어휘 (loadout/装备/Equipo táctico/गियर 등) → 친근한 본부 무전사 voice 매칭 |
+| 리포 hygiene | dead code 8개 drawable 제거, root 45MB 잡파일 정리, EOL 정책 (`.gitattributes`), `release-builds/` 트래킹 차단 |
 
 ## 🤝 개발자
 
@@ -103,3 +114,19 @@
 ---
 
 🚨 비상탈출 본부였습니다. _Beep beep!_
+
+## 📊 버전 히스토리 요약
+
+| 버전 | 핵심 변경 |
+|---|---|
+| **v1.6.0** | 종합 정리·출시 — 7국 톤 + 잠금화면 우회 + decoy picker + 리포 hygiene |
+| v1.5.26 | foreground service notification heads-up 제거 (LOW 채널 환원) |
+| v1.5.25 | secure keyguard 인증 prompt 회피 (passive overlay) |
+| v1.5.24 | trigger 발동 시 IncomingCallActivity 직접 startActivity (background activity start allowlist) |
+| v1.5.23 | USE_FULL_SCREEN_INTENT + IncomingCallActivity 트램폴린 + HIGH 채널 + setFullScreenIntent 도입 |
+| v1.5.22 | i18n 톤 (coachmarkStepDisguise 6국) + Settings 위장 row icon (실제 decoy 픽토그램) |
+| v1.5.21 | dead code + .gitattributes + release-builds/ 차단 + EOL 정규화 |
+| v1.5.20 | decoy picker 4종 아이콘 매핑 + onboarding step 2 emoji 통일 (`👤`) |
+| v1.5.13 | Emergency Red rebrand (Navy+Cream rollback) |
+
+전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조.
