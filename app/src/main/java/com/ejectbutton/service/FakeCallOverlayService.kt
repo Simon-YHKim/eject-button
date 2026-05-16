@@ -158,15 +158,58 @@ class FakeCallOverlayService : Service() {
             h.postDelayed({
                 pendingHandler = null
                 try { acquireWake() } catch (_: Exception) {}
+                try { launchIncomingCallActivity() } catch (_: Exception) {}
                 try { ring() } catch (_: Exception) {}
                 tryShowOverlayOrAbort(callerName, callerLabel, prompter, scenarioId, mode)
             }, delayMs)
         } else {
             try { acquireWake() } catch (_: Exception) {}
+            try { launchIncomingCallActivity() } catch (_: Exception) {}
             try { ring() } catch (_: Exception) {}
             tryShowOverlayOrAbort(callerName, callerLabel, prompter, scenarioId, mode)
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * v1.5.24 — Force-launch IncomingCallActivity at the moment the trigger
+     * fires, regardless of whether the system honored our full-screen intent.
+     *
+     * Why we do this in addition to setFullScreenIntent:
+     *   – On Android 14+, full-screen intents are silently downgraded to a
+     *     plain heads-up notification unless the user has explicitly granted
+     *     "Display over apps & full-screen notifications" in system settings
+     *     (Default Phone apps get the grant automatically; everyone else has
+     *     to do it manually).
+     *   – Foreground services that hold SYSTEM_ALERT_WINDOW + a foreground
+     *     notification are on the Android background-activity-start allowlist,
+     *     so a direct startActivity() from here will succeed even from a
+     *     locked / screen-off state (sources: Android docs "Restrictions on
+     *     starting activities from the background").
+     *   – IncomingCallActivity is a no-op trampoline: its only job is to flip
+     *     setShowWhenLocked(true) + setTurnScreenOn(true) +
+     *     requestDismissKeyguard, then finish(). That single launch is what
+     *     wakes the screen and tears down the keyguard layer on top of our
+     *     SYSTEM_ALERT_WINDOW overlay.
+     *
+     * Failure modes (all caught upstream with the try{} block):
+     *   – If the background activity start is still blocked (rare device-
+     *     specific OEM lockdown), the full-screen intent notification stays
+     *     as the fallback, and the user can tap it to bring the call screen
+     *     up manually — same as v1.5.23.
+     *   – If IncomingCallActivity is not declared in the manifest, we log
+     *     and move on; the overlay will still render once the user unlocks.
+     */
+    private fun launchIncomingCallActivity() {
+        val activityIntent = Intent(this, com.ejectbutton.ui.call.IncomingCallActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                    or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    or Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    or Intent.FLAG_ACTIVITY_NO_USER_ACTION
+            )
+        }
+        startActivity(activityIntent)
     }
 
     /**
