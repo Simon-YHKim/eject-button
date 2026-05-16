@@ -15,6 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,7 +53,6 @@ import com.ejectbutton.service.ShakeDetectionService
 import com.ejectbutton.ui.main.MainScreen
 import com.ejectbutton.ui.main.OnboardingScreen
 import com.ejectbutton.ui.theme.*
-import androidx.compose.foundation.border
 import com.google.android.play.core.review.ReviewManagerFactory
 import kotlinx.coroutines.delay
 
@@ -527,15 +528,20 @@ private fun SplashScreen(initLabel: String, catchphrase: String) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // ⏏ icon panel — machined crimson square (0dp corners, ghost border)
+            // v1.5.14 — launcher 아이콘과 동일한 비주얼 (빨강 배경 + 흰 비상구 + 빨강 인물).
+            // adaptive icon 의 둥근 사각형 마스크 (28dp corner)와 같은 형태로 클립.
             Box(
                 modifier = Modifier
                     .size(120.dp)
-                    .background(TacticalRedDeep)
-                    .border(1.dp, TacticalOutlineVar.copy(alpha = 0.6f)),
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color(0xFFB71720)), // EmergencyRed (launcher background)
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⏏", fontSize = 64.sp, color = TacticalOnSurface)
+                Image(
+                    painter = painterResource(R.mipmap.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             Spacer(Modifier.height(32.dp))

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 앱 아이콘 배경: v1.6.0 브랜드 네이비 (Tactical Cockpit → Navy + Cream). -->
+<!--
+    Eject Button v1.5.13 — 런처 아이콘 배경.
+    브랜드 EmergencyRed (#B71720) 단색.
+    Adaptive icon mask 가장자리가 잘릴 때도 동일한 빨강으로 보이도록.
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#1B2D4A"/>
+    <solid android:color="#B71720"/>
 </shape>

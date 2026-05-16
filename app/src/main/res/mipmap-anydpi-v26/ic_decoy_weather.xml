@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    v1.5.16 - Decoy_Weather user-provided raster (1042px PNG) applied across
+    5 density mipmap. See ic_decoy_calculator.xml header for rationale.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_decoy_weather_bg"/>
-    <foreground android:drawable="@drawable/ic_decoy_weather_fg"/>
-    <monochrome android:drawable="@drawable/ic_decoy_weather_fg"/>
+    <foreground android:drawable="@mipmap/ic_decoy_weather_foreground"/>
+    <monochrome android:drawable="@mipmap/ic_decoy_weather_foreground"/>
 </adaptive-icon>

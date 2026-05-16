@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import kotlin.math.abs
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -254,18 +255,22 @@ fun MainScreen(
                 body  = strings.coachmarkStep3Desc,
                 primaryLabel = strings.coachmarkNext,
             ),
-            CoachmarkStep(
-                id = "settings",
-                title = strings.coachmarkStep4Title,
-                body  = strings.coachmarkStep4Desc,
-                primaryLabel = strings.coachmarkNext,
-            ),
-            // v1.5.12 — Step 6: 위장 토글 IconButton spotlight.
-            // settings 다음에 둠 (시각적으로 settings 왼쪽에 위치한 버튼이라 흐름이 자연스럽다).
+            // v1.5.15 — Step 5: 위장 토글 IconButton spotlight (변경: settings 보다 먼저).
+            // TopBar 좌측 위장(⏏) → 우측 설정(⚙) 시각 동선이 자연스럽다.
+            // 위장은 옵션적 기능이라 먼저 짧게 안내하고, 마지막에 settings(본부 정비)에서
+            // 모든 설정의 진입점을 보여주며 투어를 마무리한다.
             CoachmarkStep(
                 id = "disguise",
                 title = strings.coachmarkStepDisguiseTitle,
                 body  = strings.coachmarkStepDisguiseDesc,
+                primaryLabel = strings.coachmarkNext,
+            ),
+            // v1.5.15 — Step 6 (마지막): 본부 정비 = 모든 설정의 진입점.
+            // 마지막 step 이라 primary 라벨에 onboardingFinalDismiss ("받았다." 등) 사용.
+            CoachmarkStep(
+                id = "settings",
+                title = strings.coachmarkStep4Title,
+                body  = strings.coachmarkStep4Desc,
                 primaryLabel = strings.onboardingFinalDismiss,
             ),
         )
@@ -999,7 +1004,10 @@ private fun CommandContent(
         // v1.5.1 — 코치마크 Step 3 spotlight 등록 (원형).
         Box(
             modifier = Modifier.onGloballyPositioned { coords ->
-                coachmark.register("eject", coords.boundsInRoot(), SpotShape.Circle)
+                // v1.5.15 — EJECT 버튼이 v1.5.13 부터 둥근 사각형 픽토그램(ic_eject_button)
+                // 으로 바뀌었기 때문에 spotlight 도 RoundRect 로 같이 맞춰야 시각적으로 자연스럽다.
+                // 기존 Circle 은 v1.5.0~v1.5.12 (빨간 원형 + ⏏ 글리프) 시절의 잔재.
+                coachmark.register("eject", coords.boundsInRoot(), SpotShape.RoundRect)
             },
         ) {
             EjectButton(
@@ -1160,10 +1168,10 @@ private fun StitchTopBar(
                     )
                     Spacer(Modifier.height(16.dp))
                     val options = listOf(
-                        DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
-                        DecoyManager.Decoy.MEMO       to stringResource(R.string.decoy_label_memo),
-                        DecoyManager.Decoy.WEATHER    to stringResource(R.string.decoy_label_weather),
-                        DecoyManager.Decoy.CLOCK      to stringResource(R.string.decoy_label_clock),
+                        DecoyManager.Decoy.CALCULATOR to strings.decoyLabelCalculator,
+                        DecoyManager.Decoy.MEMO       to strings.decoyLabelMemo,
+                        DecoyManager.Decoy.WEATHER    to strings.decoyLabelWeather,
+                        DecoyManager.Decoy.CLOCK      to strings.decoyLabelClock,
                     )
                     options.forEach { (decoy, label) ->
                         Row(
@@ -1177,7 +1185,21 @@ private fun StitchTopBar(
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("🎭", fontSize = 18.sp)
+                            // v1.5.20 — 🎭 placeholder emoji prefix → 사용자가 v1.5.16에 추가한
+                            // 신규 decoy launcher 아이콘 (Calculator/Memo/Weather/Clock) 노출.
+                            // picker dialog 안에서 옵션이 실제 어떻게 보이는지 시각 매핑.
+                            val iconRes = when (decoy) {
+                                DecoyManager.Decoy.CALCULATOR -> com.ejectbutton.R.mipmap.ic_decoy_calculator_foreground
+                                DecoyManager.Decoy.MEMO       -> com.ejectbutton.R.mipmap.ic_decoy_memo_foreground
+                                DecoyManager.Decoy.WEATHER    -> com.ejectbutton.R.mipmap.ic_decoy_weather_foreground
+                                DecoyManager.Decoy.CLOCK      -> com.ejectbutton.R.mipmap.ic_decoy_clock_foreground
+                                else                          -> com.ejectbutton.R.drawable.ic_eject_button
+                            }
+                            Image(
+                                painter = painterResource(iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                            )
                             Spacer(Modifier.width(12.dp))
                             Text(label, fontSize = 15.sp)
                         }
@@ -1199,14 +1221,25 @@ private fun StitchTopBar(
         verticalAlignment = Alignment.Top,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                // v1.5.2 — strings.appBrandLabel 사용. 7개 언어 자동 분기 (한국어 = "비상 탈출" 등).
-                text          = "⏏ ${strings.appBrandLabel}",
-                fontSize      = 20.sp,
-                fontWeight    = FontWeight.ExtraBold,
-                color         = EjectCoral,
-                letterSpacing = 0.5.sp,
-            )
+            // v1.5.15 — 레거시 ⏏ 글리프 (Text "⏏") 를 v1.5.13 EmergencyRed 픽토그램
+            // (ic_eject_button) 으로 교체. EJECT 메인 버튼과 시각적으로 일치시켜
+            // 브랜드 정체성 강화. 28dp 사이즈로 brandLabel 옆 leading icon.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.ic_eject_button),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    // v1.5.2 — strings.appBrandLabel 사용. 7개 언어 자동 분기 (한국어 = "비상 탈출" 등).
+                    text          = strings.appBrandLabel,
+                    fontSize      = 20.sp,
+                    fontWeight    = FontWeight.ExtraBold,
+                    color         = EjectCoral,
+                    letterSpacing = 0.5.sp,
+                )
+            }
             Spacer(Modifier.height(2.dp))
             Text(
                 text     = strings.catchphrase,
@@ -1719,7 +1752,19 @@ private fun SystemsContent(
                 SystemsRow(icon = "✅", label = strings.settingsRemoveAdsActive, onClick = {})
             }
             // v1.2.0 — 위장 아이콘 토글. 다이얼로그에서 5개 옵션 중 선택.
-            SystemsRow(icon = "🎭", label = strings.settingsDecoy, onClick = {
+            // v1.5.22 — Settings row prefix 가 placeholder 🎭 였던 것을 현재 활성화된
+            // decoy 아이콘 (또는 DEFAULT 시 메인 EmergencyRed) 으로 교체. 사용자가
+            // "위장 = 가면" 이라는 추상적 메타포 대신 "지금 내가 어떤 위장으로 설정돼
+            // 있나"를 한 눈에 알 수 있도록. picker dialog 안의 아이콘 + top-bar 의
+            // 위장 IconButton 과 시각 시그니처 통일.
+            val decoyRowIconRes = when (currentDecoy) {
+                DecoyManager.Decoy.CALCULATOR -> R.mipmap.ic_decoy_calculator_foreground
+                DecoyManager.Decoy.MEMO       -> R.mipmap.ic_decoy_memo_foreground
+                DecoyManager.Decoy.WEATHER    -> R.mipmap.ic_decoy_weather_foreground
+                DecoyManager.Decoy.CLOCK      -> R.mipmap.ic_decoy_clock_foreground
+                else                          -> R.drawable.ic_disguise_off
+            }
+            SystemsRow(iconRes = decoyRowIconRes, label = strings.settingsDecoy, onClick = {
                 currentDecoy = EjectPrefs.loadDecoy(ctx)
                 showDecoyDialog = true
             })
@@ -1760,10 +1805,10 @@ private fun SystemsContent(
                         Spacer(Modifier.height(16.dp))
                         val options = listOf(
                             DecoyManager.Decoy.DEFAULT to strings.settingsDecoyDefault,
-                            DecoyManager.Decoy.CALCULATOR to stringResource(R.string.decoy_label_calculator),
-                            DecoyManager.Decoy.MEMO to stringResource(R.string.decoy_label_memo),
-                            DecoyManager.Decoy.WEATHER to stringResource(R.string.decoy_label_weather),
-                            DecoyManager.Decoy.CLOCK to stringResource(R.string.decoy_label_clock),
+                            DecoyManager.Decoy.CALCULATOR to strings.decoyLabelCalculator,
+                            DecoyManager.Decoy.MEMO to strings.decoyLabelMemo,
+                            DecoyManager.Decoy.WEATHER to strings.decoyLabelWeather,
+                            DecoyManager.Decoy.CLOCK to strings.decoyLabelClock,
                         )
                         options.forEach { (decoy, label) ->
                             Row(
@@ -1782,6 +1827,22 @@ private fun SystemsContent(
                                     onClick = null,
                                 )
                                 Spacer(Modifier.width(8.dp))
+                                // v1.5.20 — Settings 의 위장 picker 다이얼로그도 첫 번째 picker
+                                // (StitchTopBar) 와 시각 일관성: 옵션 옆에 실제 decoy 아이콘 노출.
+                                // DEFAULT 옵션은 메인 앱 아이콘 (ic_eject_button) 으로.
+                                val iconRes = when (decoy) {
+                                    DecoyManager.Decoy.CALCULATOR -> com.ejectbutton.R.mipmap.ic_decoy_calculator_foreground
+                                    DecoyManager.Decoy.MEMO       -> com.ejectbutton.R.mipmap.ic_decoy_memo_foreground
+                                    DecoyManager.Decoy.WEATHER    -> com.ejectbutton.R.mipmap.ic_decoy_weather_foreground
+                                    DecoyManager.Decoy.CLOCK      -> com.ejectbutton.R.mipmap.ic_decoy_clock_foreground
+                                    else                          -> com.ejectbutton.R.drawable.ic_eject_button
+                                }
+                                Image(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                )
+                                Spacer(Modifier.width(12.dp))
                                 Text(label, fontSize = 15.sp)
                             }
                         }
@@ -1844,6 +1905,41 @@ private fun SystemsContent(
 
 @Composable
 private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
+    SystemsRowScaffold(label = label, onClick = onClick) {
+        Text(icon, fontSize = 18.sp)
+    }
+}
+
+/**
+ * v1.5.22 — SystemsRow overload with a drawable resource prefix instead of
+ * an emoji string. Used by the 위장 (decoy) row in the Settings tab so the
+ * preview reflects the currently-active disguise icon (계산기/메모/날씨/시계
+ * 4종 또는 기본 EmergencyRed 픽토그램) — same visual signature as the picker
+ * dialog opened from this row and the top-bar disguise IconButton.
+ *
+ * Why an overload, not a nullable parameter:
+ *   – Existing 8 call sites pass `icon = "<emoji>"` and we don't want to
+ *     touch any of them.
+ *   – Keeps the call site type-safe: `SystemsRow(iconRes = R.drawable.x, …)`
+ *     vs `SystemsRow(icon = "🎭", …)` are visually distinct in source.
+ */
+@Composable
+private fun SystemsRow(iconRes: Int, label: String, onClick: () -> Unit) {
+    SystemsRowScaffold(label = label, onClick = onClick) {
+        Image(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+@Composable
+private fun SystemsRowScaffold(
+    label: String,
+    onClick: () -> Unit,
+    iconSlot: @Composable () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1860,7 +1956,7 @@ private fun SystemsRow(icon: String, label: String, onClick: () -> Unit) {
                 .background(EjectSurfaceMid),
             contentAlignment = Alignment.Center,
         ) {
-            Text(icon, fontSize = 18.sp)
+            iconSlot()
         }
         Spacer(Modifier.width(14.dp))
         Text(
@@ -1892,39 +1988,39 @@ private fun EjectButton(
         label = "s",
     )
 
-    // v1.5.6 — 일반 모드 + 취소 모드 모두 채우기 색을 외곽선과 통일 (EjectCoral 빨강).
-    // 안의 ⏏ 아이콘 + "탈출" 텍스트는 흰색으로 잘 보이게.
+    // v1.5.13 — EJECT 버튼 비주얼: 런처 아이콘과 통일된 비상구 픽토그램 비트맵 사용.
+    // 일반 모드(EJECT): 라운드 스퀘어 비트맵 이미지 (red bg + 흰 문 + 빨간 figure).
+    // 취소 모드(CANCEL): 기존 빨간 원 + ✕ UI 유지 (취소는 단순 정지 메타포).
     Box(
         modifier = Modifier
             .size(260.dp)
             .scale(scale),
         contentAlignment = Alignment.Center,
     ) {
-        // Outer halo
-        Box(
-            modifier = Modifier
-                .size(252.dp)
-                .clip(CircleShape)
-                .background(EjectCoral.copy(alpha = 0.10f))
-        )
-        // Main circle — 항상 EjectCoral 채우기
-        Box(
-            modifier = Modifier
-                .size(232.dp)
-                .shadow(
-                    elevation    = 18.dp,
-                    shape        = CircleShape,
-                    ambientColor = EjectCoral.copy(alpha = 0.35f),
-                    spotColor    = EjectCoral.copy(alpha = 0.35f),
-                )
-                .clip(CircleShape)
-                .background(EjectCoral)
-                .border(4.dp, EjectCoral, CircleShape)
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (isCancelMode) {
+        if (isCancelMode) {
+            // Cancel 모드: 기존 빨간 원 ✕
+            Box(
+                modifier = Modifier
+                    .size(252.dp)
+                    .clip(CircleShape)
+                    .background(EjectCoral.copy(alpha = 0.10f))
+            )
+            Box(
+                modifier = Modifier
+                    .size(232.dp)
+                    .shadow(
+                        elevation    = 18.dp,
+                        shape        = CircleShape,
+                        ambientColor = EjectCoral.copy(alpha = 0.35f),
+                        spotColor    = EjectCoral.copy(alpha = 0.35f),
+                    )
+                    .clip(CircleShape)
+                    .background(EjectCoral)
+                    .border(4.dp, EjectCoral, CircleShape)
+                    .clickable(onClick = onClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "✕",
                         fontSize   = 72.sp,
@@ -1939,29 +2035,35 @@ private fun EjectButton(
                         fontWeight    = FontWeight.ExtraBold,
                         letterSpacing = 4.sp,
                     )
-                } else {
-                    // v1.6.0 — ⏏ 글리프 → 흰색 hangup 아이콘 (수화기 down).
-                    // 브랜드가 빨강 EJECT 메타포에서 네이비 + hangup CTA 메타포로 변경됨.
-                    // 크기는 기존 108sp 글리프 시각 비중을 보존하도록 96dp 정도로 설정.
-                    androidx.compose.material3.Icon(
-                        painter = androidx.compose.ui.res.painterResource(
-                            id = com.ejectbutton.R.drawable.ic_hangup_eject
-                        ),
-                        contentDescription = null,
-                        modifier = Modifier.size(96.dp),
-                        tint = Color.White,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        // v1.5.6 — 50% 키움 (13 → 20sp), letterSpacing 약간 줄임
-                        strings.ejectButtonLabel,
-                        fontSize      = 20.sp,
-                        color         = Color.White,
-                        fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 5.sp,
-                    )
                 }
             }
+        } else {
+            // EJECT 모드: 신규 비상구 픽토그램 비트맵 (런처 아이콘과 통일).
+            // 라운드 스퀘어 형태로 사용자가 앱 아이콘과 즉시 연관 인식하도록.
+            val haloShape = androidx.compose.foundation.shape.RoundedCornerShape(48.dp)
+            Box(
+                modifier = Modifier
+                    .size(252.dp)
+                    .clip(haloShape)
+                    .background(EjectCoral.copy(alpha = 0.10f))
+            )
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(
+                    id = com.ejectbutton.R.drawable.ic_eject_button
+                ),
+                contentDescription = strings.ejectButtonLabel,
+                modifier = Modifier
+                    .size(232.dp)
+                    .shadow(
+                        elevation    = 18.dp,
+                        shape        = haloShape,
+                        ambientColor = EjectCoral.copy(alpha = 0.35f),
+                        spotColor    = EjectCoral.copy(alpha = 0.35f),
+                    )
+                    .clip(haloShape)
+                    .clickable(onClick = onClick),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            )
         }
     }
 }
@@ -2434,10 +2536,31 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
             }
 
             val iconView = ImageView(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply {
-                    marginEnd = dp(8)
+                // v1.5.19 — AdMob native ad validator 32×32dp 정책 강화.
+                //
+                // v1.5.17: layoutParams 22dp → 32dp 만 변경 → validator 여전히 violation.
+                //
+                // 진단:
+                //  (1) ScaleType.FIT_CENTER 가 작은 raster icon 을 view 안에 비율 유지
+                //      해서 그리니까 rendered content 가 32dp 미만으로 측정됨.
+                //  (2) update 람다에서 drawable null 일 때 view.GONE → 0×0 violation.
+                //  (3) layoutParams 만으론 measure 시 view 가 줄어들 수 있음.
+                //
+                // v1.5.19 다중 안전장치:
+                //  (a) 48dp 로 상향 (32dp 마진 안에서 보수적으로).
+                //  (b) minimumWidth/Height 명시 → measure 시 절대 줄어들지 않음.
+                //  (c) ScaleType.CENTER_INSIDE → image 가 view 안에서 비율 유지하며 fit,
+                //      view 자체 사이즈는 layoutParams 그대로.
+                //  (d) adjustViewBounds = false → image bitmap 따라 view 가 줄어들지 X.
+                //  (e) visibility = VISIBLE 유지 (update 람다에서 GONE 안 하고
+                //      placeholder drawable 사용).
+                layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply {
+                    marginEnd = dp(10)
                 }
-                scaleType = ImageView.ScaleType.FIT_CENTER
+                minimumWidth = dp(48)
+                minimumHeight = dp(48)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                adjustViewBounds = false
             }
 
             val headlineView = TextView(ctx).apply {
@@ -2483,13 +2606,19 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
             val iconView     = adView.iconView as? ImageView
             val headlineView = adView.headlineView as? TextView
 
+            // v1.5.19 — drawable null 일 때도 view 를 GONE 으로 바꾸지 않는다.
+            // GONE 으로 바꾸면 view 사이즈가 0×0 으로 측정되어 AdMob native ad
+            // validator 가 "Resolution less than 32x32dp" 경고를 띄운다 (정책상
+            // iconView 등록된 view 는 항상 32dp 이상이어야 한다). drawable 이
+            // 비어있는 ad 의 경우 앱 아이콘 placeholder 로 보여주고 view 사이즈를
+            // 48dp 로 유지한다.
             val iconDrawable = ad.icon?.drawable
             if (iconDrawable != null) {
                 iconView?.setImageDrawable(iconDrawable)
-                iconView?.visibility = android.view.View.VISIBLE
             } else {
-                iconView?.visibility = android.view.View.GONE
+                iconView?.setImageResource(com.ejectbutton.R.drawable.ic_eject_button)
             }
+            iconView?.visibility = android.view.View.VISIBLE
             headlineView?.text = ad.headline ?: ad.body ?: ""
 
             // impression + click 집계를 위한 필수 호출.

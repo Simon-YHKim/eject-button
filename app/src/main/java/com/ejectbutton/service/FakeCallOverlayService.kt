@@ -32,10 +32,9 @@ import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
 import com.ejectbutton.data.strings
-import com.ejectbutton.ui.call.FakeInCallScreen
+import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
 import com.ejectbutton.ui.call.InCallScreenV2
 import com.ejectbutton.ui.call.rememberCallTimer
-import com.ejectbutton.ui.call.FakeIncomingCallScreenV2
 import com.ejectbutton.ui.theme.LegacyCallTheme
 
 class FakeCallOverlayService : Service() {
@@ -48,7 +47,16 @@ class FakeCallOverlayService : Service() {
         // Debug-only: start overlay directly in in-call state (skips incoming ring UI).
         // Used by UI screenshot tests via adb am start-service.
         const val EXTRA_START_IN_CALL = "debug_start_in_call"
+        // v1.2 — 기존 LOW importance 채널 (foreground service 상태바 아이콘 용).
+        //         새로 설치한 사용자는 _v2 채널만 보지만, 기존 사용자 디바이스에는
+        //         LOW 채널이 이미 등록돼 있어 importance 변경이 무시되므로 그대로 둠.
         private const val NOTIF_CHANNEL = "eject_call"
+        // v1.5.23 — full-screen intent 용 HIGH importance 채널.
+        //   Android 가 잠금화면 / 화면 꺼짐 상태에서 가짜 통화 UI 를 띄우려면
+        //   setFullScreenIntent + HIGH (이상) importance 채널 둘 다 필요.
+        //   LOW 채널에서는 setFullScreenIntent 가 fallback 으로 일반 알림이 되어
+        //   잠금화면 위 자동 launch 가 트리거 안 됨.
+        private const val NOTIF_CHANNEL_CALL = "eject_call_v2"
         private const val NOTIF_ID      = 1001
 
         // 전화 종료 후 전면 광고 표시용 플래그
@@ -150,15 +158,58 @@ class FakeCallOverlayService : Service() {
             h.postDelayed({
                 pendingHandler = null
                 try { acquireWake() } catch (_: Exception) {}
+                try { launchIncomingCallActivity() } catch (_: Exception) {}
                 try { ring() } catch (_: Exception) {}
                 tryShowOverlayOrAbort(callerName, callerLabel, prompter, scenarioId, mode)
             }, delayMs)
         } else {
             try { acquireWake() } catch (_: Exception) {}
+            try { launchIncomingCallActivity() } catch (_: Exception) {}
             try { ring() } catch (_: Exception) {}
             tryShowOverlayOrAbort(callerName, callerLabel, prompter, scenarioId, mode)
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * v1.5.24 — Force-launch IncomingCallActivity at the moment the trigger
+     * fires, regardless of whether the system honored our full-screen intent.
+     *
+     * Why we do this in addition to setFullScreenIntent:
+     *   – On Android 14+, full-screen intents are silently downgraded to a
+     *     plain heads-up notification unless the user has explicitly granted
+     *     "Display over apps & full-screen notifications" in system settings
+     *     (Default Phone apps get the grant automatically; everyone else has
+     *     to do it manually).
+     *   – Foreground services that hold SYSTEM_ALERT_WINDOW + a foreground
+     *     notification are on the Android background-activity-start allowlist,
+     *     so a direct startActivity() from here will succeed even from a
+     *     locked / screen-off state (sources: Android docs "Restrictions on
+     *     starting activities from the background").
+     *   – IncomingCallActivity is a no-op trampoline: its only job is to flip
+     *     setShowWhenLocked(true) + setTurnScreenOn(true) +
+     *     requestDismissKeyguard, then finish(). That single launch is what
+     *     wakes the screen and tears down the keyguard layer on top of our
+     *     SYSTEM_ALERT_WINDOW overlay.
+     *
+     * Failure modes (all caught upstream with the try{} block):
+     *   – If the background activity start is still blocked (rare device-
+     *     specific OEM lockdown), the full-screen intent notification stays
+     *     as the fallback, and the user can tap it to bring the call screen
+     *     up manually — same as v1.5.23.
+     *   – If IncomingCallActivity is not declared in the manifest, we log
+     *     and move on; the overlay will still render once the user unlocks.
+     */
+    private fun launchIncomingCallActivity() {
+        val activityIntent = Intent(this, com.ejectbutton.ui.call.IncomingCallActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                    or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    or Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    or Intent.FLAG_ACTIVITY_NO_USER_ACTION
+            )
+        }
+        startActivity(activityIntent)
     }
 
     /**
@@ -259,14 +310,13 @@ class FakeCallOverlayService : Service() {
             setViewTreeViewModelStoreOwner(lifecycle)
             ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ -> WindowInsetsCompat.CONSUMED }
             setContent {
-                // 가짜 전화 화면은 Tactical Cockpit 테마 영향을 받지 않도록
-                // 전용 LegacyCallTheme 로 격리해서 래핑한다.
+                // 가짜 전화 화면은 앱 메인 테마 영향을 받지 않도록
+                // 전용 LegacyCallTheme 로 격리해서 래핑 (실제 통화 화면 톤 모방).
                 LegacyCallTheme {
                     androidx.compose.runtime.CompositionLocalProvider(LocalAppStrings provides strings) {
                         if (!callState.value) {
-                            // Round 17 — One UI 8.5 style V2 화면으로 교체.
-                            // V2 는 prompterHint 파라미터를 받지 않으므로 제거.
-                            // 힌트는 accept 이후 FakeInCallScreen 에서 계속 표시된다.
+                            // One UI 8.5 style 수신 화면. prompterHint 는 V2 에서 직접 지원하지 않으므로
+                            // accept 이후 in-call 화면의 transcribing 서브텍스트로 대체.
                             FakeIncomingCallScreenV2(
                                 callerName  = callerName,
                                 callerLabel = callerLabel,
@@ -388,6 +438,18 @@ class FakeCallOverlayService : Service() {
         overlay = null
         stopRing()
         releaseWake()
+
+        // v1.5.25 — Tell IncomingCallActivity (if it's still up) that the
+        // fake call has ended, so it can finish() and release the
+        // show-when-locked privilege. Sent as a non-exported local intent
+        // to match the activity's ContextCompat.RECEIVER_NOT_EXPORTED.
+        try {
+            sendBroadcast(
+                Intent(com.ejectbutton.ui.call.IncomingCallActivity.ACTION_FAKE_CALL_ENDED)
+                    .setPackage(packageName)
+            )
+        } catch (_: Exception) {}
+
         Handler(Looper.getMainLooper()).post {
             try { wm?.removeView(view) } catch (_: Exception) {}
             stopSelf()
@@ -502,17 +564,64 @@ class FakeCallOverlayService : Service() {
 
     private fun createChannel() {
         val strings = EjectPrefs.loadLanguage(this).strings()
-        val ch = NotificationChannel(NOTIF_CHANNEL, strings.serviceChannelName, NotificationManager.IMPORTANCE_LOW)
-            .apply { setSound(null, null) }
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        // Legacy LOW channel — foreground service 상태바 아이콘 전용. 사운드 무.
+        nm.createNotificationChannel(
+            NotificationChannel(NOTIF_CHANNEL, strings.serviceChannelName, NotificationManager.IMPORTANCE_LOW)
+                .apply { setSound(null, null) }
+        )
+
+        // v1.5.23 — HIGH importance channel for full-screen intent.
+        //   잠금화면 + 화면 꺼짐 상태에서 가짜 통화를 띄우는 경로:
+        //     1. setFullScreenIntent(pi, true)  ← 이번 패치
+        //     2. 알림 채널 importance >= HIGH    ← 이번 패치
+        //     3. USE_FULL_SCREEN_INTENT 권한      ← AndroidManifest
+        //   채널은 한 번 생성되면 사용자 설정이 우선이므로 ID 를 분리해서 신규
+        //   채널로 만든다 (기존 LOW 채널 자리에 HIGH 를 덮어쓸 수 없음).
+        nm.createNotificationChannel(
+            NotificationChannel(
+                NOTIF_CHANNEL_CALL,
+                strings.serviceChannelName + " · Call",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                setSound(null, null) // 자체 ringtone 으로 울리니까 채널 사운드는 무.
+                enableVibration(false)
+                setBypassDnd(false)
+            }
+        )
     }
 
     private fun buildNotif(delayMs: Long = 0L): Notification {
         val strings = EjectPrefs.loadLanguage(this).strings()
+
+        // v1.5.26 — Foreground-service notification reverted to the LOW
+        //   importance channel so it stays a silent status-bar icon and
+        //   does NOT pop up as a heads-up over the fake-call screen.
+        //
+        //   Why we no longer need setFullScreenIntent / HIGH channel here:
+        //     – v1.5.24 introduced launchIncomingCallActivity() — a direct
+        //       startActivity() call from the foreground service that
+        //       relies on the SYSTEM_ALERT_WINDOW + FGS background-activity-
+        //       start allowlist. That path is now the primary mechanism for
+        //       surfacing the call UI over a locked / screen-off device.
+        //     – v1.5.25 verified the path on a real Android 14 / Galaxy
+        //       pattern-lock phone: the fake call appears on top of the
+        //       keyguard without any credential prompt.
+        //     – The HIGH-importance channel + setFullScreenIntent that
+        //       v1.5.23 added was the fallback for OEMs that block direct
+        //       startActivity. Since v1.5.24+ works without it on the
+        //       reference device, and the heads-up sibling notification it
+        //       produced was visually intrusive ("앱 실행 중 / 백그라운드
+        //       서비스 활성화" pop-up at the top of the call screen), we
+        //       drop it for v1.5.26. The HIGH channel definition stays in
+        //       createChannel() in case a future iteration wants the
+        //       fallback back; only this builder no longer uses it.
         return Notification.Builder(this, NOTIF_CHANNEL)
             .setContentTitle(strings.serviceNotifTitle)
             .setContentText(strings.serviceNotifText)
             .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setOngoing(true)
             .build()
     }
 

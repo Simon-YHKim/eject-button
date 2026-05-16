@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">비상 탈출</string>
+    <string name="app_name">비상탈출</string>
 
     <!-- v1.1.0 위장 아이콘 라벨. 사용자가 설정에서 활성화하면 launcher 에 이 이름으로 표시됨. -->
     <string name="decoy_label_calculator">계산기</string>

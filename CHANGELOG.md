@@ -34,6 +34,366 @@
 
 ---
 
+## [1.6.0] - 2026-05-17
+
+### 종합 정리·최종 출시 패치
+
+v1.5.x 시리즈의 누적 수정·점검·정리·출시 패치. **앱 핵심 기능 + 신뢰성 + 협업성 동시 정상화**.
+
+### Added — Lock-screen bypass infrastructure (v1.5.23 ~ v1.5.26 누적)
+
+화면 끄고 잠금 후 trigger 발동 시 가짜 통화가 즉시 표시되도록 4단계 진화:
+
+- **v1.5.23**: AndroidManifest `USE_FULL_SCREEN_INTENT` 권한 + `IncomingCallActivity` (transparent trampoline, `setShowWhenLocked + setTurnScreenOn`) + HIGH-importance 알림 채널 `eject_call_v2` + `Notification.Builder.setFullScreenIntent`.
+- **v1.5.24**: full-screen intent 권한 fallback 우회 — Service 의 trigger 발동 시점에 `IncomingCallActivity` 를 직접 `startActivity()` (SYSTEM_ALERT_WINDOW + foreground service notification 보유 → background activity start 정책 통과).
+- **v1.5.25**: secure keyguard (PIN/패턴) 환경에서 `requestDismissKeyguard` 가 인증 prompt 강제 trigger → 제거. Activity 의 `finish()` 도 제거하여 lifecycle 동안 show-when-locked 권한 유지. Service `dismiss()` 가 `ACTION_FAKE_CALL_ENDED` broadcast 발사 → Activity 자동 finish.
+- **v1.5.26**: standing FGS notification 의 HIGH 채널 + `setFullScreenIntent + CATEGORY_CALL + PRIORITY_HIGH` 가 sibling heads-up 으로 노출되는 부작용 → LOW 채널 + 단순 ongoing notification 으로 환원.
+
+결과: 패턴 잠금 상태에서 trigger 발동 → 잠금화면이 그대로 유지된 채 가짜 통화 UI 가 위에 표시, 인증 prompt 없음, sibling 알림 없음.
+
+### Changed — i18n military tone removed across 6 languages
+
+`de91b49` (v1.5.15) 의 ko-only (106 keys) 친근화 작업을 6국으로 확장:
+
+| 영역 | en | zh-CN | zh-TW | ja | es | hi |
+|---|---|---|---|---|---|---|
+| `tabCommand` | DEPLOY→DIAL | 出动 | 出動 | 出動 | DESPLEGAR→LLAMAR | कमांड→बुलाओ |
+| `historySubtitle` | Your escapes | 任务记录→脱身记录 | 任務記錄→脫身記錄 | 脱出履歴 | Registro de misiones→escapes | मिशन लॉग→निकास लॉग |
+| `systemsSubtitle` | HQ settings | 战术设置→总部设置 | 戰術設定→總部設定 | 本部設定 | Ajustes tácticos→del cuartel | टैक्टिकल→मुख्यालय |
+| `settingsManual` | Field manual→User guide | 任务手册→使用说明 | 任務手冊→使用說明 | 使い方ガイド | Manual de campo→Guía de uso | मिशन मैनुअल→उपयोग गाइड |
+| `premiumSubtitle` | Full escape kit | 战术装备→脱身工具包 | 戰術裝備→脫身工具包 | フル脱出装備 | Equipo táctico→Kit de escape | टैक्टिकल लोडआउट→निकास किट |
+| `premiumActiveSubtitle` | "deployed"→"ready" | 已部署→已就绪 | 已部署→已就緒 | 戦術装備配備完了→脱出装備準備完了 | desplegado→activado | तैनात→तैयार |
+| `premiumActiveBadge` | ACTIVE | (n/a) | (n/a) | (n/a) | OPERATIVO→ACTIVO | (n/a) |
+| `unmaskConfirmBody` | "mission profile"→"Emergency Exit icon" | (ko-equivalent ok) | (ok) | (ok) | (ok) | (ok) |
+| `actionDisguiseOn` | Engage→Turn on disguise | (ok) | (ok) | (ok) | (ok) | (ok) |
+| `coachmarkStepDisguise` (v1.5.22) | loadout→mode | 装备→模式 | 裝備→模式 | 装備→モード | Equipo→Modo | गियर→मोड |
+| onboardingCommandBody | DEPLOY tab→DIAL tab | (ok) | (ok) | (ok) | Desplegar→Llamar | (ok) |
+| sideModeArmedMsg | command/deploys→volume keys/rings | (ok) | (ok) | (ok) | (ok) | (ok) |
+
+각 언어 고유 의성어 보존 (Beep beep / 嘀嘀 / ピーポーピーポー / Bip bip / बीप बीप).
+
+### Changed — Settings 위장 row icon (v1.5.22)
+
+`MainScreen.kt` 의 `SystemsRow` 에 `iconRes: Int` overload 추가. 위장 row (`settingsDecoy`) 가 placeholder 🎭 emoji 대신 현재 활성화된 decoy 색깔 픽토그램 (계산기 초록 / 메모 노랑 / 날씨 파랑 / 시계 보라) 또는 DEFAULT 시 `ic_disguise_off` 표시. picker dialog · top-bar IconButton 과 시각 시그니처 통일.
+
+### Changed — Decoy picker dialog 아이콘 (v1.5.20)
+
+`MainScreen.kt` L1191-1202 (StitchTopBar picker) + L1821-1832 (Settings picker) 의 `Text("🎭", 18sp)` placeholder 제거 → `Image(painter = painterResource(R.mipmap.ic_decoy_*_foreground), 36dp)` 로 교체. v1.5.16 user-provided raster (1024px) 가 picker 안에 실제 노출.
+
+### Changed — Onboarding step 2 emoji (v1.5.20)
+
+`OnboardingScreen.kt` L100: `🏃` → `👤` — caller chip 기본 avatar (`MainScreen.kt` L2432) 와 unicode 통일.
+
+### Repository hygiene (v1.5.21)
+
+- **Root 잡파일 45MB** — `app-debug.apk` / `app-release.aab` (Apr 25 stale) / `splash_t0.png` / `splash_verify.png` 삭제.
+- **8개 미사용 drawables** — `ic_decoy_*_fg.xml`, `ic_decoy_master.png`, `ic_eject_mark{,_red}.xml`, `ic_hangup_eject.xml`. `drawable-nodpi/` 빈 폴더 제거.
+- **`store-assets/ic_play_store_512.png`** — `play-store-icon-512.png` 와 md5 동일 dup. 정상 명칭 보존.
+- **`.gitignore` 강화** — `release-builds/` (260MB+ 로컬 빌드), `.kotlin/`, `ui*.xml` 추가.
+- **`.gitattributes` 신규** — 텍스트 EOL LF 강제 / `*.bat`·`*.cmd`·`*.ps1` 만 CRLF / 바이너리 `-text`. FakeCallOverlayService.kt 의 CRLF phantom-diff (1,125 lines) 재발 방지.
+
+### Fixed (v1.5.18 ~ v1.5.19)
+
+- **v1.5.18**: v1.5.17 의 `ic_disguise_off.xml`/`ic_disguise_on.xml` BitmapDrawable wrapper 가 `painterResource` 호환 안 됨 → vector drawable 직접 참조 롤백.
+- **v1.5.19**: Onboarding page 4 `Icons.Filled.Settings` 누락 import 추가. AdMob native ad validator 32×32dp 정책 → `iconView` 48dp + `ScaleType.CENTER_INSIDE` + `minimumWidth/Height` + `adjustViewBounds=false`.
+
+### Verification
+
+- `:app:assembleDebug` BUILD SUCCESSFUL ~31s, 0 errors.
+- `:app:lintDebug` 88 warnings, 0 errors. UnusedResources 0.
+- Live emulator + 실제 Android 14 phone (Galaxy / LG U+ pattern lock) field test 통과: 잠금화면 + 화면 꺼짐 → trigger → 인증 prompt 없이 fake call UI 즉시 노출 + heads-up sibling 알림 없음.
+
+### Deferred to v1.6.1 / v1.7.0
+
+- `MainScreen.kt` 2,612줄 → 책임별 split (`StitchTopBar`, `DeployTab`, `HistoryTab`, `SettingsTab`, `DecoyDialogs`, `NativeAdCard`).
+- `AppStrings.kt` 2,006줄 → 언어별 파일 분리.
+- 7국 톤의 잔여 군용 어휘 (en `command`/`HQ panel`, hi `कमांड`/`टैक्टिकल`/`मिशन मैनुअल` 등 secondary keys) 최종 정리.
+- Post-call 광고 사이클 (Interstitial every call, RewardedDialog every 3rd call, Premium excluded).
+- 구독료 ₩1,900 → ₩3,000 인상 + 14국 PPP fallback (Play Console 가격 정책 변경 + 코드 `localizedFallbackPrice()` 갱신 병행).
+- Android 14+ `canUseFullScreenIntent()` Settings deep-link 안내 카드 (rare OEM 대응).
+
+---
+
+## [1.5.21] - 2026-05-17
+
+### Repository hygiene & cleanup
+
+코드/리포 정리 패치. **앱 기능 변경 없음** — 협업 친화성 + 빌드 무결성 + 리포 사이즈 정상화.
+
+### Removed
+- **Root 잡파일 45MB** — `app-debug.apk` (21.3MB, 4월 25일 옛 빌드), `app-release.aab` (24MB, 4월 25일), `splash_t0.png`/`splash_verify.png` (v1.5.15 디버그 캡처 425KB). 모두 git 미트래킹 + 코드 참조 0건.
+- **`store-assets/ic_play_store_512.png`** — `play-store-icon-512.png` 의 정확한 바이트 중복본 (md5 `03DDE964` 동일). 정상 명칭(`play-store-icon-512.png`) 쪽 보존.
+- **8개 미사용 drawables** (lint `UnusedResources` 신뢰 후 grep 재검증):
+  - `drawable/ic_decoy_calculator_fg.xml`, `ic_decoy_clock_fg.xml`, `ic_decoy_memo_fg.xml`, `ic_decoy_weather_fg.xml` — v1.5.20 의 mipmap `ic_decoy_*_foreground` 채택 후 잔재된 `_fg.xml` 구버전.
+  - `drawable-nodpi/ic_decoy_master.png` — v1.5.16 raster 일괄 적용 후 미참조 마스터.
+  - `drawable/ic_eject_mark.xml`, `ic_eject_mark_red.xml` — v1.5.13 rebrand 이전 글리프 잔재.
+  - `drawable/ic_hangup_eject.xml` — 롤백된 Navy+Cream theme 잔재 (`EjectButton` composable 이 `Text("⏏")` 로 복귀했음에도 vector 만 남아 있었음).
+- **`drawable-nodpi/` 빈 폴더** 제거 (마지막 파일 `ic_decoy_master.png` 삭제 후).
+
+### Changed
+- **`.gitignore` 강화** — `release-builds/` (260MB+ 로컬 빌드 산출물 7개 버전), `.kotlin/` (Kotlin daemon 세션 캐시), `ui*.xml` (uiautomator QA 덤프) 추가.
+- **`.gitattributes` 신규** — 텍스트 EOL LF 강제 (`*.kt`, `*.kts`, `*.xml`, `*.md`, `.gitignore` 등), Windows-only `*.bat`/`*.cmd`/`*.ps1`/`gradlew.bat` 만 CRLF, 바이너리 (`*.png`/`*.apk`/`*.aab`/`*.jks` 등) `-text`. **FakeCallOverlayService.kt 의 CRLF 부작용으로 발생했던 1,125줄 phantom diff 재발 방지**.
+- **`store-assets/play-store-feature-graphic-ko-1024x500 (2).png`** → `play-store-feature-graphic-ko-1024x500.png` 로 리네임 (Windows duplicate-copy `(2)` suffix 제거).
+
+### Fixed
+- 이전 세션 크래시로 미드-라인 truncate 된 6개 파일 (`MainScreen.kt` -121줄, `OnboardingScreen.kt` -62, `AppStrings.kt` -35, `MainActivity.kt` -11, `CHANGELOG.md` -172, `.gitignore` -5) 를 HEAD(v1.5.20) 상태로 `git checkout` 복구. 작업 트리 clean 확보 후 본 패치 적용.
+
+### Verification
+- `:app:assembleDebug` **BUILD SUCCESSFUL in 32s**, 0 errors, 기존 4건의 `Deprecated in Java` 경고 (PhoneStateListener / setMediaButtonReceiver / callState) 만 유지.
+- `:app:lintDebug` 88 warnings 0 errors. `UnusedResources` 8건 → 본 패치에서 모두 처리.
+- Emulator 설치 + 콜드스타트 splash 렌더 정상 → 8개 dead drawable 삭제 무관성 검증.
+- v1.5.20 decoy picker 4종 아이콘 (계산기 초록 / 메모 노랑 / 날씨 파랑 / 시계 보라) + onboarding step 2 `👤` 시각 검증 통과 (live emulator screencap).
+
+### Deferred (v1.6.x)
+- `MainScreen.kt` 2,612줄 god-object → 책임별 split (`StitchTopBar`, `DeployTab`, `HistoryTab`, `SettingsTab`, `DecoyDialogs`, `NativeAdCard` 등) 권장.
+- `AppStrings.kt` 2,006줄 → 언어별 파일 분리 (`strings_ko.kt`, `strings_en.kt` …) 검토.
+- 정체된 feature 브랜치 6개 (`feat/v1.4.2-ux-patches` ~ `feat/v1.5.16-asset-refresh`) → main 머지 검증 후 일괄 삭제.
+- 스테일 `[Unreleased]` 섹션 (롤백된 Navy+Cream theme) — 의도된 historical context vs noise 판단 후 정리.
+
+---
+
+## [1.5.20] - 2026-05-17
+
+### Fixed — Decoy picker 시각 매핑 + Onboarding emoji 통일
+
+- **Decoy icon picker 다이얼로그 (2곳)** 가 placeholder 이모지 `🎭` 대신 v1.5.16 사용자 디자인 아이콘을 노출.
+  - `MainScreen.kt` L1191-1202 — StitchTopBar IconButton 의 picker (4 옵션): `Text("🎭", 18sp)` 제거, `Image(painter = painterResource(R.mipmap.ic_decoy_{calculator,memo,weather,clock}_foreground), 36dp)` 로 교체.
+  - L1821-1832 — Settings AlertDialog picker (5 옵션 + DEFAULT): RadioButton 와 label 사이 동일 Image 삽입. DEFAULT 옵션은 `R.drawable.ic_eject_button` (메인 앱 아이콘) fallback.
+- **Onboarding page 2 emoji** `🏃` → `👤` — caller chip 기본 avatar (`MainScreen.kt` L2432, `emoji = "👤"`) 와 unicode 통일. "DEPLOY 탭에서 누가 호출할지 정한다" 메타포가 사용자가 caller 추가 후 실제 보게 되는 chip emoji 와 시각적으로 일치.
+
+### Notes
+- `painterResource(R.mipmap.ic_decoy_*_foreground)` 는 plain raster PNG (5 density) 라 안전 — v1.5.17 의 adaptive icon XML 시도가 BitmapDrawable wrapper 문제로 실패했던 케이스와 다름.
+- 라이브러리/build graph 변경 없음.
+
+---
+
+## [1.5.19] - 2026-05-17
+
+### Fixed
+- **Onboarding page 4 settings icon** — `Icons.Filled.Settings` 누락된 imports 추가 (v1.5.19 hotfix).
+- **AdMob native ad validator 32×32dp 정책 강화** → `iconView` 48dp + `ScaleType.CENTER_INSIDE` + `minimumWidth/Height` + `adjustViewBounds=false` 다중 안전장치 (v1.5.17 의 22→32dp 만으론 validator 가 여전히 violation 표시했음).
+
+---
+
+## [1.5.18] - 2026-05-17
+
+### Fixed
+- **`painterResource cannot load BitmapDrawable XML`** 크래시 — v1.5.17 의 `ic_disguise_off.xml`/`ic_disguise_on.xml` 를 BitmapDrawable wrapper 로 만든 시도가 `painterResource` 와 호환되지 않아 런타임 크래시 발생. vector drawable 직접 참조로 롤백.
+
+---
+
+## [1.5.17] - 2026-05-17
+
+### Fixed — AdMob native ad validator, onboarding icons, disguise toggle, splash crop
+
+사용자 4종 후속 피드백 반영.
+
+#### [A] AdMob NativeAdCard 32×32dp 위반 해소
+
+- AdMob native ad validator 가 "Resolution less than 32x32dp or points" 경고로 ad 서빙을 차단할 위험.
+- `MainScreen.kt` `NativeAdCard` 의 `iconView` 사이즈 **22dp → 32dp** (정책 최소치). marginEnd 8dp → 10dp 로 미세 조정.
+- 한 줄 배너 형태 유지 (row 자체 높이는 setPadding 으로 흡수, 시각적 변동 최소).
+
+#### [B] OnboardingScreen 5개 use-case 아이콘 매핑 갱신
+
+이전 → 이후 (사용자 피드백 매핑):
+
+| Page | 이전 | 이후 |
+|---|---|---|
+| 1 (Welcome) | `⏏` | `🚨` 사이렌 (브랜드 컨셉 = 비상) |
+| 2 (Command) | `🎯` | `🏃` 달리는 사람 ("탈출" 메타포) |
+| 3 (Trigger) | `🚨` | `📞` 전화기 ("가짜 통화 발사" 메타포) |
+| 4 (Systems) | `⚙` | `⚙` (유지 — 앱 내 설정 아이콘과 일관) |
+| 5 (Final Mayday) | `🚨` | `Image(R.drawable.ic_eject_button)` — 사용자 v1.5.16 자산 적용 (앱 아이덴티티 직접 노출) |
+
+#### [C] 위장 토글 아이콘 (ic_disguise_off/on) 신규 디자인 교체
+
+- 사용자가 제공한 `Dedcoy.png` (1024×1024 RGBA, v1.5.16 commit 의 `App_assets/`) 을 5 density raster 로 변환.
+  - `drawable-{m,h,xh,xxh,xxxh}dpi/ic_disguise.png` 신규 (24/36/48/72/96 px).
+- `drawable/ic_disguise_off.xml`, `ic_disguise_on.xml` 두 vector 를 **BitmapDrawable wrapper** 로 교체 — 같은 ic_disguise raster 참조.
+  - 기존: 가면 + ⏏ glyph vector (v1.5.12 design).
+  - 신규: 사용자 디자인 (Dedcoy.png) 통일.
+  - ON/OFF state 시각 차이는 동일 디자인. 사용자 요청 ("디코이 아이콘 변경") 그대로 적용 — state indicator 추가는 follow-up.
+
+#### [D] 시스템 splash icon 잘림 fix (inset drawable)
+
+- v1.5.14 부터 `windowSplashScreenAnimatedIcon = @mipmap/ic_launcher` (adaptive icon XML at full size) 사용 → adaptive foreground 108dp 캔버스 가득 차는 v1.5.16 사용자 디자인이 splash 192dp mask 가장자리에 잘림 발생 (사용자 보고: "로딩화면은 아이콘이 좀 잘려서 적용이 된듯").
+- **`drawable/ic_splash_logo.xml` 신규 추가** — `@mipmap/ic_launcher_foreground` 를 **25% inset** 으로 감싸 splash 안전영역 보장.
+  ```xml
+  <inset android:drawable="@mipmap/ic_launcher_foreground" android:inset="25%" />
+  ```
+- `values-v31/themes.xml` 의 `windowSplashScreenAnimatedIcon` 참조를 `@mipmap/ic_launcher` → `@drawable/ic_splash_logo` 로 갱신.
+- 결과: splash 192dp 캔버스 안에 글리프 ~96dp 영역 배치, 가장자리 잘림 0.
+
+### Build / Release
+
+- 태그 `v1.5.17` push → `release-aab.yml` 트리거. versionName=1.5.17, versionCode=1000+RUN_NUMBER.
+- 라이브러리 의존성 변경 없음.
+
+### Verification 계획
+
+1. **AdMob**: APK 설치 후 메인 화면 native ad 영역에 "AdMob native ad validator" 패널이 더 이상 빨강 ⚠ 경고 표시하지 않는지.
+2. **Onboarding**: 콜드스타트 → 5개 화면 각각의 아이콘 = 🚨 / 🏃 / 📞 / ⚙ / 앱 아이콘 순.
+3. **위장 토글**: TopBar 우상단 ⏏ 위치에 신규 Dedcoy 디자인 노출.
+4. **시스템 splash**: 콜드스타트 직후 1~2초간 EmergencyRed 화면 + 중앙 글리프 가장자리 잘림 없음.
+
+### Known follow-up
+
+- ic_disguise ON/OFF state 시각 차이 (selected 표시 / 색 tint / dot indicator) 추가 — UX 보강 차후 v1.5.18.
+- step 5 의 Image 와 step 1~4 의 emoji 가 시각 톤 차이 — 일관성을 위해 모든 step 을 vector drawable 또는 PNG 로 통일은 v1.5.18+ 검토.
+
+---
+
+## [1.5.16] - 2026-05-17
+
+### Changed — User-provided final brand assets applied
+
+사용자 디자인 자산 (`App_assets/`) 을 5 density 로 일괄 적용. 모두 1024~1254px 정사각 RGBA 원본 (`App_assets/*.ai` Illustrator 원본 + 같은 이름 `.png` 익스포트).
+
+#### 1. 앱 런처 아이콘 (`App Icon.png`, 1254×1254)
+
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_foreground.png`** × 5 density (108/162/216/324/432 px). adaptive icon foreground.
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_monochrome.png`** × 5 density (동일 raster — Android 13+ themed icon 가 자동 grayscale).
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.png`** × 5 density (48/72/96/144/192 px). legacy raster fallback.
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_round.png`** × 5 density (48/72/96/144/192 px). round-launcher raster.
+- **`store-assets/ic_play_store_512.png`**, **`store-assets/play-store-icon-512.png`** (512×512).
+
+#### 2. 인앱 EJECT 메인 버튼 (`Eject Button.png`, 1254×1254)
+
+- **`drawable-{m,h,xh,xxh,xxxh}dpi/ic_eject_button.png`** × 5 density (192/288/384/576/768 px).
+
+#### 3. 4개 위장 launcher 아이콘 (`Decoy_{Calculator,Clock,Note,Weather}.png`, 1024~1042×같은)
+
+- **`mipmap-{m,h,xh,xxh,xxxh}dpi/ic_decoy_{calculator,clock,memo,weather}_foreground.png`** × 4종 × 5 density = 20 raster.
+- **`mipmap-anydpi-v26/ic_decoy_{calculator,clock,memo,weather}.xml`** 4개 의 `<foreground>` 참조를 vector drawable (`@drawable/ic_decoy_*_fg`) → raster mipmap (`@mipmap/ic_decoy_*_foreground`) 로 갱신. `monochrome` 도 동일 raster 사용.
+- Naming: `Decoy_Note.png` → `ic_decoy_memo_foreground.png` (코드/manifest의 `memo` 명명 유지).
+- `background` 는 기존 vector drawable (`ic_decoy_*_bg.xml`, 단색) 그대로 — 위장 컨셉별 brand color 보존.
+
+#### 4. Decoy 마스터 (`Dedcoy.png`, 1024×1024) — 보존만, UI 미적용
+
+- **`drawable-nodpi/ic_decoy_master.png`** (432×432). 위장 picker dialog 헤더 또는 toggle 아이콘 후보로 보존. 어디에 적용할지 사용자 확정 후 별도 commit.
+
+#### 5. 자산 원본 보존
+
+- **`App_assets/`** 폴더 add — Illustrator 원본 (`.ai`) + export PNG. 향후 재익스포트 / 재리사이즈 시 truth source.
+
+### Resize 기술 세부
+
+- PowerShell + `System.Drawing.Graphics` (HighQualityBicubic + HighQuality SmoothingMode + HighQuality PixelOffsetMode + HighQuality CompositingQuality) 로 일괄 리사이즈.
+- 원본 RGBA 알파 채널 보존. 모든 출력 PNG 8-bit alpha.
+- 총 48 PNG 신규/재생성 + 4 XML 갱신.
+
+### Build / Release
+
+- 태그 `v1.5.16` push → `release-aab.yml` 트리거. versionName=1.5.16, versionCode=1000+RUN_NUMBER.
+- 라이브러리 의존성 변경 없음. AGP/Gradle 그래프 unchanged.
+
+### Verification (Android Studio 가상 디바이스 교차 검증)
+
+본 PR 머지 또는 sideload 검증 단계에서 확인할 시각 포인트:
+1. **런처 아이콘**: 홈/앱 서랍에서 v1.5.13 픽토그램 → 사용자 신규 디자인 (App Icon.png) 으로 교체된 모습.
+2. **시스템 splash screen** (Android 12+): launcher 아이콘과 같은 디자인으로 자동 노출 (v1.5.14 splash fix 와 결합).
+3. **인앱 EJECT 메인 버튼**: 메인 화면 중앙 빨강 버튼 = 사용자 신규 Eject Button.png 디자인.
+4. **위장 picker → 4개 옵션 선택 → 홈 화면 확인**: launcher 의 4개 위장 아이콘이 사용자 신규 디자인 (Calculator/Clock/Note=Memo/Weather) 으로 노출.
+5. **TopAppBar 좌측 leading icon**: v1.5.15 부터 ic_eject_button drawable 사용 → 새 디자인 자동 반영.
+
+---
+
+## [1.5.15] - 2026-05-16
+
+### Changed — Coachmark UX, Brand Icon, In-App i18n
+
+- **[#1] 코치마크 step 4 (EJECT 버튼) spotlight Circle → RoundRect.** v1.5.13에서 EJECT 메인 버튼이 빨간 원형(⏏ 텍스트 글리프)에서 둥근 사각형 픽토그램(`ic_eject_button` drawable)으로 바뀌었음. spotlight 모양도 동기화 — `MainScreen.kt`의 `coachmark.register("eject", ..., SpotShape.Circle)` → `SpotShape.RoundRect`.
+- **[#2] 코치마크 step 5 ↔ step 6 순서 교체.** 이전: settings(본부 정비) → disguise(위장 모드). 변경: disguise → settings. 시각 동선 좌→우(⏏ → ⚙) 자연스러워짐, 마지막 step에 모든 설정 진입점(settings) 두어 투어 마무리. primary 라벨도 함께 이동: disguise=`coachmarkNext`, settings=`onboardingFinalDismiss`.
+- **[#3] TopAppBar 좌측 ⏏ 글리프 → v1.5.13 EmergencyRed 픽토그램.** `StitchTopBar`의 `Text("⏏ ${strings.appBrandLabel}")` → `Row { Image(R.drawable.ic_eject_button, 28dp) + Spacer + Text(brandLabel) }`. 메인 EJECT 버튼과 같은 픽토그램 = 브랜드 정체성 일관성.
+- **[#4] '출동' 화면 "언제 올까?" → "얼마나 기다려?" (7개 언어).**
+  - en: `When?` → `How long?`
+  - ko: `언제 올까?` → `얼마나 기다려?` (sectionDelay + triggerTimer 둘 다)
+  - zh-CN: `什么时候？` → `等多久？`
+  - zh-TW: `什麼時候？` → `等多久？`
+  - ja: `いつ来る？` → `あとどれくらい？`
+  - es: `¿Cuándo?` → `¿Cuánto esperamos?`
+  - hi: `कब?` → `कितना इंतज़ार?`
+- **[#5] 위장 picker 영문 잔존 해소 (system locale → in-app 언어 동기화).** Root cause: 위장 옵션 라벨이 `R.string.decoy_label_*` (Android resource = system locale 기반)로 가져와짐 → 인앱 언어를 한국어로 바꿔도 system locale이 영어면 영문 라벨 노출.
+  - `AppStrings.kt`에 4개 신규 필드: `decoyLabelCalculator/Memo/Weather/Clock` × 7개 언어
+  - `MainScreen.kt` 두 군데(StitchTopBar + Settings AlertDialog)의 8개 `stringResource(R.string.decoy_label_*)` → `strings.decoyLabel*` 교체
+  - `res/values*/strings.xml`의 `decoy_label_*`는 그대로 — manifest activity-alias `android:label`(런처 표시명)은 system locale 기반이 맞음
+
+### Changed — i18n 카피라이팅 reframe (working tree 통합)
+
+- **zh-CN, zh-TW, es의 onboarding 카피 군용 톤 → 친근한 톤** reframe. 한국어 베이스("비상 탈출")와 일관성.
+- **`MainActivity.kt`의 in-app SplashScreen ⏏ Text → `R.mipmap.ic_launcher_foreground` Image** (28dp rounded EmergencyRed `#B71720`). v1.5.14 시스템 splash + v1.5.13 launcher 아이콘과 시각 일관성.
+- **fastlane/metadata 7개 언어 Play Store 설명·title 갱신** — "비상탈출" 브랜드 reframe.
+
+### Removed (cleanup)
+
+- 옛 핸드오프/계획 문서 8종 정리 (일부 `docs/archive/`·`docs/handoffs/` 이동, 일부 영구 삭제).
+- 옛 통화 화면 V1 (`FakeInCallScreen.kt`, `FakeIncomingCallScreen.kt`) — V2 마이그레이션 완료.
+- `.gitignore`에 `splash_*.png`, `*.tmp` 추가.
+
+### Build / Release
+
+- 태그 `v1.5.15` push로 `release-aab.yml` 트리거. versionName=1.5.15, versionCode=1000+RUN_NUMBER.
+- 라이브러리 의존성 변경 없음.
+
+### Known follow-up
+
+- v1.5.15 main commit `8091f41`에 임시 파일 `.commit_msg_v1515.tmp`가 의도치 않게 포함됐음 (다음 commit `38f2c28`에서 정리). v1.5.15 태그가 8091f41을 가리키므로 빌드 산출물에는 영향 없음 (`.tmp`는 컴파일에 영향 없음).
+
+---
+
+## [1.5.14] - 2026-05-16
+
+### Fixed — Splash Screen Icon
+
+- **시스템 스플래시 화면에 구형 아이콘이 노출되던 회귀 수정.** v1.5.13에서 adaptive launcher icon foreground/background를 신규 EmergencyRed 픽토그램으로 교체했으나, `themes.xml`에 `windowSplashScreen*` 속성이 명시되지 않아 Android 12+ 가 디바이스 캐시·OEM 런처 폴백 경로에 따라 이전 리비전 아이콘을 끌어다 쓰는 케이스 발생. ("앱 실행 시 로딩 화면에 구형 아이콘이 아직 들어가있어" v1.5.13 dogfood 보고).
+- **`res/values-v31/themes.xml` 신규 추가** — `Theme.EjectButton` 을 v31 (Android 12, API 31) 한정 오버라이드로 재선언하고 다음 splash 속성 명시:
+  - `windowSplashScreenAnimatedIcon = @mipmap/ic_launcher` (adaptive icon XML 자체 지정 → OS 가 foreground + background 합성 후 system splash mask 적용)
+  - `windowSplashScreenIconBackgroundColor = #B71720` (EmergencyRed)
+  - `windowSplashScreenBackground = #B71720` (브랜드 동일색 → 화면 전체 EmergencyRed + 중앙 글리프).
+- **minSdk 26 호환 보장** — Android 8.0~11 (API 26~30) 은 system splash screen API 가 없으므로 `values/themes.xml` 의 기존 정의가 그대로 적용. v31 분기는 system splash 가 실제로 적용되는 디바이스만 영향.
+- **라이브러리 의존성 변경 없음** — `androidx.core:core-splashscreen` 도입 없이 OS 네이티브 속성으로만 처리. AGP/Gradle 빌드 그래프·ProGuard rule 모두 영향 없음. 롤백은 `res/values-v31/themes.xml` 단일 파일 삭제로 즉시 가능.
+
+### Migration Notes
+
+- 디바이스에 구버전 APK 가 캐시된 경우 새 splash icon 이 적용되려면 1회 uninstall + reinstall 필요 (Android 12+ system splash icon 은 install 시점에 캐시된다). Closed Testing tester 에게는 Play Store 자동 업데이트로 over-install 강제되므로 별도 안내 불필요.
+- adaptive icon foreground PNG (`mipmap-{density}/ic_launcher_foreground.png`) 는 v1.5.13 에서 이미 신규 EmergencyRed 픽토그램으로 교체 완료. 본 패치는 OS 레벨 splash icon 라우팅 명시화만 담당.
+
+### Build / Release
+
+- 태그 `v1.5.14` push 로 `.github/workflows/release-aab.yml` 트리거 → `versionCode = 1000 + GITHUB_RUN_NUMBER`, `versionName = 1.5.14` 로 AAB + APK 빌드 후 GitHub Release 게시.
+- Play Console upload: 본 빌드의 AAB 를 Closed Testing 트랙에 promote → 12명 테스터에게 자동 배포.
+
+---
+
+## [1.5.13] - 2026-05-12
+
+### Changed — Brand Icon Refresh (EmergencyRed Pictogram)
+
+- **앱 런처 아이콘 신규 픽토그램 도입** — 흰 비상문(말풍선/문 결합 형상) + 빨간 사람(휴대폰을 귀에 대고 신호선 3 arc + 달리는 자세) 디자인. ISO 7010 비상구 표지의 시각 언어를 유지하면서 "통화 중 탈출" 메타포를 직접적으로 표현. SVG 원본 `docs/design/icon-v1.5.13.svg` (1254×1254 viewBox, 47 paths, EmergencyRed `#B71720` 단색 + 흰색).
+- **Adaptive icon 자산 일괄 교체** — `ic_launcher_background.xml` 단색 EmergencyRed `#B71720` 로 갱신 (`#1B2D4A` 네이비 → 빨강 환원). 전경은 비트맵으로 전환: 5개 density mipmap PNG (mdpi 48 / hdpi 72 / xhdpi 96 / xxhdpi 144 / xxxhdpi 192). `mipmap-anydpi-v26/ic_launcher.xml` + `ic_launcher_round.xml` 의 foreground 참조 `@drawable/ic_launcher_foreground` → `@mipmap/ic_launcher_foreground` 로 변경. monochrome 슬롯도 동일 비트맵 사용 (Android 13+ 테마 아이콘 시스템이 자동 마스킹/틴트).
+- **Legacy mipmap PNG 자산 추가** — `mipmap-mdpi`~`mipmap-xxxhdpi` 각 폴더에 `ic_launcher.png` + `ic_launcher_round.png` 추가 (Android 7 이하 단말이 adaptive icon 대신 사용).
+- **메인 화면 EJECT 버튼 비주얼 통일** — `EjectButton` composable 의 빨간 원 + 흰 hangup 글리프 → 라운드 스퀘어 비상구 픽토그램 이미지 (`ic_eject_button` drawable, 5 density)로 교체. 앱 아이콘과 즉시 시각 연관되도록 동일 디자인 적용. pulse 애니메이션 + halo + shadow는 보존. CANCEL 모드(빨간 원 + ✕)는 미변경 — "정지" 단순 메타포 유지.
+- **Play Store 아이콘 갱신** — `store-assets/ic_play_store_512.png` 신 디자인 512×512 PNG 로 교체.
+
+### Added
+- **`res/drawable-{density}/ic_eject_button.png`** — 5 density 인앱 EJECT 버튼 비트맵 (192~768 px).
+- **`res/mipmap-{density}/ic_launcher_foreground.png`** — 5 density adaptive foreground 비트맵.
+
+### Removed
+- `res/drawable/ic_launcher_foreground.xml` — 벡터 전경 (도망 사람 vector) 사용 중단. 비트맵 전경으로 대체.
+
+### Migration Notes
+- v1.6.0 Navy + Cream theme refactor (Unreleased 섹션)는 별도 브랜치(`feat/v1.6.0-navy-cream`)로 분리 검토 — 본 v1.5.13 은 EmergencyRed 브랜드 정체성 유지.
+- monochrome 슬롯 호환성: Android 13+ 의 themed icon 기능은 비트맵을 grayscale 마스크로 자동 변환. 시각적 일관성을 위해 향후 vector monochrome 자산 별도 제작 권장.
+- versionCode: CI `versionCodeOverride` 가 빌드 시 결정 (수동 변경 불필요).
+
+### Design Source
+- `docs/design/icon-v1.5.13.svg` — 디자이너 원본 SVG (1254×1254, EmergencyRed 단색 + 흰색).
+- `docs/design/ICON_REDESIGN_v1.5.13.md` — 디자인 근거 + 색상 사양 + density 매트릭스.
+
+---
+
 ## [1.5.12] - 2026-05-05
 
 ### Changed

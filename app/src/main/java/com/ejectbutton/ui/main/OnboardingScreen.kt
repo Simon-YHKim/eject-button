@@ -27,8 +27,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,20 +79,30 @@ fun OnboardingScreen(
 ) {
     val strings = LocalAppStrings.current
 
+    // v1.5.17 — onboarding 아이콘 매핑 갱신 (사용자 피드백 반영).
+    //  page 1 (Welcome)   : ⏏  → 🚨  (사이렌, 브랜드 컨셉 = 비상)
+    //  page 2 (Command)   : 🎯 → 🏃  (달리는 사람, "탈출" 메타포)
+    //  page 3 (Trigger)   : 🚨 → 📞  (전화기, "가짜 통화 발사" 메타포)
+    //  page 4 (Systems)   : ⚙ 유지   (앱 내 설정 아이콘 ⚙ 와 일관)
+    //  page 5 (final)     : 🚨 → Image(R.drawable.ic_eject_button)
+    //                       — OnboardingFinalContent 에서 별도 분기 (Mayday 페이지)
     val pages = remember(strings) {
         listOf(
             OnboardingPage(
-                emoji = "⏏",
+                emoji = "🚨",
                 title = strings.onboardingWelcomeTitle,
                 body  = strings.onboardingWelcomeBody,
             ),
             OnboardingPage(
-                emoji = "🎯",
+                // v1.5.20 — 🏃 → 👤 (caller chip default avatar emoji 와 통일).
+                // 사용자가 caller 추가 시 chip 에 보이는 emoji 와 같은 unicode 사용 →
+                // "DEPLOY 탭에서 누가 호출할지 정한다" 메타포가 시각적으로 일치.
+                emoji = "👤",
                 title = strings.onboardingCommandTitle,
                 body  = strings.onboardingCommandBody,
             ),
             OnboardingPage(
-                emoji = "🚨",
+                emoji = "📞",
                 title = strings.onboardingTriggerTitle,
                 body  = strings.onboardingTriggerBody,
             ),
@@ -288,7 +301,20 @@ private fun OnboardingPageContent(page: OnboardingPage) {
                 .border(1.dp, EjectOutlineVar, RoundedCornerShape(28.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(page.emoji, fontSize = 64.sp)
+            // v1.5.19 — page 4 (⚙ Systems) 만 앱 내 설정 아이콘 (Material Icons.Filled.Settings)
+            // 로 분기. 이전엔 emoji "⚙" 가 시스템 폰트 글리프라 다른 step (사이렌/사람/전화기/
+            // 앱 아이콘 픽토그램) 과 시각 톤 차이가 컸음. 사용자 피드백 "앱 내 설정 아이콘
+            // 사용" 반영. tint 는 page 1~3 emoji 색과 비슷한 EjectOnSurface (정상 진하기).
+            if (page.emoji == "⚙") {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = EjectOnSurface,
+                )
+            } else {
+                Text(page.emoji, fontSize = 64.sp)
+            }
         }
         Spacer(Modifier.height(32.dp))
         Text(
@@ -324,6 +350,9 @@ private fun OnboardingFinalContent() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        // v1.5.17 — 마지막 페이지 아이콘 = 앱 아이콘 (사용자 자산 ic_eject_button) 으로 변경.
+        // 이전 🚨 emoji 는 page 1 (Welcome) 으로 이동했고, 여기는 "비상탈출 완료 — 이제
+        // 시작" 마무리 페이지라 앱 아이덴티티를 직접 노출하는 게 자연스럽다.
         Box(
             modifier = Modifier
                 .size(160.dp)
@@ -332,7 +361,13 @@ private fun OnboardingFinalContent() {
                 .border(2.dp, EjectCoral, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text("🚨", fontSize = 72.sp)
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(
+                    com.ejectbutton.R.drawable.ic_eject_button
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+            )
         }
         Spacer(Modifier.height(24.dp))
         Text(

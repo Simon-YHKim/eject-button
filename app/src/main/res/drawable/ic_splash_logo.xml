@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    v1.5.17 — Android 12+ system splash screen icon (잘림 fix).
+
+    Issue (사용자 보고): "로딩화면은 아이콘이 좀 잘려서 적용이 된듯. 잘리는 부분
+    없게 수정". 직전 v1.5.14 의 windowSplashScreenAnimatedIcon = @mipmap/ic_launcher
+    는 adaptive icon XML 을 그대로 splash 의 192dp 캔버스에 그렸는데, adaptive
+    foreground 가 108dp 캔버스 가득 사용하는 디자인 (사용자 자산) 이라 splash
+    mask 가장자리에 살짝 잘림 발생.
+
+    Fix: ic_launcher_foreground (raster, 5 density) 를 25% inset 으로 감싼다.
+    192dp 캔버스 안에 글리프가 약 144dp 영역에 들어가도록 안전영역 보장.
+    Android 12+ 권장 splash icon 안전영역과 일치.
+
+    inset 25% = 양쪽 25% 패딩 = 글리프 영역 = 100% - 50% = 50% (캔버스의 절반).
+    실제 시각: splash 192dp → 글리프 ~96dp. 잘림 없음 보장.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@mipmap/ic_launcher_foreground"
+    android:inset="25%" />

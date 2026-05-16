@@ -77,3 +77,16 @@ artifacts-v*/
 extracted/
 extracted-final/
 rn-*.txt
+# v1.5.15 - debug splash captures
+splash_*.png
+# v1.5.15 - intermediate scratch (changelog blocks, commit msgs)
+*.tmp
+
+# v1.5.21 cleanup - local release build folder (260MB+ binaries, do not track)
+release-builds/
+
+# v1.5.21 cleanup - Kotlin daemon session cache (IDE local)
+.kotlin/
+
+# v1.5.21 cleanup - ad-hoc QA dumps (uiautomator output)
+ui*.xml

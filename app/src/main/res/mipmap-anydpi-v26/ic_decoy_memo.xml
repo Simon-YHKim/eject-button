@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    v1.5.16 - Decoy_Note user-provided raster (1024px PNG) applied as
+    ic_decoy_memo across 5 density mipmap (Note -> memo naming alignment).
+    See ic_decoy_calculator.xml header for rationale.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_decoy_memo_bg"/>
-    <foreground android:drawable="@drawable/ic_decoy_memo_fg"/>
-    <monochrome android:drawable="@drawable/ic_decoy_memo_fg"/>
+    <foreground android:drawable="@mipmap/ic_decoy_memo_foreground"/>
+    <monochrome android:drawable="@mipmap/ic_decoy_memo_foreground"/>
 </adaptive-icon>
