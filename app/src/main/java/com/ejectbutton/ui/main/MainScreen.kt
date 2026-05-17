@@ -818,10 +818,12 @@ fun MainScreen(
             }
         }
 
-        // 하단 고정 영역: 광고 + 탭바.
-        // EjectBg 불투명 배경으로 스크롤 컨텐츠가 비쳐 보이지 않도록 한다.
-        // (과거엔 배경이 투명해 SideButtonModeCard 같은 하단 콘텐츠가
-        //  '애매하게' 가려 보였던 문제를 해결)
+        // 하단 고정 영역: 탭바(위) + 광고(아래).
+        // v1.6.1 — 사용자 피드백: 탭바와 광고 위치 교체. 광고를 BottomBar 위가
+        //  아니라 아래로 옮겨서, 탭(출동/기록/설정) 가까이 손가락이 닿는
+        //  자리에 광고가 끼어드는 것을 방지. 광고는 화면 최하단에 안정적으로
+        //  앉아 있고, 사용자의 1차 컨트롤(탭)이 위로 올라가 조작 흐름이
+        //  자연스러워진다.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -829,21 +831,21 @@ fun MainScreen(
                 .background(EjectBg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // 네이티브 광고 (무료 사용자만)
-            if (!isPremium) {
-                val nativeAd by AdManager.nativeAd.collectAsState()
-                nativeAd?.let { ad ->
-                    NativeAdCard(ad = ad, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp))
-                }
-                Spacer(Modifier.height(8.dp))
-            }
-
             BottomBar(
                 current = currentScreen,
                 isPremium = isPremium,
                 onSelect = { currentScreen = it },
                 onPremiumTap = { showPremiumSheet = true },
             )
+
+            // 네이티브 광고 (무료 사용자만) — 탭바 아래 위치
+            if (!isPremium) {
+                Spacer(Modifier.height(8.dp))
+                val nativeAd by AdManager.nativeAd.collectAsState()
+                nativeAd?.let { ad ->
+                    NativeAdCard(ad = ad, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp))
+                }
+            }
             Spacer(Modifier.height(12.dp))
         }
 
@@ -898,7 +900,11 @@ private fun CommandContent(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(14.dp))
+        // v1.6.1 — 한 화면 fit: top spacer 14→8, 섹션 간 spacer 24→16 으로 일괄
+        //   축소. EJECT 버튼 80% 축소(260→208dp)와 합쳐 ≈84dp 절약 → 광고+
+        //   네비 영역(≈100dp)이 들어와도 스크롤 없이 한 화면에 모든 컨트롤
+        //   (출동 버튼·캐릭터·타이밍·트리거 모드) 노출.
+        Spacer(Modifier.height(8.dp))
         StitchTopBar(
             onSettingsTap = onSettingsTap,
             // v1.5.1 — 코치마크 Step 4 spotlight 등록 (라운드 사각형 — IconButton 자체가 정사각형이라 RoundRect 로).
@@ -911,7 +917,7 @@ private fun CommandContent(
             },
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // 카운트다운 배너
         AnimatedVisibility(
@@ -1015,7 +1021,7 @@ private fun CommandContent(
                 onClick = { if (isCancelMode) onCancel() else onEject() },
             )
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             text          = strings.noEscapeLabel,
             fontSize      = 13.sp,
@@ -1023,13 +1029,13 @@ private fun CommandContent(
             fontWeight    = FontWeight.Medium,
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // v1.5.7 라운드 1 — SectionHeader 를 register Box 밖으로.
         // 이전 wrap 패턴: ring = 헤더 + 12dp + chips (헤더가 ring 안에 통째 보였음).
         // 변경: SectionHeader 외부 / Box(register) 가 chips 만 wrap → ring ≈ chips 영역.
         SectionHeader(strings.sectionCaller)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1047,11 +1053,11 @@ private fun CommandContent(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // v1.5.6 — 신규 step "timing" — wrap 패턴 (v1.5.5 와 동일).
         SectionHeader(strings.sectionDelay)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1066,7 +1072,7 @@ private fun CommandContent(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // v1.5.6 — 트리거 모드 — wrap 패턴 (v1.5.5 와 동일).
         SectionHeader(strings.sectionTriggerMode)
@@ -1991,9 +1997,15 @@ private fun EjectButton(
     // v1.5.13 — EJECT 버튼 비주얼: 런처 아이콘과 통일된 비상구 픽토그램 비트맵 사용.
     // 일반 모드(EJECT): 라운드 스퀘어 비트맵 이미지 (red bg + 흰 문 + 빨간 figure).
     // 취소 모드(CANCEL): 기존 빨간 원 + ✕ UI 유지 (취소는 단순 정지 메타포).
+    //
+    // v1.6.1 — 와이프 피드백: 출동 화면의 모든 콘텐츠가 스크롤 없이 한 화면에
+    //   보이도록 EJECT 버튼을 기존 대비 80% 로 축소. 260/252/232dp 의 outer/halo/
+    //   inner triplet → 208/202/186dp. Cancel ✕ Text fontSize 72sp → 58sp,
+    //   letterSpacing 4sp → 3sp 도 동일 비율 축소. ContentScale.Fit 라서 픽토
+    //   그램 자체는 새 사이즈에 맞게 자동으로 다운스케일됨.
     Box(
         modifier = Modifier
-            .size(260.dp)
+            .size(208.dp)
             .scale(scale),
         contentAlignment = Alignment.Center,
     ) {
@@ -2001,49 +2013,49 @@ private fun EjectButton(
             // Cancel 모드: 기존 빨간 원 ✕
             Box(
                 modifier = Modifier
-                    .size(252.dp)
+                    .size(202.dp)
                     .clip(CircleShape)
                     .background(EjectCoral.copy(alpha = 0.10f))
             )
             Box(
                 modifier = Modifier
-                    .size(232.dp)
+                    .size(186.dp)
                     .shadow(
-                        elevation    = 18.dp,
+                        elevation    = 14.dp,
                         shape        = CircleShape,
                         ambientColor = EjectCoral.copy(alpha = 0.35f),
                         spotColor    = EjectCoral.copy(alpha = 0.35f),
                     )
                     .clip(CircleShape)
                     .background(EjectCoral)
-                    .border(4.dp, EjectCoral, CircleShape)
+                    .border(3.dp, EjectCoral, CircleShape)
                     .clickable(onClick = onClick),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "✕",
-                        fontSize   = 72.sp,
+                        fontSize   = 58.sp,
                         color      = Color.White,
                         fontWeight = FontWeight.ExtraBold,
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(5.dp))
                     Text(
                         strings.dialogCancel.uppercase(Locale.getDefault()),
-                        fontSize      = 13.sp,
+                        fontSize      = 11.sp,
                         color         = Color.White,
                         fontWeight    = FontWeight.ExtraBold,
-                        letterSpacing = 4.sp,
+                        letterSpacing = 3.sp,
                     )
                 }
             }
         } else {
             // EJECT 모드: 신규 비상구 픽토그램 비트맵 (런처 아이콘과 통일).
             // 라운드 스퀘어 형태로 사용자가 앱 아이콘과 즉시 연관 인식하도록.
-            val haloShape = androidx.compose.foundation.shape.RoundedCornerShape(48.dp)
+            val haloShape = androidx.compose.foundation.shape.RoundedCornerShape(40.dp)
             Box(
                 modifier = Modifier
-                    .size(252.dp)
+                    .size(202.dp)
                     .clip(haloShape)
                     .background(EjectCoral.copy(alpha = 0.10f))
             )
@@ -2053,9 +2065,9 @@ private fun EjectButton(
                 ),
                 contentDescription = strings.ejectButtonLabel,
                 modifier = Modifier
-                    .size(232.dp)
+                    .size(186.dp)
                     .shadow(
-                        elevation    = 18.dp,
+                        elevation    = 14.dp,
                         shape        = haloShape,
                         ambientColor = EjectCoral.copy(alpha = 0.35f),
                         spotColor    = EjectCoral.copy(alpha = 0.35f),

@@ -351,24 +351,17 @@ private fun OnboardingFinalContent() {
         verticalArrangement = Arrangement.Center,
     ) {
         // v1.5.17 — 마지막 페이지 아이콘 = 앱 아이콘 (사용자 자산 ic_eject_button) 으로 변경.
-        // 이전 🚨 emoji 는 page 1 (Welcome) 으로 이동했고, 여기는 "비상탈출 완료 — 이제
-        // 시작" 마무리 페이지라 앱 아이덴티티를 직접 노출하는 게 자연스럽다.
-        Box(
-            modifier = Modifier
-                .size(160.dp)
-                .clip(CircleShape)
-                .background(EjectCoral.copy(alpha = 0.12f))
-                .border(2.dp, EjectCoral, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            androidx.compose.foundation.Image(
-                painter = androidx.compose.ui.res.painterResource(
-                    com.ejectbutton.R.drawable.ic_eject_button
-                ),
-                contentDescription = null,
-                modifier = Modifier.size(120.dp),
-            )
-        }
+        // v1.6.1 — 와이프 피드백: 아이콘 주변의 동그라미 (clip CircleShape + alpha
+        //   background + 2dp border) 가 아이콘과 톤이 따로 놀고 brand identity
+        //   를 약화시킨다. Box wrapper 를 통째로 제거하고 Image 만 단독 렌더.
+        //   사이즈는 기존 (인사이드 120dp) 와 visual 균형 맞춰 144dp 로 약간 키움.
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(
+                com.ejectbutton.R.drawable.ic_eject_button
+            ),
+            contentDescription = null,
+            modifier = Modifier.size(144.dp),
+        )
         Spacer(Modifier.height(24.dp))
         Text(
             text       = strings.onboardingFinalTitle,
