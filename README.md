@@ -93,19 +93,25 @@
 
 ## 📦 출시
 
-- **현재 버전**: v1.6.0 (2026-05-17)
-- **현재 트랙**: 프로덕션 출시 준비 (closed testing 14일 충족)
-- **출시 listing**: 7개 언어 완료 ([`playconsole-assets/listings/`](playconsole-assets/listings/))
+- **현재 버전**: v1.6.3 (2026-05-17)
+- **현재 트랙**: 프로덕션 액세스 신청 자격 충족 (closed testing 14일 + 12명 이상 ✓)
+- **출시 listing**: 7개 언어 완료 — `playconsole-assets/listings/` (v1.5) + [`playconsole-assets/store-listing-i18n/v1.6.3-translations.md`](playconsole-assets/store-listing-i18n/v1.6.3-translations.md) (v1.6.3 신규 톤)
+- **단일 main 브랜치** — 레거시 브랜치 (`Eject_Button_app`, `before-release`) 정리됨
 - **APK 사이드로드**: [GitHub Releases](https://github.com/Simon-YHKim/eject-button/releases) 의 최신 태그에서 `app-debug-v*.apk` 다운로드
 
-### v1.6.0 주요 변경 (vs v1.5.x 시리즈 종합)
+### v1.6.x 시리즈 주요 변경 (vs v1.5.x 종합)
 
 | 영역 | 변경 |
 |---|---|
-| 잠금화면 우회 | full-screen intent + `IncomingCallActivity` trampoline + secure keyguard passive overlay 전략 (인증 prompt 없이 통화 화면 노출) |
-| Decoy picker | placeholder 🎭 emoji → v1.5.16 사용자 디자인 4종 launcher 아이콘 (계산기·메모·날씨·시계) 채택 (메인 + 설정 + picker dialog 일관) |
-| 7국 i18n 톤 | de91b49 의 ko-only 친근화를 6국 (en/zhCN/zhTW/ja/es/hi) 으로 확장. 군용 어휘 (loadout/装备/Equipo táctico/गियर 등) → 친근한 본부 무전사 voice 매칭 |
-| 리포 hygiene | dead code 8개 drawable 제거, root 45MB 잡파일 정리, EOL 정책 (`.gitattributes`), `release-builds/` 트래킹 차단 |
+| AdMob compliance (v1.6.3) | native ad `iconView (ImageView, 48dp)` → `mediaView (MediaView, 120dp)`. validator "MediaView not used" + "too small for video" 두 단계 통과. image/video 광고 풀 quality 노출 |
+| 앱 아이콘 (v1.6.3) | `1. App Icon_rev2.png` (1068×1090 EmergencyRed) 적용. 5 dpi × 4 variant = 20개 PNG 재생성. Pixel adaptive mask 정상, Android 13+ themed icon 호환 |
+| i18n 일관성 (v1.6.3) | 7개 로케일 시그너처 onomatopoeia (`삐뽀삐뽀`/`Beep beep!`/`嘀嘀！`/`ピーポー`/`¡Bip bip!`/`बीप बीप`) + 군사용어 비유 (`본부`/`HQ`/`总部`/`cuartel`/`मुख्यालय`) + 이모지 prefix 정렬 |
+| 와이프 feedback (v1.6.2) | 7 polish items — premium feature3 (false promise) 제거, 가격 ₩1,900 → ₩3,000 + 14국 PPP 재책정 |
+| 단일 화면 (v1.6.1) | Command 탭 단일 스크린화 + tutorial polish + brand rev2 자산 |
+| 잠금화면 우회 (v1.6.0) | full-screen intent + `IncomingCallActivity` trampoline + secure keyguard passive overlay 전략 (인증 prompt 없이 통화 화면 노출) |
+| Decoy picker (v1.6.0) | placeholder 🎭 emoji → v1.5.16 사용자 디자인 4종 launcher 아이콘 (계산기·메모·날씨·시계) 채택 (메인 + 설정 + picker dialog 일관) |
+| 7국 i18n 톤 (v1.6.0) | de91b49 의 ko-only 친근화를 6국 (en/zhCN/zhTW/ja/es/hi) 으로 확장. 군용 어휘 (loadout/装备/Equipo táctico/गियर 등) → 친근한 본부 무전사 voice 매칭 |
+| 리포 hygiene (v1.5.21) | dead code 8개 drawable 제거, root 45MB 잡파일 정리, EOL 정책 (`.gitattributes`), `release-builds/` 트래킹 차단 |
 
 ## 🤝 개발자
 
@@ -119,7 +125,10 @@
 
 | 버전 | 핵심 변경 |
 |---|---|
-| **v1.6.0** | 종합 정리·출시 — 7국 톤 + 잠금화면 우회 + decoy picker + 리포 hygiene |
+| **v1.6.3** | 최종 audit — AdMob native ad MediaView 120dp + rev2 아이콘 + i18n consistency + main 단일 브랜치 |
+| v1.6.2 | 와이프 feedback 7 polish (premium feature3 제거, 가격 ₩1,900→₩3,000 + 14국 PPP) |
+| v1.6.1 | Command 탭 단일 스크린 + tutorial polish + brand rev2 자산 |
+| v1.6.0 | 종합 정리·출시 — 7국 톤 + 잠금화면 우회 + decoy picker + 리포 hygiene |
 | v1.5.26 | foreground service notification heads-up 제거 (LOW 채널 환원) |
 | v1.5.25 | secure keyguard 인증 prompt 회피 (passive overlay) |
 | v1.5.24 | trigger 발동 시 IncomingCallActivity 직접 startActivity (background activity start allowlist) |
