@@ -904,20 +904,27 @@ private fun CommandContent(
         //   축소. EJECT 버튼 80% 축소(260→208dp)와 합쳐 ≈84dp 절약 → 광고+
         //   네비 영역(≈100dp)이 들어와도 스크롤 없이 한 화면에 모든 컨트롤
         //   (출동 버튼·캐릭터·타이밍·트리거 모드) 노출.
-        Spacer(Modifier.height(8.dp))
+        // v1.6.2 — 와이프 피드백: v1.6.1 의 spacing 이 너무 좁아 시각 답답함.
+        //   8→12 / 10→14 / 16→20 일괄 +4dp 증가. EJECT 버튼은 208dp 유지 +
+        //   광고 크기 유지 (그대로) → 한 화면 fit 도 유지하며 breathing room 확보.
+        Spacer(Modifier.height(12.dp))
         StitchTopBar(
             onSettingsTap = onSettingsTap,
             // v1.5.1 — 코치마크 Step 4 spotlight 등록 (라운드 사각형 — IconButton 자체가 정사각형이라 RoundRect 로).
+            // v1.6.2 — 와이프 피드백: TopBar IconButton 의 spotlight 가 너무 크게 표시.
+            //   register rect 자체를 80% 로 deflate 해서 spotlight 가 element 면적에
+            //   더 fit 되도록. 두 IconButton 이 동일 사이즈 (40dp) 라서 deflated
+            //   결과도 동일 → step 5(disguise)/6(settings) spotlight 크기 균일.
             onSettingsBoundsChanged = { rect ->
-                coachmark.register("settings", rect, SpotShape.RoundRect)
+                coachmark.register("settings", shrinkRect(rect, 0.8f), SpotShape.RoundRect)
             },
             // v1.5.12 — 코치마크 Step 6 (위장 토글) spotlight 등록.
             onDisguiseBoundsChanged = { rect ->
-                coachmark.register("disguise", rect, SpotShape.RoundRect)
+                coachmark.register("disguise", shrinkRect(rect, 0.8f), SpotShape.RoundRect)
             },
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // 카운트다운 배너
         AnimatedVisibility(
@@ -1021,7 +1028,7 @@ private fun CommandContent(
                 onClick = { if (isCancelMode) onCancel() else onEject() },
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(14.dp))
         Text(
             text          = strings.noEscapeLabel,
             fontSize      = 13.sp,
@@ -1029,13 +1036,13 @@ private fun CommandContent(
             fontWeight    = FontWeight.Medium,
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // v1.5.7 라운드 1 — SectionHeader 를 register Box 밖으로.
         // 이전 wrap 패턴: ring = 헤더 + 12dp + chips (헤더가 ring 안에 통째 보였음).
         // 변경: SectionHeader 외부 / Box(register) 가 chips 만 wrap → ring ≈ chips 영역.
         SectionHeader(strings.sectionCaller)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1053,11 +1060,11 @@ private fun CommandContent(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // v1.5.6 — 신규 step "timing" — wrap 패턴 (v1.5.5 와 동일).
         SectionHeader(strings.sectionDelay)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         Box(
             modifier = Modifier
                 .onGloballyPositioned { coords ->
@@ -1072,7 +1079,7 @@ private fun CommandContent(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // v1.5.6 — 트리거 모드 — wrap 패턴 (v1.5.5 와 동일).
         SectionHeader(strings.sectionTriggerMode)
@@ -1101,6 +1108,29 @@ private fun CommandContent(
 
         Spacer(Modifier.height(28.dp))
     }
+}
+
+/**
+ * v1.6.2 — Deflate a Compose Rect to a percentage of its original size, keeping
+ *   the center. Used by coachmark register sites where the underlying element's
+ *   bounding box is larger than the visual hit-target and the spotlight should
+ *   hug the icon more tightly (e.g. TopBar IconButton steps 5 + 6).
+ *
+ *   factor = 0.8f → spotlight width/height shrinks to 80% of the original rect,
+ *   center stays put. With CoachmarkOverlay's existing `pad = 8dp` baseline, the
+ *   net cutout area lands at ~80% of the old spotlight.
+ */
+private fun shrinkRect(rect: androidx.compose.ui.geometry.Rect, factor: Float): androidx.compose.ui.geometry.Rect {
+    val cx = rect.center.x
+    val cy = rect.center.y
+    val w = rect.width * factor
+    val h = rect.height * factor
+    return androidx.compose.ui.geometry.Rect(
+        left = cx - w / 2f,
+        top  = cy - h / 2f,
+        right  = cx + w / 2f,
+        bottom = cy + h / 2f,
+    )
 }
 
 @Composable
@@ -1565,13 +1595,15 @@ private fun SystemsContent(
                         fontSize = 14.sp,
                         color    = EjectOnPrimaryContainer,
                     )
-                    // v1.5.9 — 프리미엄 혜택 리스트. premiumFeature1/2/3 (이미 7개 언어 string)
-                    // 을 카드에 표시해 "업그레이드하면 무엇을 얻는가" 명확화.
+                    // v1.5.9 — 프리미엄 혜택 리스트.
+                    // v1.6.2 — premiumFeature3 (통화중 대사 힌트 / In-call briefing
+                    //   cues) 제거. 해당 기능 미지원 상태인데 결제 페이지에서
+                    //   "잠금 해제됨" 으로 표시되어 사용자에게 거짓 약속 소지.
+                    //   premiumFeature1/2 (광고 제거 / 무제한 호출 대상) 만 노출.
                     Spacer(Modifier.height(16.dp))
                     listOf(
                         strings.premiumFeature1,
                         strings.premiumFeature2,
-                        strings.premiumFeature3,
                     ).forEach { feature ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1668,11 +1700,11 @@ private fun SystemsContent(
                         color    = EjectOnPrimaryContainer,
                     )
                     // 활성 features 리스트 (premium 카드와 동일 키 재사용, ✓ 아이콘으로 활성 강조)
+                    // v1.6.2 — premiumFeature3 제거 (위 카드와 동일 이유).
                     Spacer(Modifier.height(16.dp))
                     listOf(
                         strings.premiumFeature1,
                         strings.premiumFeature2,
-                        strings.premiumFeature3,
                     ).forEach { feature ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -2653,19 +2685,28 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
  */
 @Composable
 private fun localizedFallbackPrice(): String {
+    // v1.6.2 — 구독료 인상 (₩1,900 → ₩3,000) + 14국 PPP 재책정.
+    //   Play Console 의 실제 product 가격은 Simon 이 직접 설정해야 하며,
+    //   이 fallback 은 BillingClient 가 아직 product 못 받아왔을 때 (제품 미등록·
+    //   오프라인·디버그) 만 쓰는 임시 표시. 실제 결제 가격과 100% 일치하도록
+    //   Play Console 도 같이 갱신 필요. PPP (Purchasing Power Parity) 기준:
+    //   한국 ₩3,000 = US $2.49 ≈ €2.29 ≈ £1.99 ≈ ¥350 (JP) ≈ ¥15 (CN).
     val country = Locale.getDefault().country
     return when (country) {
-        "KR" -> "₩1,900"
-        "JP" -> "¥250"
-        "CN", "TW", "HK" -> "¥9.9"
-        "IN" -> "₹99"
-        "MX" -> "MX\$29"
-        "ES" -> "1,49 €"
-        "GB" -> "£1.49"
-        "DE", "FR", "IT", "NL" -> "1,49 €"
-        "BR" -> "R\$6.90"
-        "AU" -> "A\$1.99"
-        "CA" -> "CA\$1.99"
-        else -> "$1.99"
+        "KR" -> "₩3,000"
+        "JP" -> "¥350"
+        "CN" -> "¥15"
+        "TW" -> "NT\$70"
+        "HK" -> "HK\$18"
+        "IN" -> "₹149"
+        "MX" -> "MX\$45"
+        "ES" -> "2,29 €"
+        "GB" -> "£1.99"
+        "DE", "FR", "IT", "NL" -> "2,29 €"
+        "BR" -> "R\$10.90"
+        "AU" -> "A\$3.49"
+        "CA" -> "CA\$3.29"
+        "ID" -> "Rp35.000"
+        else -> "\$2.49"
     }
 }
