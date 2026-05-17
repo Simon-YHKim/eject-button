@@ -78,6 +78,7 @@ import com.ejectbutton.ui.coachmark.SpotShape
 import com.ejectbutton.ui.coachmark.rememberCoachmarkState
 import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
+import com.google.android.gms.ads.nativead.MediaView
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
 import com.microsoft.clarity.modifiers.clarityMask
@@ -2579,32 +2580,30 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
                 )
             }
 
-            val iconView = ImageView(ctx).apply {
-                // v1.5.19 — AdMob native ad validator 32×32dp 정책 강화.
-                //
-                // v1.5.17: layoutParams 22dp → 32dp 만 변경 → validator 여전히 violation.
-                //
-                // 진단:
-                //  (1) ScaleType.FIT_CENTER 가 작은 raster icon 을 view 안에 비율 유지
-                //      해서 그리니까 rendered content 가 32dp 미만으로 측정됨.
-                //  (2) update 람다에서 drawable null 일 때 view.GONE → 0×0 violation.
-                //  (3) layoutParams 만으론 measure 시 view 가 줄어들 수 있음.
-                //
-                // v1.5.19 다중 안전장치:
-                //  (a) 48dp 로 상향 (32dp 마진 안에서 보수적으로).
-                //  (b) minimumWidth/Height 명시 → measure 시 절대 줄어들지 않음.
-                //  (c) ScaleType.CENTER_INSIDE → image 가 view 안에서 비율 유지하며 fit,
-                //      view 자체 사이즈는 layoutParams 그대로.
-                //  (d) adjustViewBounds = false → image bitmap 따라 view 가 줄어들지 X.
-                //  (e) visibility = VISIBLE 유지 (update 람다에서 GONE 안 하고
-                //      placeholder drawable 사용).
-                layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply {
+            // v1.6.3 — AdMob native ad validator 풀 compliance.
+            //
+            // 정책 히스토리:
+            //  (1) v1.5.19: iconView 32dp 정책 (>=32dp). 48dp 로 충족.
+            //  (2) v1.6.3 #1: "MediaView not used for main image or video asset"
+            //      → iconView(ImageView) 를 mediaView(MediaView) 로 교체.
+            //  (3) v1.6.3 #2: "MediaView is too small for video" (>=120×120dp).
+            //      → 48dp → 120dp 로 확대. 1행 컴팩트 디자인은 살짝 커지지만
+            //        image / video 광고 양쪽 정상 노출 + validator 완전 통과.
+            //
+            // 동작:
+            //  - MediaView 는 image / video 양쪽을 자동 처리. setNativeAd(ad) 호출 시
+            //    SDK 가 `ad.mediaContent` 를 자동 바인딩하므로 update 람다에서 별도
+            //    drawable 세팅 불필요.
+            //  - imageScaleType CENTER_CROP → 1.91:1 media 자산도 정사각 안에서 잘림.
+            //  - minimumWidth/Height + adjustViewBounds=false 로 measure 단계
+            //    축소 방지.
+            val mediaView = MediaView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(120), dp(120)).apply {
                     marginEnd = dp(10)
                 }
-                minimumWidth = dp(48)
-                minimumHeight = dp(48)
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-                adjustViewBounds = false
+                minimumWidth = dp(120)
+                minimumHeight = dp(120)
+                setImageScaleType(ImageView.ScaleType.CENTER_CROP)
             }
 
             val headlineView = TextView(ctx).apply {
@@ -2637,35 +2636,21 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
                 }
             }
 
-            row.addView(iconView)
+            row.addView(mediaView)
             row.addView(headlineView)
             row.addView(badgeView)
             adView.addView(row)
 
-            adView.iconView     = iconView
+            adView.mediaView    = mediaView
             adView.headlineView = headlineView
             adView
         },
         update = { adView ->
-            val iconView     = adView.iconView as? ImageView
             val headlineView = adView.headlineView as? TextView
-
-            // v1.5.19 — drawable null 일 때도 view 를 GONE 으로 바꾸지 않는다.
-            // GONE 으로 바꾸면 view 사이즈가 0×0 으로 측정되어 AdMob native ad
-            // validator 가 "Resolution less than 32x32dp" 경고를 띄운다 (정책상
-            // iconView 등록된 view 는 항상 32dp 이상이어야 한다). drawable 이
-            // 비어있는 ad 의 경우 앱 아이콘 placeholder 로 보여주고 view 사이즈를
-            // 48dp 로 유지한다.
-            val iconDrawable = ad.icon?.drawable
-            if (iconDrawable != null) {
-                iconView?.setImageDrawable(iconDrawable)
-            } else {
-                iconView?.setImageResource(com.ejectbutton.R.drawable.ic_eject_button)
-            }
-            iconView?.visibility = android.view.View.VISIBLE
             headlineView?.text = ad.headline ?: ad.body ?: ""
 
-            // impression + click 집계를 위한 필수 호출.
+            // impression + click 집계 + mediaContent → mediaView 자동 바인딩.
+            // SDK 가 ad.mediaContent (image / video) 를 mediaView 에 알아서 렌더.
             adView.setNativeAd(ad)
         },
     )
