@@ -12,6 +12,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,6 +39,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -547,31 +550,63 @@ fun MainScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
             // Round 11 — COMMAND ↔ HISTORY ↔ SYSTEMS 탭 스와이프.
-            // 드래그 누적 거리를 저장했다가 onDragEnd 시점에 단 한 번만 판정해
+            // 드래그 누적 거리를 저장했다가 onUp 시점에 단 한 번만 판정해
             // 어떤 속도/길이의 제스처에서도 항상 "한 번 스와이프 = 한 탭 이동" 보장.
             //
             // v1.5.1 — 코치마크 활성 시 차단. coachmark.isActive 를 pointerInput key 로 두어
             // 코치마크 시작/종료 시 제스처 핸들러가 새로 매칭되도록 강제.
+            //
+            // v1.6.4 — `detectHorizontalDragGestures` 가 child 의 verticalScroll 을
+            //   막는 케이스 발견 (사용자 폰 1080x2340 Galaxy 에서 SideButton 모드 시
+            //   SideButtonModeCard 가 화면 아래 잘리고 vertical scroll 도 안 됨).
+            //   원인: detectHorizontalDragGestures 의 internal touch-slop 대기 동안
+            //   vertical drag 도 함께 가로채 child verticalScroll 로 통과 안 함.
+            //   해결: awaitEachGesture 로 direct gesture 처리 + vertical 우세 판정
+            //   시 즉시 release. child verticalScroll 이 vertical drag 를 정상 처리.
             .pointerInput(coachmark.isActive) {
                 if (coachmark.isActive) return@pointerInput
-                var totalDrag = 0f
-                detectHorizontalDragGestures(
-                    onDragStart  = { totalDrag = 0f },
-                    onDragCancel = { totalDrag = 0f },
-                    onDragEnd = {
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val pointerId = down.id
+                    var totalX = 0f
+                    var totalY = 0f
+                    var lockedHorizontal = false
+                    var releasedToChild = false
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                        if (!change.pressed) break
+                        val delta = change.positionChange()
+                        totalX += delta.x
+                        totalY += delta.y
+                        if (!lockedHorizontal && !releasedToChild) {
+                            val absX = kotlin.math.abs(totalX)
+                            val absY = kotlin.math.abs(totalY)
+                            if (absY > slop && absY > absX) {
+                                // Vertical dominant — release: child verticalScroll 이
+                                // vertical drag 를 받아 정상 스크롤. 본 핸들러는 종료.
+                                releasedToChild = true
+                                return@awaitEachGesture
+                            }
+                            if (absX > slop && absX > absY) {
+                                lockedHorizontal = true
+                            }
+                        }
+                        if (lockedHorizontal) {
+                            change.consume()
+                        }
+                    }
+                    // 포인터 up — horizontal 잠금 상태였으면 탭 이동 판정
+                    if (lockedHorizontal) {
                         val screens = AppScreen.entries
                         val cur = screens.indexOf(currentScreen)
-                        // 60f 는 의도한 스와이프만 통과시키는 실측 임계값
-                        // (너무 낮으면 스크롤 중의 횡 흔들림이 탭 이동으로 오인됨).
-                        if (totalDrag < -60f && cur < screens.size - 1) {
+                        if (totalX < -60f && cur < screens.size - 1) {
                             currentScreen = screens[cur + 1]
-                        } else if (totalDrag > 60f && cur > 0) {
+                        } else if (totalX > 60f && cur > 0) {
                             currentScreen = screens[cur - 1]
                         }
-                        totalDrag = 0f
-                    },
-                ) { _, dragAmount ->
-                    totalDrag += dragAmount
+                    }
                 }
             },
     ) {
@@ -1107,7 +1142,14 @@ private fun CommandContent(
             )
         }
 
-        Spacer(Modifier.height(28.dp))
+        // v1.6.4 — Side button 모드일 때 화면 하단에 SideButtonModeCard 가 가려지지
+        //   않도록 추가 bottom buffer. parent Box 의 padding(bottom=120dp) 만으로는
+        //   Samsung One UI / 일부 폰에서 system gesture bar + 광고 + 탭 영역에
+        //   카드 하단이 가려지는 케이스 보고 (사용자 폰 1080x2340 Galaxy). 카드 노출 시
+        //   extra 100dp spacer 추가 → verticalScroll(rememberScrollState) 가 명확히
+        //   스크롤 가능 영역을 만들어 카드 전체 + breathing room 확보. 다른 모드
+        //   (탭/흔들기) 는 28dp 유지 — 한 화면 fit 의도 보존.
+        Spacer(Modifier.height(if (selectedMode == ModeChoice.SIDE_BUTTON) 128.dp else 28.dp))
     }
 }
 
