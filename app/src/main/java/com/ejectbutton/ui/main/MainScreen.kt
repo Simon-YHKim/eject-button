@@ -2622,15 +2622,20 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
                 )
             }
 
-            // v1.6.3 — AdMob native ad validator 풀 compliance.
+            // v1.6.5 — 사용자 디자인 피드백: 광고 카드 너무 큼 (v1.6.3 의 120dp
+            //   은 video validator 풀 compliance 위함이었음). 2/3 축소 → 80dp.
             //
             // 정책 히스토리:
-            //  (1) v1.5.19: iconView 32dp 정책 (>=32dp). 48dp 로 충족.
+            //  (1) v1.5.19: iconView 32dp 정책. 48dp 로 충족.
             //  (2) v1.6.3 #1: "MediaView not used for main image or video asset"
             //      → iconView(ImageView) 를 mediaView(MediaView) 로 교체.
             //  (3) v1.6.3 #2: "MediaView is too small for video" (>=120×120dp).
-            //      → 48dp → 120dp 로 확대. 1행 컴팩트 디자인은 살짝 커지지만
-            //        image / video 광고 양쪽 정상 노출 + validator 완전 통과.
+            //      → 120dp 로 확대 → validator 완전 통과.
+            //  (4) v1.6.5: 사용자 디자인 피드백 → 80dp 로 축소 (2/3).
+            //      Trade-off: validator video size warning 재발 가능. 다만
+            //      hard error 아닌 warning 이고, video 광고 미노출 시 무관.
+            //      "MediaView not used for main image or video asset" hard error
+            //      는 여전히 회피 (MediaView 자체는 존재).
             //
             // 동작:
             //  - MediaView 는 image / video 양쪽을 자동 처리. setNativeAd(ad) 호출 시
@@ -2640,11 +2645,11 @@ private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
             //  - minimumWidth/Height + adjustViewBounds=false 로 measure 단계
             //    축소 방지.
             val mediaView = MediaView(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(120), dp(120)).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(80), dp(80)).apply {
                     marginEnd = dp(10)
                 }
-                minimumWidth = dp(120)
-                minimumHeight = dp(120)
+                minimumWidth = dp(80)
+                minimumHeight = dp(80)
                 setImageScaleType(ImageView.ScaleType.CENTER_CROP)
             }
 
