@@ -157,10 +157,12 @@ fun MainScreen(
 
     var currentScreen    by remember { mutableStateOf(AppScreen.COMMAND) }
     var showPremiumSheet by remember { mutableStateOf(false) }
-    // v1.1.0 — Rewarded Ad sheet. 비-Premium 사용자가 잠긴 기능을 누르면 띄운다.
-    // [pendingRewardedAction] 은 광고 시청 완료(또는 Premium) 시 실행할 후속 동작.
-    var showRewardedSheet by remember { mutableStateOf(false) }
-    var pendingRewardedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // v1.6.6 — Share-to-unlock dialog (RewardedAdDialog 대체).
+    // 비-Premium + 아직 미공유 사용자가 caller 1명 초과 추가 시도 시 띄운다.
+    // 공유 1회 → EjectPrefs.saveHasShared(true) → 영구 unlock (premium-equivalent
+    // for caller feature).
+    var showShareUnlockSheet by remember { mutableStateOf(false) }
+    var hasShared by remember { mutableStateOf(EjectPrefs.loadHasShared(ctx)) }
 
     // v1.2 — 언어별 mom/dad 매핑은 Scenario.kt 의 localizedDefaultScenarios 헬퍼로 통일.
     // 같은 로직이 SideButtonTrigger / MainScreen 두 곳에 중복돼 있던 것을 단일 출처로 리팩터.
@@ -351,16 +353,13 @@ fun MainScreen(
     }
 
     if (showAddCaller) {
-        if (!isPremium && customCallers.size >= 1) {
-            // v1.1.0 — 무료 사용자가 발신자 1명을 초과하려 하면 RewardedAdDialog
-            // 로 두 가지 옵션 제시 (광고 1회 / Premium 영구). 기존 AlertDialog 의
-            // 단방향 "Upgrade only" CTA 대비 사용자 옵션 폭이 넓어진다.
+        if (!isPremium && !hasShared && customCallers.size >= 1) {
+            // v1.6.6 — Share-to-unlock 게이팅 (이전 RewardedAdDialog 대체).
+            // 무료 + 미공유 + 이미 1명 추가 → ShareToUnlockDialog 로 두 옵션 제시:
+            //   (a) 앱 공유하기 (ACTION_SEND) → 영구 unlock
+            //   (b) Premium 구독
             showAddCaller = false
-            pendingRewardedAction = {
-                // 광고 시청 보상으로 1회 발신자 추가 권한이 부여되면 다시 다이얼로그를 띄운다.
-                showAddCaller = true
-            }
-            showRewardedSheet = true
+            showShareUnlockSheet = true
         } else {
             AddCallerDialog(
                 onDismiss = { showAddCaller = false },
@@ -483,7 +482,7 @@ fun MainScreen(
             showExitConfirmDialog    -> showExitConfirmDialog = false
             showHistoryClearedDialog -> showHistoryClearedDialog = false
             showSideVolumeHint       -> showSideVolumeHint = false
-            showRewardedSheet        -> { showRewardedSheet = false; pendingRewardedAction = null }
+            showShareUnlockSheet     -> showShareUnlockSheet = false
             showPremiumSheet         -> showPremiumSheet = false
             showAddCaller            -> showAddCaller = false
             showCustomDialog         -> showCustomDialog = false
@@ -503,38 +502,31 @@ fun MainScreen(
         )
     }
 
-    // v1.1.0 — Rewarded Ad / Premium 선택 시트.
-    if (showRewardedSheet) {
-        RewardedAdDialog(
-            onWatchAd = {
-                showRewardedSheet = false
-                val activity = ctx as? android.app.Activity
-                val action = pendingRewardedAction
-                if (activity != null) {
-                    AdManager.showRewarded(
-                        activity = activity,
-                        onRewarded = {
-                            // 광고 끝까지 시청 → pendingAction 실행 (예: AddCallerDialog 재오픈)
-                            action?.invoke()
-                            pendingRewardedAction = null
-                        },
-                        onDismissed = {
-                            // 보상 없이 끝났을 때만 pending 정리. 보상 받은 경우 onRewarded 가 먼저 정리.
-                            if (pendingRewardedAction === action) pendingRewardedAction = null
-                        },
-                    )
-                } else {
-                    pendingRewardedAction = null
+    // v1.6.6 — Share-to-unlock / Premium 선택 시트. RewardedAdDialog 대체.
+    if (showShareUnlockSheet) {
+        ShareToUnlockDialog(
+            onShareApp = {
+                // ACTION_SEND 발사 + saveHasShared(true). chooser 결과 (실제 공유 완료 여부)
+                // 는 system 이 알려주지 않으므로 intent fire 자체를 success 로 간주 — friendly default.
+                showShareUnlockSheet = false
+                runCatching {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, strings.shareMessageBody)
+                    }
+                    ctx.startActivity(android.content.Intent.createChooser(intent, strings.settingsShare))
                 }
+                EjectPrefs.saveHasShared(ctx, true)
+                hasShared = true
+                // 공유 unlock 후 AddCallerDialog 다시 띄움 — flow 끊김 없이 진행.
+                showAddCaller = true
             },
             onUpgradePremium = {
-                showRewardedSheet = false
-                pendingRewardedAction = null
+                showShareUnlockSheet = false
                 showPremiumSheet = true
             },
             onDismiss = {
-                showRewardedSheet = false
-                pendingRewardedAction = null
+                showShareUnlockSheet = false
             },
         )
     }

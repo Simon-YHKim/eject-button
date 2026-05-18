@@ -11,8 +11,6 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -34,10 +32,8 @@ object AdManager {
     private const val MAX_INTERSTITIALS_PER_DAY = 10
 
     private var interstitialAd: InterstitialAd? = null
-    private var rewardedAd: RewardedAd? = null
     private var isInitialized = false
     private var lastInterstitialShownMs: Long = 0L
-    @Volatile private var rewardedLoading: Boolean = false
 
     /**
      * 프리미엄(광고 제거) 사용자 여부. true 이면 네이티브/전면 모두 로드하지 않고
@@ -71,9 +67,6 @@ object AdManager {
         if (interstitialAd == null) {
             loadInterstitial(context)
         }
-        if (rewardedAd == null) {
-            loadRewarded(context)
-        }
     }
 
     /**
@@ -106,21 +99,42 @@ object AdManager {
             _nativeAd.value?.destroy()
             _nativeAd.value = null
             interstitialAd = null
-            rewardedAd = null
         } else if (isInitialized) {
             if (_nativeAd.value == null) loadNativeAd(context)
             if (interstitialAd == null) loadInterstitial(context)
-            if (rewardedAd == null) loadRewarded(context)
         }
     }
 
     // ── 네이티브 광고 ────────────────────────────────────────────────────────
 
+    /**
+     * v1.6.6 — 메인 native ad 를 image-only 로 제한.
+     *
+     * 사용자 디자인 결정: 메인 화면 상시 광고는 컴팩트 1행 배너 (80dp). video 광고는
+     *   1) 80dp 사이즈에서 비정상 노출 + AdMob validator video size warning,
+     *   2) 자동 재생으로 사용자 주의 분산.
+     *
+     * 해결책 2단:
+     *  (a) NativeAdOptions.setMediaAspectRatio(SQUARE) — AdMob 에 정사각 image 광고
+     *      선호도 시그널. video 광고 매칭 빈도 낮춤.
+     *  (b) forNativeAd 콜백에서 ad.mediaContent.hasVideoContent() 체크 후 video 면
+     *      즉시 destroy + 재로드. 100% 차단.
+     *
+     * 동영상은 전화 종료 후 Interstitial 광고에서만 노출 (FakeCallOverlayService 종료
+     * → MainActivity onResume → showInterstitialIfReady). Interstitial 은 AdMob 이
+     * 자동 image/video mix 라 별도 강제 없음.
+     */
     fun loadNativeAd(context: Context) {
         if (adsDisabled) return
         val adLoader = AdLoader.Builder(context, BuildConfig.ADMOB_NATIVE_ID)
             .forNativeAd { ad ->
                 if (adsDisabled) {
+                    ad.destroy()
+                    return@forNativeAd
+                }
+                // Image-only 강제: video 광고는 destroy + 다음 요청 (멱등 재로드).
+                if (ad.mediaContent?.hasVideoContent() == true) {
+                    Log.d("AdManager", "Native ad rejected: video content (image-only mode)")
                     ad.destroy()
                     return@forNativeAd
                 }
@@ -132,7 +146,13 @@ object AdManager {
                     Log.d("AdManager", "Native ad failed: ${error.message}")
                 }
             })
-            .withNativeAdOptions(NativeAdOptions.Builder().build())
+            .withNativeAdOptions(
+                NativeAdOptions.Builder()
+                    // SQUARE: 정사각 image 광고 선호. video 매칭 빈도 낮춤 + 80dp 정사각
+                    // MediaView 디자인과도 정합.
+                    .setMediaAspectRatio(NativeAdOptions.NATIVE_MEDIA_ASPECT_RATIO_SQUARE)
+                    .build()
+            )
             .build()
 
         adLoader.loadAd(AdRequest.Builder().build())
@@ -201,83 +221,17 @@ object AdManager {
         }
     }
 
-    // ── 보상형 광고 (Rewarded) — v1.1.0 ────────────────────────────────────
+    // ── 보상형 광고 (Rewarded) ── v1.6.6 제거 ────────────────────────────
     //
-    // RewardedAdDialog 에서 "광고 보기" 선택 시 30초 영상 광고 노출 후 onRewarded
-    // 콜백으로 1회 사용 권한을 부여한다. AdMob 정책상 사용자가 명시적으로 옵트인
-    // 한 경우에만 표시 가능 (=> RewardedAdDialog 의 "광고 보기" 라디오 선택 + Continue).
+    // 사용자 요청 (v1.6.6): "리워드를 줄만한게 없어 — 리워드 광고 제거". 기존 시스템:
+    //   "무료 사용자가 caller 2번째 추가 시 RewardedAdDialog 로 30초 광고 시청 →
+    //    1회 caller 추가 unlock". 보상 의미가 미미해 share-to-unlock 패턴으로 교체.
     //
-    // load 는 멱등하게 동작하되 동시 다중 load 를 막기 위해 [rewardedLoading] 플래그
-    // 로 in-flight 가드. 실패해도 사용자가 다시 RewardedAdDialog 를 띄우면 자동 재시도.
-
-    fun loadRewarded(context: Context) {
-        if (adsDisabled) return
-        if (rewardedAd != null || rewardedLoading) return
-        rewardedLoading = true
-        val adRequest = AdRequest.Builder().build()
-        RewardedAd.load(
-            context,
-            BuildConfig.ADMOB_REWARDED_ID,
-            adRequest,
-            object : RewardedAdLoadCallback() {
-                override fun onAdLoaded(ad: RewardedAd) {
-                    rewardedLoading = false
-                    if (adsDisabled) return
-                    rewardedAd = ad
-                }
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    rewardedLoading = false
-                    rewardedAd = null
-                    Log.d("AdManager", "Rewarded failed: ${error.message}")
-                }
-            }
-        )
-    }
-
-    /**
-     * 보상형 광고 표시.
-     *  @param onRewarded 사용자가 광고를 끝까지 시청하고 보상 조건을 만족했을 때 호출.
-     *  @param onDismissed 광고 종료(보상 여부 무관) 또는 표시 실패 시 호출. UI 후속 처리용.
-     *
-     * Premium 사용자는 광고 시청 없이 즉시 onRewarded + onDismissed 양쪽 호출 (잠긴
-     * 기능을 그냥 통과). 광고가 아직 로드 안 돼 있으면 onDismissed 만 호출하고 다음 회차
-     * 를 위해 백그라운드에서 재로드 시작.
-     */
-    fun showRewarded(
-        activity: Activity,
-        onRewarded: () -> Unit,
-        onDismissed: () -> Unit = {},
-    ) {
-        if (adsDisabled) {
-            onRewarded()
-            onDismissed()
-            return
-        }
-        val ad = rewardedAd
-        if (ad == null) {
-            loadRewarded(activity)
-            onDismissed()
-            return
-        }
-        var rewarded = false
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdDismissedFullScreenContent() {
-                rewardedAd = null
-                loadRewarded(activity)
-                if (rewarded) onRewarded()
-                onDismissed()
-            }
-            override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                rewardedAd = null
-                loadRewarded(activity)
-                onDismissed()
-            }
-        }
-        ad.show(activity) { _ ->
-            // RewardItem 의 amount/type 은 우리 모델에서 무의미 (1회 = 잠금 해제 1회).
-            rewarded = true
-        }
-    }
+    // 대체 동작: 무료 사용자 caller 추가 시도 → ShareToUnlockDialog (앱 공유 → 영구
+    //   unlock). 코드: MainScreen.kt 의 showAddCaller 게이팅 + EjectPrefs.hasShared.
+    //
+    // 따라서 본 AdManager 의 rewarded 관련 코드 (loadRewarded/showRewarded/
+    //   rewardedAd state + ADMOB_REWARDED_ID buildConfigField) 모두 제거.
 
     fun destroy() {
         _nativeAd.value?.destroy()

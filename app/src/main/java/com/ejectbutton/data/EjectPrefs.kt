@@ -39,6 +39,12 @@ object EjectPrefs {
     // Round 31 — Play Store in-app review 팝업을 이미 요청했는지 여부.
     // 한 번 프롬프트가 뜨고 나면 (사용자가 별을 남겼든 그냥 닫았든) 다시 띄우지 않는다.
     private const val KEY_REVIEW_REQUESTED  = "review_requested"
+    // v1.6.6 — 사용자가 앱을 한 번이라도 공유했는지 여부.
+    //   Share-to-unlock 모델 (v1.6.6): 무료 사용자가 caller 1명 초과로 추가하려 하면
+    //   ShareToUnlockDialog 가 뜨고, "공유하기" 버튼 클릭 시 ACTION_SEND intent 발사
+    //   + 본 플래그 true. 한 번 true 가 되면 영구 unlock (이전 rewarded 광고 모델은
+    //   1회 시청 = 1회 unlock 이었으나 v1.6.6 부터 공유 1회 = 영구 unlock 으로 단순화).
+    private const val KEY_HAS_SHARED        = "has_shared"
     // v1.0.9 — 전면 광고 일별 cap 추적용 (AdManager 가 사용).
     private const val KEY_INTER_DAY_BUCKET  = "ad_inter_day_bucket"
     private const val KEY_INTER_DAY_COUNT   = "ad_inter_day_count"
@@ -138,6 +144,25 @@ object EjectPrefs {
     fun loadReviewRequested(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_REVIEW_REQUESTED, false)
+
+    // ── Share-to-unlock (v1.6.6) ─────────────────────────────────────────────
+
+    /**
+     * 앱 공유 ACTION_SEND intent 발사 시 호출 → 영구 true. ShareToUnlockDialog
+     * 의 "공유하기" 버튼이 이 함수를 호출하고, 이후 caller 추가 게이팅에서 통과시킴.
+     *
+     * 주의: ACTION_SEND 의 결과 (사용자가 실제로 공유했는지)는 system 이 알려주지
+     * 않으므로 intent 발사 자체를 success 로 간주한다. 사용자가 chooser 에서 cancel
+     * 해도 unlock 됨 — friendly default.
+     */
+    fun saveHasShared(ctx: Context, shared: Boolean) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_HAS_SHARED, shared).apply()
+    }
+
+    fun loadHasShared(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getBoolean(KEY_HAS_SHARED, false)
 
     // ── History ───────────────────────────────────────────────────────────────
 

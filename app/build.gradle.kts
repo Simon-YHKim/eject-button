@@ -65,12 +65,8 @@ android {
             "\"${secretsProps.getProperty("ADMOB_INTERSTITIAL_ID")
                 ?: if (isReleaseTask) error("ADMOB_INTERSTITIAL_ID missing ??release refuses test fallback")
                    else "ca-app-pub-3940256099942544/1033173712"}\"")
-        // v1.1.0 ??Rewarded Ad unit ID. RewardedAdDialog ?먯꽌 30珥?愿묎퀬 1???쒖껌
-        // ???좉릿 湲곕뒫 1???ъ슜 沅뚰븳 遺?? ?붾쾭洹?fallback ? Google 怨듭떇 ?뚯뒪??ID.
-        buildConfigField("String", "ADMOB_REWARDED_ID",
-            "\"${secretsProps.getProperty("ADMOB_REWARDED_ID")
-                ?: if (isReleaseTask) error("ADMOB_REWARDED_ID missing ??release refuses test fallback")
-                   else "ca-app-pub-3940256099942544/5224354917"}\"")
+        // v1.1.0 ~ v1.6.5: ADMOB_REWARDED_ID was used by RewardedAdDialog (30s video ad for 1-caller unlock).
+        // v1.6.6: replaced by share-to-unlock model (one app share = permanent unlock). Rewarded code + secret removed.
     }
 
     signingConfigs {

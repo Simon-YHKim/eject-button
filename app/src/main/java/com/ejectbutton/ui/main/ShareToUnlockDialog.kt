@@ -41,29 +41,30 @@ import com.ejectbutton.ui.theme.EjectSurface
 import com.ejectbutton.ui.theme.EjectSurfaceMid
 
 /**
- * v1.1.0 — Rewarded Ad / Premium 선택 ModalBottomSheet.
+ * v1.6.6 — Share-to-unlock / Premium 선택 ModalBottomSheet.
  *
- * 비-프리미엄 사용자가 잠긴 기능(예: 추가 발신자, 사이드 버튼 트리거 등)을 누를 때 띄운다.
+ * 비-프리미엄 + 아직 미공유 사용자가 caller 1명 초과로 추가하려 할 때 띄운다.
+ * 이전 RewardedAdDialog (30초 광고 = 1회 unlock) 대체. 새 모델: 앱 공유 1회 = 영구 unlock.
+ *
  * 두 가지 옵션을 라디오 카드로 제공:
- *  - "광고 보기" → 30초 보상형 광고 시청 후 1회 사용 권한
- *  - "프리미엄"  → 모든 잠긴 기능 영구 잠금 해제 (기본 선택)
+ *  - "앱 공유하기" → ACTION_SEND intent + EjectPrefs.saveHasShared(true) → 영구 unlock
+ *  - "프리미엄"   → 모든 잠긴 기능 영구 잠금 해제 (기본 선택)
  *
- * 설계 토큰 (dialogs.jsx 시안 그대로):
- *  - 24dp 둥근 코너 + drag handle (Material3 기본)
- *  - 카드 셀렉트 시 EjectCoral 테두리 2dp + 핑크 틴트 배경
- *  - "추천" 배지: 우상단 EjectCoral 라운드 칩
- *  - AdMob 디스클로저: footer 11sp / EjectSecondary
+ * RewardedAdDialog 대비 변경:
+ *  - "광고 보기" → "앱 공유" 라디오 카드
+ *  - AdMob 디스클로저 footer 제거 (광고 아님)
+ *  - 아이콘: ▶ → 💬 (공유 의미)
+ *  - 기본 선택 = Premium 유지 (사용자가 가장 자주 선택할 옵션)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RewardedAdDialog(
-    onWatchAd: () -> Unit,
+fun ShareToUnlockDialog(
+    onShareApp: () -> Unit,
     onUpgradePremium: () -> Unit,
     onDismiss: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val strings = LocalAppStrings.current
-    // 기본 선택 = Premium (PRO). 사용자가 가장 자주 선택하길 기대하는 옵션.
     var selectPremium by rememberSaveable { mutableStateOf(true) }
 
     ModalBottomSheet(
@@ -72,23 +73,22 @@ fun RewardedAdDialog(
         containerColor = EjectSurface,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
     ) {
-        RewardedAdDialogBody(
+        ShareToUnlockDialogBody(
             selectPremium = selectPremium,
             onSelectPremium = { selectPremium = true },
-            onSelectAd = { selectPremium = false },
+            onSelectShare = { selectPremium = false },
             onContinue = {
-                if (selectPremium) onUpgradePremium() else onWatchAd()
+                if (selectPremium) onUpgradePremium() else onShareApp()
             },
             onCancel = onDismiss,
-            title = strings.rdTitle,
-            subtitle = strings.rdSubtitle,
-            adHead = strings.rdAdHead,
-            adSub = strings.rdAdSub,
-            adBadge = strings.rdAdBadge,
+            title = strings.shareUnlockTitle,
+            subtitle = strings.shareUnlockSubtitle,
+            shareHead = strings.shareUnlockShareHead,
+            shareSub = strings.shareUnlockShareSub,
+            shareBadge = strings.shareUnlockShareBadge,
             proHead = strings.rdProHead,
             proSub = strings.rdProSub,
             proBadge = strings.rdProBadge,
-            disclosure = strings.rdDisclosure,
             cancelLabel = strings.rdCancel,
             continueLabel = strings.rdContinue,
         )
@@ -96,21 +96,20 @@ fun RewardedAdDialog(
 }
 
 @Composable
-private fun RewardedAdDialogBody(
+private fun ShareToUnlockDialogBody(
     selectPremium: Boolean,
     onSelectPremium: () -> Unit,
-    onSelectAd: () -> Unit,
+    onSelectShare: () -> Unit,
     onContinue: () -> Unit,
     onCancel: () -> Unit,
     title: String,
     subtitle: String,
-    adHead: String,
-    adSub: String,
-    adBadge: String,
+    shareHead: String,
+    shareSub: String,
+    shareBadge: String,
     proHead: String,
     proSub: String,
     proBadge: String,
-    disclosure: String,
     cancelLabel: String,
     continueLabel: String,
 ) {
@@ -133,21 +132,21 @@ private fun RewardedAdDialogBody(
         )
         Spacer(Modifier.height(20.dp))
 
-        // 옵션 1 — 광고 보기
-        OptionCard(
+        // 옵션 1 — 앱 공유 (이전 "광고 보기" 자리)
+        ShareOptionCard(
             selected = !selectPremium,
-            onSelect = onSelectAd,
-            head = adHead,
-            sub = adSub,
-            badge = adBadge,
+            onSelect = onSelectShare,
+            head = shareHead,
+            sub = shareSub,
+            badge = shareBadge,
             badgeColor = EjectSurfaceMid,
             badgeTextColor = EjectSecondary,
-            icon = "▶",
+            icon = "💬",
         )
         Spacer(Modifier.height(12.dp))
 
-        // 옵션 2 — 프리미엄 (기본)
-        OptionCard(
+        // 옵션 2 — 프리미엄 (기본 선택)
+        ShareOptionCard(
             selected = selectPremium,
             onSelect = onSelectPremium,
             head = proHead,
@@ -160,7 +159,6 @@ private fun RewardedAdDialogBody(
 
         Spacer(Modifier.height(20.dp))
 
-        // CTA: Continue
         Button(
             onClick = onContinue,
             modifier = Modifier
@@ -193,24 +191,12 @@ private fun RewardedAdDialogBody(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        // AdMob 디스클로저 — Google Play 정책 준수.
-        // 광고 옵션 선택 시에만 의미가 있으나 항상 노출하여 투명성 확보.
-        Text(
-            text = disclosure,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
-            color = EjectSecondary,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun OptionCard(
+private fun ShareOptionCard(
     selected: Boolean,
     onSelect: () -> Unit,
     head: String,
@@ -222,7 +208,6 @@ private fun OptionCard(
 ) {
     val borderColor = if (selected) EjectCoral else EjectOutlineVar
     val borderWidth = if (selected) 2.dp else 1.dp
-    // 핑크 틴트 배경: 선택 시 EjectCoral.copy(alpha=0.08f), 비선택 시 EjectSurfaceMid
     val bg = if (selected) EjectCoral.copy(alpha = 0.08f) else EjectSurfaceMid
 
     Row(
@@ -235,7 +220,6 @@ private fun OptionCard(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 라디오 인디케이터
         Box(
             modifier = Modifier
                 .size(22.dp)
@@ -258,7 +242,6 @@ private fun OptionCard(
         }
         Spacer(Modifier.width(14.dp))
 
-        // 아이콘 박스
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -270,7 +253,6 @@ private fun OptionCard(
         }
         Spacer(Modifier.width(14.dp))
 
-        // 텍스트
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = head,
@@ -286,7 +268,6 @@ private fun OptionCard(
             )
         }
 
-        // 배지
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
@@ -305,30 +286,17 @@ private fun OptionCard(
 }
 
 // ─────────────────────────── Compose Previews ───────────────────────────────
-// 라이트/다크 × 한국어/영어 4종.
 
-@Preview(name = "Light · EN", showBackground = true)
+@Preview(name = "Light · KO", showBackground = true)
 @Composable
-private fun PreviewRewardedAdDialogLightEn() {
-    PreviewWrapper(dark = false, language = AppLanguage.ENGLISH)
+private fun PreviewShareToUnlockDialogLightKo() {
+    PreviewWrapper(dark = false, language = AppLanguage.KOREAN)
 }
 
 @Preview(name = "Dark · EN", showBackground = true, backgroundColor = 0xFF111111)
 @Composable
-private fun PreviewRewardedAdDialogDarkEn() {
+private fun PreviewShareToUnlockDialogDarkEn() {
     PreviewWrapper(dark = true, language = AppLanguage.ENGLISH)
-}
-
-@Preview(name = "Light · KO", showBackground = true)
-@Composable
-private fun PreviewRewardedAdDialogLightKo() {
-    PreviewWrapper(dark = false, language = AppLanguage.KOREAN)
-}
-
-@Preview(name = "Dark · KO", showBackground = true, backgroundColor = 0xFF111111)
-@Composable
-private fun PreviewRewardedAdDialogDarkKo() {
-    PreviewWrapper(dark = true, language = AppLanguage.KOREAN)
 }
 
 @Composable
@@ -336,27 +304,25 @@ private fun PreviewWrapper(dark: Boolean, language: AppLanguage) {
     val strings = remember(language) { language.strings() }
     EjectButtonTheme(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
         androidx.compose.runtime.CompositionLocalProvider(LocalAppStrings provides strings) {
-            // ModalBottomSheet 는 Preview 에서 부팅되지 않으므로 본문만 직접 호출.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(EjectSurface),
             ) {
-                RewardedAdDialogBody(
+                ShareToUnlockDialogBody(
                     selectPremium = true,
                     onSelectPremium = {},
-                    onSelectAd = {},
+                    onSelectShare = {},
                     onContinue = {},
                     onCancel = {},
-                    title = strings.rdTitle,
-                    subtitle = strings.rdSubtitle,
-                    adHead = strings.rdAdHead,
-                    adSub = strings.rdAdSub,
-                    adBadge = strings.rdAdBadge,
+                    title = strings.shareUnlockTitle,
+                    subtitle = strings.shareUnlockSubtitle,
+                    shareHead = strings.shareUnlockShareHead,
+                    shareSub = strings.shareUnlockShareSub,
+                    shareBadge = strings.shareUnlockShareBadge,
                     proHead = strings.rdProHead,
                     proSub = strings.rdProSub,
                     proBadge = strings.rdProBadge,
-                    disclosure = strings.rdDisclosure,
                     cancelLabel = strings.rdCancel,
                     continueLabel = strings.rdContinue,
                 )

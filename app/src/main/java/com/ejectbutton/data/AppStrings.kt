@@ -141,7 +141,10 @@ data class AppStrings(
     val premiumDisclosure: String,
     val premiumBadge: String,
     val premiumMaxCallersMsg: String,
-    // v1.1.0 — Rewarded Ad bottom sheet (Claude design dialogs.jsx 시안)
+    // v1.1.0 — Rewarded Ad bottom sheet (deprecated, kept for Premium card reuse).
+    // v1.6.6: ShareToUnlockDialog 가 rdProHead/rdProSub/rdProBadge/rdCancel/rdContinue
+    //   재사용 (Premium 카드 + 공통 버튼). rdTitle/rdSubtitle/rdAdHead/rdAdSub/
+    //   rdAdBadge/rdDisclosure 는 더 이상 UI 에 노출 안 됨 — 데이터 모델 호환 위해 유지.
     val rdTitle: String,
     val rdSubtitle: String,
     val rdAdHead: String,
@@ -153,6 +156,13 @@ data class AppStrings(
     val rdDisclosure: String,
     val rdCancel: String,
     val rdContinue: String,
+    // v1.6.6 — Share-to-unlock dialog (RewardedAdDialog 대체). 무료 사용자 caller
+    //   1명 초과 추가 시 "앱 공유로 영구 unlock" 옵션 제시.
+    val shareUnlockTitle: String,
+    val shareUnlockSubtitle: String,
+    val shareUnlockShareHead: String,
+    val shareUnlockShareSub: String,
+    val shareUnlockShareBadge: String,
     // v1.1.0 — Premium Upgrade dual-plan bottom sheet (월간/연간)
     val prTitle: String,
     val prSubtitle: String,
@@ -548,6 +558,13 @@ private val en = AppStrings(
     unmaskConfirmBody    = "Launcher reverts to the real Emergency Exit icon. Anyone watching this device sees the real app.",
     actionDisguiseOn     = "Turn on disguise",
     unmaskConfirmCta     = "Stand down",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "Share to unlock",
+    shareUnlockSubtitle    = "One share, callers unlimited — forever.",
+    shareUnlockShareHead   = "Share the app",
+    shareUnlockShareSub    = "Tell a friend — permanent unlock.",
+    shareUnlockShareBadge  = "Free",
 )
 
 // Round 18 — 한국어 전체 "상사 → 존중받는 파일럿" 말투로 개편.
@@ -789,6 +806,13 @@ private val ko = AppStrings(
     unmaskConfirmBody    = "런처가 비상탈출 본부 아이콘으로 돌아가요. 옆 사람이 진짜 앱을 본다는 점, 잊지 마세요!",
     actionDisguiseOn     = "위장 모드 켜기",
     unmaskConfirmCta     = "해제",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "공유하면 잠금 해제!",
+    shareUnlockSubtitle    = "한 번만 공유하면 발신자 무제한 — 영구.",
+    shareUnlockShareHead   = "앱 공유하기",
+    shareUnlockShareSub    = "친구한테 알려주면 → 영구 잠금 해제",
+    shareUnlockShareBadge  = "무료",
 )
 
 private val zhCN = AppStrings(
@@ -1028,6 +1052,13 @@ private val zhCN = AppStrings(
     unmaskConfirmBody    = "启动图标恢复为任务原型。看到此手机的人都会看到真实应用。",
     actionDisguiseOn     = "启动伪装",
     unmaskConfirmCta     = "撤销",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "分享即解锁",
+    shareUnlockSubtitle    = "分享一次，来电者无限解锁——永久。",
+    shareUnlockShareHead   = "分享应用",
+    shareUnlockShareSub    = "告诉朋友 → 永久解锁",
+    shareUnlockShareBadge  = "免费",
 )
 
 private val zhTW = AppStrings(
@@ -1267,6 +1298,13 @@ private val zhTW = AppStrings(
     unmaskConfirmBody    = "啟動圖示復原為任務原型。看到此手機的人都會看到真實應用程式。",
     actionDisguiseOn     = "啟動偽裝",
     unmaskConfirmCta     = "撤銷",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "分享即解鎖",
+    shareUnlockSubtitle    = "分享一次，來電者無限解鎖——永久。",
+    shareUnlockShareHead   = "分享 App",
+    shareUnlockShareSub    = "告訴朋友 → 永久解鎖",
+    shareUnlockShareBadge  = "免費",
 )
 
 private val ja = AppStrings(
@@ -1506,6 +1544,13 @@ private val ja = AppStrings(
     unmaskConfirmBody    = "ランチャーが任務原型へ復帰する。周囲の者に本物のアプリが見える、覚悟しろ。",
     actionDisguiseOn     = "偽装起動",
     unmaskConfirmCta     = "復帰",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "シェアでアンロック",
+    shareUnlockSubtitle    = "一度シェア → 発信者無制限、永久に。",
+    shareUnlockShareHead   = "アプリをシェア",
+    shareUnlockShareSub    = "友達に教える → 永久アンロック",
+    shareUnlockShareBadge  = "無料",
 )
 
 private val es = AppStrings(
@@ -1746,6 +1791,13 @@ private val es = AppStrings(
     unmaskConfirmBody    = "El lanzador vuelve al icono real. Quien mire el dispositivo verá la app de verdad.",
     actionDisguiseOn     = "Activar camuflaje",
     unmaskConfirmCta     = "Quitar",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "Comparte para desbloquear",
+    shareUnlockSubtitle    = "Una compartida — llamantes ilimitados, para siempre.",
+    shareUnlockShareHead   = "Compartir la app",
+    shareUnlockShareSub    = "Dile a alguien → desbloqueo permanente",
+    shareUnlockShareBadge  = "Gratis",
 )
 
 private val hi = AppStrings(
@@ -1985,6 +2037,13 @@ private val hi = AppStrings(
     unmaskConfirmBody    = "लॉन्चर मिशन प्रोफ़ाइल पर लौटेगा। इस डिवाइस को देखने वाला कोई भी असली ऐप देख लेगा।",
     actionDisguiseOn     = "छिपाव सक्रिय",
     unmaskConfirmCta     = "हटाएँ",
+
+    // v1.6.6 — Share-to-unlock
+    shareUnlockTitle       = "शेयर करके अनलॉक",
+    shareUnlockSubtitle    = "एक बार शेयर — असीमित कॉलर, हमेशा के लिए।",
+    shareUnlockShareHead   = "ऐप शेयर करें",
+    shareUnlockShareSub    = "दोस्त को बताएँ → स्थायी अनलॉक",
+    shareUnlockShareBadge  = "मुफ़्त",
 )
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(
