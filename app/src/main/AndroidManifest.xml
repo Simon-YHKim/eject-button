@@ -210,14 +210,11 @@
         </service>
 
         <!--
-          v1.4.0 — Geofence 이벤트 수신 BroadcastReceiver.
-          PendingIntent 으로 GeofencingClient 에 등록되며, OS 가 지오펜스 진입/이탈 감지
-          시 이 receiver 의 onReceive 호출. 백그라운드에서도 작동 (FOREGROUND_SERVICE
-          따로 필요 X — OS 가 효율적으로 wake up 시킴).
+          v1.4.0 — Geofence 이벤트 수신 BroadcastReceiver (REMOVED v1.6.9).
+          v1.5.8 에서 GPS 권한이 제거되고 v1.5.10 에서 location dependency 도 제거되어
+          이 receiver 는 어떤 callback 도 받을 수 없는 dead code 였음. v1.6.9 정리 작업에서
+          코드/manifest 등록 모두 제거. 향후 지오펜스 재도입 시 이 위치에 다시 추가할 것.
         -->
-        <receiver
-            android:name=".geofence.GeofenceTransitionReceiver"
-            android:exported="false" />
 
         <service
             android:name=".service.ButtonWatchService"

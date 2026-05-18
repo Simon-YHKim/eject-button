@@ -1,7 +1,11 @@
 package com.ejectbutton.ui.main
 
 import android.Manifest
-import android.annotation.SuppressLint
+// v1.6.9 — NativeAdCard 제거로 다음 imports 모두 제거:
+//   android.annotation.SuppressLint, android.util.TypedValue, android.view.Gravity,
+//   android.view.ViewGroup, android.widget.FrameLayout/ImageView/LinearLayout/TextView,
+//   androidx.compose.ui.graphics.toArgb,
+//   com.google.android.gms.ads.nativead.MediaView/NativeAd/NativeAdView
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.activity.compose.BackHandler
@@ -81,19 +85,7 @@ import com.ejectbutton.ui.coachmark.SpotShape
 import com.ejectbutton.ui.coachmark.rememberCoachmarkState
 import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
-import com.google.android.gms.ads.nativead.MediaView
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdView
 import com.microsoft.clarity.modifiers.clarityMask
-import android.content.res.ColorStateList
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -866,13 +858,18 @@ fun MainScreen(
                 onPremiumTap = { showPremiumSheet = true },
             )
 
-            // 네이티브 광고 (무료 사용자만) — 탭바 아래 위치
+            // v1.6.7 — Banner 광고 (무료 사용자만) — 탭바 아래 위치.
+            //   NativeAdCard (v1.5.1 ~ v1.6.6) 대체. Banner 는 구조적으로 image only
+            //   + validator warning 0 + AdMob 표준 layout.
+            //
+            // v1.6.8 — horizontal padding 제거 (edge-to-edge).
+            //   이전 padding(horizontal = 24.dp) 는 AdMob 에 전달한 screenWidthDp 와
+            //   실제 렌더링 너비 (screenWidthDp - 48 - 8) 불일치를 만들어 광고 CTA 가
+            //   우측 잘림 (예: "OPEN" 버튼 truncate). AdMob policy 상 truncated ad =
+            //   policy violation 가능. Adaptive Banner 의 디자인 의도 = 전체 너비 활용.
             if (!isPremium) {
                 Spacer(Modifier.height(8.dp))
-                val nativeAd by AdManager.nativeAd.collectAsState()
-                nativeAd?.let { ad ->
-                    NativeAdCard(ad = ad, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp))
-                }
+                BannerAdCard(modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -2571,129 +2568,14 @@ private fun AddCallerDialog(onDismiss: () -> Unit, onConfirm: (Scenario) -> Unit
     )
 }
 
-// ─── 네이티브 광고 (compact banner) ─────────────────────────────────────────
-// AdMob 정책: 네이티브 광고 에셋(headline/icon/body/CTA) 은 반드시
-// [NativeAdView] 의 자식으로 배치되고 `setHeadlineView` 등으로 등록된 뒤
-// `setNativeAd(ad)` 가 호출돼야 한다. 그래야 impression/click 이 집계되고
-// 사용자의 탭이 광고주 페이지로 넘어간다. 이 규칙을 어기면 계정 정지 사유.
-//
-// 따라서 한 줄 배너이긴 하지만 NativeAdView 안에 LinearLayout (icon +
-// headline + AD 뱃지) 를 구성하고 각 View 를 NativeAdView 의 슬롯에 바인드한다.
-
-@SuppressLint("SetTextI18n") // "AD" is required ad disclosure label per Google AdMob policy — must not be localized
-@Composable
-private fun NativeAdCard(ad: NativeAd, modifier: Modifier = Modifier) {
-    val surfaceColor   = EjectSurface.toArgb()
-    val onSurfaceColor = EjectOnSurface.toArgb()
-    val secondaryColor = EjectSecondary.toArgb()
-
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            fun dp(value: Int): Int = (value * ctx.resources.displayMetrics.density).toInt()
-
-            val adView = NativeAdView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-            }
-
-            val row = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(10), dp(6), dp(10), dp(6))
-                // 둥근 모서리 + 배경색을 프로그램매틱하게 그린 GradientDrawable
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = dp(12).toFloat()
-                    setColor(surfaceColor)
-                }
-                layoutParams = FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-            }
-
-            // v1.6.5 — 사용자 디자인 피드백: 광고 카드 너무 큼 (v1.6.3 의 120dp
-            //   은 video validator 풀 compliance 위함이었음). 2/3 축소 → 80dp.
-            //
-            // 정책 히스토리:
-            //  (1) v1.5.19: iconView 32dp 정책. 48dp 로 충족.
-            //  (2) v1.6.3 #1: "MediaView not used for main image or video asset"
-            //      → iconView(ImageView) 를 mediaView(MediaView) 로 교체.
-            //  (3) v1.6.3 #2: "MediaView is too small for video" (>=120×120dp).
-            //      → 120dp 로 확대 → validator 완전 통과.
-            //  (4) v1.6.5: 사용자 디자인 피드백 → 80dp 로 축소 (2/3).
-            //      Trade-off: validator video size warning 재발 가능. 다만
-            //      hard error 아닌 warning 이고, video 광고 미노출 시 무관.
-            //      "MediaView not used for main image or video asset" hard error
-            //      는 여전히 회피 (MediaView 자체는 존재).
-            //
-            // 동작:
-            //  - MediaView 는 image / video 양쪽을 자동 처리. setNativeAd(ad) 호출 시
-            //    SDK 가 `ad.mediaContent` 를 자동 바인딩하므로 update 람다에서 별도
-            //    drawable 세팅 불필요.
-            //  - imageScaleType CENTER_CROP → 1.91:1 media 자산도 정사각 안에서 잘림.
-            //  - minimumWidth/Height + adjustViewBounds=false 로 measure 단계
-            //    축소 방지.
-            val mediaView = MediaView(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(80), dp(80)).apply {
-                    marginEnd = dp(10)
-                }
-                minimumWidth = dp(80)
-                minimumHeight = dp(80)
-                setImageScaleType(ImageView.ScaleType.CENTER_CROP)
-            }
-
-            val headlineView = TextView(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    1f,
-                )
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                setTextColor(onSurfaceColor)
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-            }
-
-            val badgeView = TextView(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).apply { marginStart = dp(8) }
-                text = "AD"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
-                setTextColor(secondaryColor)
-                setPadding(dp(5), dp(1), dp(5), dp(1))
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = dp(3).toFloat()
-                    // 15% alpha 보조색
-                    setColor((secondaryColor and 0x00FFFFFF) or 0x26000000)
-                }
-            }
-
-            row.addView(mediaView)
-            row.addView(headlineView)
-            row.addView(badgeView)
-            adView.addView(row)
-
-            adView.mediaView    = mediaView
-            adView.headlineView = headlineView
-            adView
-        },
-        update = { adView ->
-            val headlineView = adView.headlineView as? TextView
-            headlineView?.text = ad.headline ?: ad.body ?: ""
-
-            // impression + click 집계 + mediaContent → mediaView 자동 바인딩.
-            // SDK 가 ad.mediaContent (image / video) 를 mediaView 에 알아서 렌더.
-            adView.setNativeAd(ad)
-        },
-    )
-}
+// ─── 네이티브 광고 NativeAdCard (REMOVED v1.6.9) ──────────────────────────
+// v1.5.1~v1.6.6: 네이티브 광고 1줄 컴팩트 배너 (icon + headline + AD 뱃지).
+// v1.6.7: Banner ad 형식으로 교체 (BannerAdCard.kt). MediaView 80dp 의 video
+//   size warning 회피 + AdMob 정식 image-only 형식 + 구조적으로 video 미수신.
+// v1.6.9: NativeAdCard 함수 정의 + 12개 imports (NativeAd/NativeAdView/MediaView,
+//   LinearLayout/FrameLayout/Gravity/ViewGroup/TypedValue/ImageView/TextView,
+//   SuppressLint, toArgb) 모두 제거. AdMob 콘솔의 Native 광고단위도 영구 삭제.
+//   122줄 dead code 정리. 향후 native 광고 재도입 시 git history 참조.
 
 // ─── 프리미엄 업그레이드 다이얼로그 ─────────────────────────────────────────
 // v1.1.0 — PremiumUpgradeDialog 는 PremiumUpgradeDialog.kt 로 이전.

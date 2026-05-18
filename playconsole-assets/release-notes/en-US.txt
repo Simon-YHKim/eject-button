@@ -1,0 +1,8 @@
+v1.6.9 stability + reach update!
+• Smarter ad auto-refresh (works after app resume)
+• Brand new Portuguese (Brazil) — 8 languages total
+• Entertainment / simulation notice for clarity
+• ~270 lines of internal cleanup — leaner app
+• Caller labels now respect your locale (English "Mobile", Japanese "携帯", etc.)
+
+Feedback welcome! Beep beep 🚨

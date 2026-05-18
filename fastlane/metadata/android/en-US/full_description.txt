@@ -86,8 +86,11 @@ Fast launch. Works offline.
 
 ━━━━━━━━━━━━━━━━━━
 
-📢 Emergency Exit is for getting out of awkward moments with grace.
-Please don't use it to deceive or harm anyone.
+⚠️ Emergency Exit is an entertainment / simulation app.
+It does not place or receive real calls — it only displays a fake
+incoming-call screen on your own device, for you to gracefully step
+out of awkward moments. Do not use it to deceive, defraud, harass,
+or harm anyone.
 
 Install now. Try it at your next dinner you don't want to be at.
 

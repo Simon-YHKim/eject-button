@@ -9,10 +9,6 @@ import com.ejectbutton.data.EjectPrefs
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdOptions
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 object AdManager {
 
@@ -48,10 +44,7 @@ object AdManager {
     @Volatile private var isAdsRemoved: Boolean = false
 
     /** 광고 비활성 여부. premium 구독 OR 일회성 광고 제거 OR 둘 다. */
-    private val adsDisabled: Boolean get() = isPremium || isAdsRemoved
-
-    private val _nativeAd = MutableStateFlow<NativeAd?>(null)
-    val nativeAd: StateFlow<NativeAd?> = _nativeAd
+    val adsDisabled: Boolean get() = isPremium || isAdsRemoved
 
     fun initialize(context: Context) {
         if (!isInitialized) {
@@ -59,11 +52,8 @@ object AdManager {
             isInitialized = true
         }
         if (adsDisabled) return
-        // 웜 스타트로 Activity 가 재생성돼 이전 세션의 onDestroy() 에서 네이티브 광고가
-        // 파기된 상태일 수 있다. 슬롯이 비어 있다면 다시 로드해 메인 화면에 노출한다.
-        if (_nativeAd.value == null) {
-            loadNativeAd(context)
-        }
+        // v1.6.7 — Banner ad 는 Composable lifecycle 에서 직접 관리 (AdView.loadAd
+        //   on attach). AdManager 는 isAdsDisabled 만 노출하면 됨. native ad 로직 제거.
         if (interstitialAd == null) {
             loadInterstitial(context)
         }
@@ -96,67 +86,22 @@ object AdManager {
      */
     private fun applyAdsState(context: Context) {
         if (adsDisabled) {
-            _nativeAd.value?.destroy()
-            _nativeAd.value = null
             interstitialAd = null
         } else if (isInitialized) {
-            if (_nativeAd.value == null) loadNativeAd(context)
             if (interstitialAd == null) loadInterstitial(context)
         }
     }
 
-    // ── 네이티브 광고 ────────────────────────────────────────────────────────
-
-    /**
-     * v1.6.6 — 메인 native ad 를 image-only 로 제한.
-     *
-     * 사용자 디자인 결정: 메인 화면 상시 광고는 컴팩트 1행 배너 (80dp). video 광고는
-     *   1) 80dp 사이즈에서 비정상 노출 + AdMob validator video size warning,
-     *   2) 자동 재생으로 사용자 주의 분산.
-     *
-     * 해결책 2단:
-     *  (a) NativeAdOptions.setMediaAspectRatio(SQUARE) — AdMob 에 정사각 image 광고
-     *      선호도 시그널. video 광고 매칭 빈도 낮춤.
-     *  (b) forNativeAd 콜백에서 ad.mediaContent.hasVideoContent() 체크 후 video 면
-     *      즉시 destroy + 재로드. 100% 차단.
-     *
-     * 동영상은 전화 종료 후 Interstitial 광고에서만 노출 (FakeCallOverlayService 종료
-     * → MainActivity onResume → showInterstitialIfReady). Interstitial 은 AdMob 이
-     * 자동 image/video mix 라 별도 강제 없음.
-     */
-    fun loadNativeAd(context: Context) {
-        if (adsDisabled) return
-        val adLoader = AdLoader.Builder(context, BuildConfig.ADMOB_NATIVE_ID)
-            .forNativeAd { ad ->
-                if (adsDisabled) {
-                    ad.destroy()
-                    return@forNativeAd
-                }
-                // Image-only 강제: video 광고는 destroy + 다음 요청 (멱등 재로드).
-                if (ad.mediaContent?.hasVideoContent() == true) {
-                    Log.d("AdManager", "Native ad rejected: video content (image-only mode)")
-                    ad.destroy()
-                    return@forNativeAd
-                }
-                _nativeAd.value?.destroy()
-                _nativeAd.value = ad
-            }
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    Log.d("AdManager", "Native ad failed: ${error.message}")
-                }
-            })
-            .withNativeAdOptions(
-                NativeAdOptions.Builder()
-                    // SQUARE: 정사각 image 광고 선호. video 매칭 빈도 낮춤 + 80dp 정사각
-                    // MediaView 디자인과도 정합.
-                    .setMediaAspectRatio(NativeAdOptions.NATIVE_MEDIA_ASPECT_RATIO_SQUARE)
-                    .build()
-            )
-            .build()
-
-        adLoader.loadAd(AdRequest.Builder().build())
-    }
+    // ── 메인 광고 (v1.6.7: Native → Banner) ────────────────────────────────
+    //
+    // v1.6.7 부터 메인 광고는 Banner ad 형식. Native ad code-side video filter (v1.6.6)
+    // 는 사용자에게 image 만 노출했지만 AdMob validator 가 MediaView 80dp 사이즈만
+    // 보고 "video too small" warning. Banner 는 구조적으로 video 미수신 → warning 0
+    // + UX 동일 image-only 결과 + 정식 image-only API.
+    //
+    // Banner ad 는 AdView lifecycle 이 Composable / Activity 에 묶여 있으므로 본 객체
+    // 에서 직접 load/state 관리 안 함. Composable 측 BannerAdCard 가 AdView 를 만들고
+    // adsDisabled 가 false 일 때만 loadAd() 호출.
 
     // ── 전면 광고 ────────────────────────────────────────────────────────────
 
@@ -234,7 +179,7 @@ object AdManager {
     //   rewardedAd state + ADMOB_REWARDED_ID buildConfigField) 모두 제거.
 
     fun destroy() {
-        _nativeAd.value?.destroy()
-        _nativeAd.value = null
+        // v1.6.7 — Native ad 가 제거되면서 본 함수는 noop. Banner AdView 는 Composable
+        //   의 DisposableEffect 에서 destroy 됨. 외부 caller 호환 위해 함수 시그니처 유지.
     }
 }

@@ -24,11 +24,15 @@ SECTION A — GitHub Actions Secrets 설정
 `secrets.properties` 를 아래 3개 값으로 작성하는 단계가 있어. 이 값이
 없으면 v1.0.3+ 릴리스 CI 는 명시적 에러로 실패해 (이건 의도된 fail-fast 야).
 
-필요한 repo secrets:
-  1. ADMOB_NATIVE_ID       — 실제 AdMob 네이티브 광고 unit ID
+필요한 repo secrets (v1.6.8 기준 — Banner + Interstitial 만 사용):
+  1. ADMOB_BANNER_ID       — 실제 AdMob 배너 광고 unit ID  (메인 상시 광고)
                               (형식: ca-app-pub-3230287048532628/XXXXXXXXXX)
-  2. ADMOB_INTERSTITIAL_ID — 실제 AdMob 전면 광고 unit ID
+  2. ADMOB_INTERSTITIAL_ID — 실제 AdMob 전면 광고 unit ID  (통화 종료 후)
   3. CLARITY_PROJECT_ID    — Microsoft Clarity 프로젝트 ID
+
+  (참고) 이전 버전에서 쓰이던 ADMOB_NATIVE_ID (v1.6.7 에서 Banner 로 교체) /
+  ADMOB_REWARDED_ID (v1.6.6 에서 share-to-unlock 으로 교체) 는 더 이상 빌드에
+  필요 없음. AdMob 콘솔의 해당 광고 단위도 v1.6.8 에서 모두 영구 삭제됨.
 
 더불어 이미 설정되어 있어야 하는 키스토어 관련 시크릿:
   4. RELEASE_KEYSTORE_BASE64 — keystore (jks) base64 인코딩
@@ -47,13 +51,16 @@ SECTION A — GitHub Actions Secrets 설정
      gh secret list -R Simon-YHKim/eject-button
 
 3) 없는 시크릿이 있다면 나한테 값을 물어본 뒤 아래처럼 설정:
-     gh secret set ADMOB_NATIVE_ID       -R Simon-YHKim/eject-button --body "ca-app-pub-..."
+     gh secret set ADMOB_BANNER_ID       -R Simon-YHKim/eject-button --body "ca-app-pub-..."
      gh secret set ADMOB_INTERSTITIAL_ID -R Simon-YHKim/eject-button --body "ca-app-pub-..."
      gh secret set CLARITY_PROJECT_ID    -R Simon-YHKim/eject-button --body "XXXXXXXX"
 
+   기존에 ADMOB_NATIVE_ID / ADMOB_REWARDED_ID secret 이 남아 있으면
+   `gh secret delete ADMOB_NATIVE_ID -R ...` 로 정리 가능 (참조되지 않음).
+
 4) AdMob 실제 unit ID 발급 방법을 모른다고 하면 이렇게 안내:
    - https://admob.google.com → 앱 `com.simonykim.ejectbutton` 선택
-   - "광고 단위" 탭에서 네이티브 / 전면 광고 각각 "광고 단위 추가"
+   - "광고 단위" 탭에서 배너 / 전면 광고 각각 "광고 단위 추가"
    - 생성되면 ID 를 바로 Secret 에 등록
 
 5) Clarity 프로젝트 ID 발급:

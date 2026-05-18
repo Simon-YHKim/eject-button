@@ -5,6 +5,37 @@
 
 ---
 
+## [Unreleased — v1.6.9 후보] — 2026-05-18
+
+### Added
+- **`BannerAdCard.kt`**: AdView 기반 메인 상시 광고 Composable (v1.6.7 NativeAdCard 대체).
+- AdView **Activity lifecycle 연동** (`LifecycleEventObserver` → ON_RESUME/ON_PAUSE/ON_DESTROY) — AdMob "Google 최적화" 자동 새로고침이 정상 동작 → 노출수 ↑ → 광고 수익 1.5~3× 기대 (v1.6.9).
+- `PhoneNumberUtil.kt` **`randomMobileLabel(locale)`** — 로케일별 모바일 라벨 (KR 폰/JP 携帯/CN 手机/TW 行動/HK 流動/ES Móvil/IN/US/CA Mobile/기타). 한국어 prefix 하드코딩 i18n bug 수정.
+
+### Changed
+- **AdMob 콘솔**: Native + Rewarded 광고단위 영구 삭제. 활성 광고단위는 Banner + Interstitial 2개만.
+- **GitHub repo secrets**: `ADMOB_NATIVE_ID` / `ADMOB_REWARDED_ID` 삭제, `ADMOB_BANNER_ID` 신규 추가 (이전에 누락되어 있던 critical issue).
+- **BannerAdCard edge-to-edge 레이아웃**: padding(horizontal = 24.dp) + RoundedCornerShape(12) 제거. CTA 우측 잘림 ("OPEN" 버튼 truncated) 정책 위반 위험 해결 (v1.6.8).
+- **secrets.properties / .github/workflows/release-aab.yml**: 사용 안 하는 ID 참조 제거 + 코멘트 정리.
+- **ShakeDetectionService.kt**: callerName/callerLabel fallback 의 한국어 하드코딩 (`"엄마"`/`"휴대전화"`) → 빈 문자열. intent extra 누락 시 영어 사용자도 한국어 노출 안 됨.
+
+### Removed (Dead code cleanup, 총 약 270줄)
+- **`NativeAdCard` 함수 (122줄)** + 관련 imports 12개 — `MainScreen.kt` 에서 v1.6.7 BannerAdCard 교체 후 dead code 였음.
+- **`geofence/GeofenceTransitionReceiver.kt`** (91줄) + manifest receiver 등록 + `EjectPrefs.kt` 의 6개 geofence 함수 + 2개 상수. v1.5.8 GPS 권한 제거 + v1.5.10 location dependency 제거 이후 dead code.
+
+### Security
+- **`google-services.json`** `.gitignore` 추가 — Android Firebase API key 는 public-safe 이지만 principle 차원에서 untrack.
+
+### Documentation
+- `docs/local-release-build-guide.md` / `docs/cowork-setup-prompt.md` — `ADMOB_NATIVE_ID` → `ADMOB_BANNER_ID` 안내 갱신. 비활성 광고단위 cleanup 가이드 추가.
+
+### Phase 1~9 종합 감사 결과 (SimonK Stack 다각도)
+- **보안 (Phase 2 /cso)**: CRITICAL/HIGH 0건. MEDIUM 1건 — AdMob SDK 23.2.0 → 23.6+ 업그레이드 권장 (별도 PR).
+- **CEO 전략 (Phase 4)**: SELECTIVE EXPANSION 권장. 10-star gap = AI 음성 + WearOS 트리거 + 프로필 팩 마이크로 결제 (별도 backlog).
+- **콘솔 통합 (Phase 6)**: Clarity/Firebase/Crashlytics/Play Console assets 모두 OK. PII 마스킹 OK, user_id leak 없음.
+
+---
+
 ## [Unreleased]
 
 ### Changed — Theme Refactor (Navy + Cream)

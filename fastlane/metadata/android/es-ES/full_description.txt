@@ -68,8 +68,11 @@ Una pulsación. Y ya.
 
 ━━━━━━━━━━━━━━━━━━
 
-📢 Salida de Emergencia es para salir de momentos incómodos con elegancia.
-Por favor, no la uses para engañar o dañar a nadie.
+⚠️ Salida de Emergencia es una app de simulación / entretenimiento.
+No realiza ni recibe llamadas reales — solo muestra una pantalla
+de "llamada entrante" falsa en tu propio dispositivo, para que
+puedas salir con elegancia de momentos incómodos.
+No la uses para engañar, estafar, acosar o dañar a nadie.
 
 Instala ahora y pruébala en tu próxima cena.
 

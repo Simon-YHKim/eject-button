@@ -56,8 +56,11 @@ class ShakeDetectionService : Service(), SensorEventListener {
     }
 
     private lateinit var sensorManager: SensorManager
-    private var callerName  = "엄마"
-    private var callerLabel = "휴대전화"
+    // v1.6.9 — 한국어 하드코딩 ("엄마"/"휴대전화") fallback 제거. intent extra 미전달 시
+    //   빈 문자열로 처리해 IncomingCallActivity 측 로케일 fallback 으로 위임.
+    //   영어/스페인어/힌디 사용자도 가짜 통화 화면에서 한국어 노출 안 됨.
+    private var callerName  = ""
+    private var callerLabel = ""
     private var prompter    = ""
     private var delayMs     = 0L
     private var lastShakeMs = 0L
@@ -80,8 +83,9 @@ class ShakeDetectionService : Service(), SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        callerName  = intent?.getStringExtra("caller_name")  ?: "엄마"
-        callerLabel = intent?.getStringExtra("caller_label") ?: "휴대전화"
+        // v1.6.9 — 한국어 하드코딩 fallback 제거. 빈 문자열 처리.
+        callerName  = intent?.getStringExtra("caller_name")  ?: ""
+        callerLabel = intent?.getStringExtra("caller_label") ?: ""
         prompter    = intent?.getStringExtra("prompter")     ?: ""
         delayMs     = intent?.getLongExtra("delay_ms", 0L)    ?: 0L
         scenarioId  = intent?.getStringExtra("scenario_id")  ?: ""

@@ -19,7 +19,7 @@
 |---|---|---|
 | applicationId | `com.ejectbutton.app` | **`com.simonykim.ejectbutton`** |
 | GitHub URL | `Learner-thepoorman/eject-button` | **`Simon-YHKim/eject-button`** |
-| AdMob 변수명 | `ADMOB_BANNER_ID` | **`ADMOB_NATIVE_ID`** (build.gradle.kts 기준) |
+| AdMob 활성 광고단위 | `ADMOB_NATIVE_ID` (옛) | **`ADMOB_BANNER_ID` + `ADMOB_INTERSTITIAL_ID`** (v1.6.8 기준) |
 
 → AdMob/Firebase 에 앱 등록 시 **반드시 `com.simonykim.ejectbutton`** 패키지명을 입력해야 합니다.
 
@@ -110,7 +110,7 @@ git check-ignore keystore.properties   # 결과: keystore.properties (= ignored 
 ```powershell
 @"
 CLARITY_PROJECT_ID=실제_clarity_project_id
-ADMOB_NATIVE_ID=ca-app-pub-3230287048532628/실제_네이티브_광고_unit_id
+ADMOB_BANNER_ID=ca-app-pub-3230287048532628/실제_배너_광고_unit_id
 ADMOB_INTERSTITIAL_ID=ca-app-pub-3230287048532628/실제_전면_광고_unit_id
 "@ | Out-File -Encoding utf8 "C:\Users\202502\OneDrive\문서\Claude\Projects\Eject Button\secrets.properties"
 ```
@@ -119,9 +119,12 @@ ADMOB_INTERSTITIAL_ID=ca-app-pub-3230287048532628/실제_전면_광고_unit_id
 1. https://admob.google.com 접속
 2. **앱 추가** → Android → 패키지명: **`com.simonykim.ejectbutton`** ⚠️
 3. **광고 단위 만들기** 에서 두 종류 발급:
-   - Native advanced → ID 복사 → `ADMOB_NATIVE_ID`
-   - Interstitial → ID 복사 → `ADMOB_INTERSTITIAL_ID`
+   - Banner → ID 복사 → `ADMOB_BANNER_ID`  (메인 화면 하단 상시 광고; v1.6.7+)
+   - Interstitial → ID 복사 → `ADMOB_INTERSTITIAL_ID`  (통화 종료 후 전면 광고)
 4. AdMob 의 **App ID** (`ca-app-pub-XXXX~YYYY` 형식) 는 `app/src/main/AndroidManifest.xml` 의 `com.google.android.gms.ads.APPLICATION_ID` 값과 일치해야 합니다.
+
+> 참고: v1.6.6 까지 사용하던 `ADMOB_REWARDED_ID` (보상형 광고) 와 v1.6.7 이전의 `ADMOB_NATIVE_ID` (네이티브 광고) 는 더 이상 사용하지 않습니다.
+> 보상형 광고는 share-to-unlock 패턴으로, 네이티브 광고는 Banner 광고로 각각 교체되었고 AdMob 콘솔에서도 광고 단위가 삭제되었습니다 (v1.6.8).
 
 ### Clarity Project ID 발급
 1. https://clarity.microsoft.com → New Project → "Eject Button"

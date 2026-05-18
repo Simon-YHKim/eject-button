@@ -57,10 +57,17 @@ android {
         }
         buildConfigField("String", "CLARITY_PROJECT_ID",
             "\"${requireSecret("CLARITY_PROJECT_ID")}\"")
-        buildConfigField("String", "ADMOB_NATIVE_ID",
-            "\"${secretsProps.getProperty("ADMOB_NATIVE_ID")
-                ?: if (isReleaseTask) error("ADMOB_NATIVE_ID missing ??release refuses test fallback")
-                   else "ca-app-pub-3940256099942544/2247696110"}\"")
+        // v1.6.7 — Native ad → Banner ad 정식 image-only 형식 교체.
+        //   Native ad code-side video filter (v1.6.6) 는 사용자에게 image 만 노출했지만
+        //   validator 는 80dp MediaView 사이즈만 보고 warning. Banner 는 구조적으로
+        //   video 미수신 → warning 0 + UX 동일 image-only 결과.
+        // v1.6.8 — AdMob 콘솔에서 Native + Rewarded 광고 단위 영구 삭제.
+        //   secrets.properties / GitHub Actions workflow 에서도 ADMOB_NATIVE_ID,
+        //   ADMOB_REWARDED_ID 참조 제거. 활성 광고 단위: Banner + Interstitial 만.
+        buildConfigField("String", "ADMOB_BANNER_ID",
+            "\"${secretsProps.getProperty("ADMOB_BANNER_ID")
+                ?: if (isReleaseTask) error("ADMOB_BANNER_ID missing - release refuses test fallback")
+                   else "ca-app-pub-3940256099942544/6300978111"}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID",
             "\"${secretsProps.getProperty("ADMOB_INTERSTITIAL_ID")
                 ?: if (isReleaseTask) error("ADMOB_INTERSTITIAL_ID missing ??release refuses test fallback")

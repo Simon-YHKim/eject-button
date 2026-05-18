@@ -16,6 +16,13 @@ local.properties
 keystore.properties
 secrets.properties
 
+# v1.6.9 — Firebase / Google services credentials.
+#   google-services.json 은 Android Firebase 키가 public-safe (SHA-1 fingerprint
+#   server-side 검증) 라 strictly secret 은 아니지만 principle 차원에서 untrack.
+#   release 빌드 시 GitHub Actions secret 으로 주입하거나 로컬 작업자가 직접
+#   Firebase Console 에서 다운로드.
+google-services.json
+
 # IDE
 .idea/
 *.iml

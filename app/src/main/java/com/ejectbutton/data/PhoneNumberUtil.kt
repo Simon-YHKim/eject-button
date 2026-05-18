@@ -1,26 +1,51 @@
 package com.ejectbutton.data
 
+import java.util.Locale
 import kotlin.random.Random
 
 /**
- * 가짜 수신 전화 화면에 보일 **한국식 모바일 번호** 를 랜덤으로 만들어주는 유틸.
+ * 가짜 수신 전화 화면에 보일 모바일 번호를 랜덤으로 만들어주는 유틸.
  *
- * 포맷: `폰 010-XXXX-XXXX`
+ * 포맷 예시:
+ *  - KR  : `폰 010-XXXX-XXXX`        (실 Galaxy One UI 레이블)
+ *  - JP  : `携帯 090-XXXX-XXXX`
+ *  - CN  : `手机 138-XXXX-XXXX`
+ *  - TW  : `行動 09XX-XXX-XXX`
+ *  - ES  : `Móvil +34 6XX XXX XXX`
+ *  - IN  : `Mobile +91 9XXXX-XXXXX`
+ *  - else: `Mobile +1 5XX-XXX-XXXX` (or generic 10-digit)
  *
- * - 실 Galaxy One UI 8.5 수신 화면에서 연락처명 아래에 보이는 기본 라벨을 그대로 따른다
- *   (`Scenario.callerLabel` 과 동일한 접두사 "폰 ").
- * - 숫자는 7000~9999 범위에서 뽑아서 `010-0000-XXXX` 같은 비현실적인 번호는 피한다.
+ * v1.6.9 — 한국어 prefix 하드코딩 i18n bug 수정 (`randomKoreanMobileLabel` →
+ *   `randomMobileLabel`). 영어/스페인어/힌디 사용자도 한국어 "폰 " 안 봄.
+ *   기존 호출처는 호환 위해 `randomKoreanMobileLabel` alias 남김.
+ *
  * - Round 30 이후 "엄마"·"아빠" 프리셋(`isRandomPhone = true`) 의 `callerLabel` 이
  *   매 표시마다 달라지도록 UI 레이어에서 호출한다.
- *
- * 범위를 좁혀둔 이유 — 실제 KT·SKT·LGU+ 서브스크라이버 번호는 010 뒤 네 자리가
- * 0000 부터 시작하지 않는 경우가 대부분이라, 0000~0999 를 배제해두면 좀 더 실 번호처럼 보인다.
+ * - 숫자 범위 1000~9999 → `010-0000-XXXX` 같은 비현실적인 번호는 피한다.
  */
-internal fun randomKoreanMobileLabel(random: Random = Random.Default): String {
-    val mid  = random.nextInt(1000, 10000)   // 1000..9999
-    val tail = random.nextInt(1000, 10000)   // 1000..9999
-    return "폰 010-%04d-%04d".format(mid, tail)
+fun randomMobileLabel(
+    locale: Locale = Locale.getDefault(),
+    random: Random = Random.Default,
+): String {
+    val country = locale.country.uppercase(Locale.ROOT)
+    val mid  = random.nextInt(1000, 10000)
+    val tail = random.nextInt(1000, 10000)
+    return when (country) {
+        "KR" -> "폰 010-%04d-%04d".format(mid, tail)
+        "JP" -> "携帯 090-%04d-%04d".format(mid, tail)
+        "CN" -> "手机 138-%04d-%04d".format(mid, tail)
+        "TW" -> "行動 09%02d-%03d-%03d".format(mid % 100, tail % 1000, (mid + tail) % 1000)
+        "HK" -> "流動 9%03d-%04d".format(mid % 1000, tail)
+        "ES" -> "Móvil +34 6%02d %03d %03d".format(mid % 100, tail % 1000, (mid + tail) % 1000)
+        "IN" -> "Mobile +91 9%04d-%04d".format(mid % 10000, tail)
+        "US", "CA" -> "Mobile +1 5%02d-%03d-%04d".format(mid % 100, tail % 1000, mid * tail % 10000)
+        else -> "Mobile %04d-%04d".format(mid, tail)
+    }
 }
+
+/** Backward-compat alias (v1.6.9 이전 호출처 호환). 새 코드는 `randomMobileLabel` 사용. */
+internal fun randomKoreanMobileLabel(random: Random = Random.Default): String =
+    randomMobileLabel(Locale.KOREA, random)
 
 /**
  * 아무 포맷의 전화번호 문자열을 받아 국가별 하이픈 포맷으로 재조립한다.

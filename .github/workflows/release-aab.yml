@@ -72,18 +72,22 @@ jobs:
       # gradle reads them. If any of these are missing in repo settings the
       # release-aab workflow will fail at compile time with a clear message
       # rather than silently shipping placeholder values.
+      # v1.6.8 — Active ad units: Banner (메인) + Interstitial (통화 종료 후).
+      #   Native/Rewarded 광고 단위는 AdMob 콘솔에서도 삭제 완료. GitHub repo
+      #   secrets 의 ADMOB_NATIVE_ID / ADMOB_REWARDED_ID 도 정리 가능 (이미
+      #   build.gradle.kts 에서 참조 안 함).
       - name: Write secrets.properties
         env:
-          ADMOB_NATIVE_ID:       ${{ secrets.ADMOB_NATIVE_ID }}
+          ADMOB_BANNER_ID:       ${{ secrets.ADMOB_BANNER_ID }}
           ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
           CLARITY_PROJECT_ID:    ${{ secrets.CLARITY_PROJECT_ID }}
         run: |
-          if [ -z "$ADMOB_NATIVE_ID" ] || [ -z "$ADMOB_INTERSTITIAL_ID" ] || [ -z "$CLARITY_PROJECT_ID" ]; then
-            echo "::error::One or more release secrets (ADMOB_NATIVE_ID / ADMOB_INTERSTITIAL_ID / CLARITY_PROJECT_ID) are not configured in repo secrets."
+          if [ -z "$ADMOB_BANNER_ID" ] || [ -z "$ADMOB_INTERSTITIAL_ID" ] || [ -z "$CLARITY_PROJECT_ID" ]; then
+            echo "::error::One or more release secrets (ADMOB_BANNER_ID / ADMOB_INTERSTITIAL_ID / CLARITY_PROJECT_ID) are not configured in repo secrets."
             exit 1
           fi
           cat > secrets.properties <<EOF
-          ADMOB_NATIVE_ID=${ADMOB_NATIVE_ID}
+          ADMOB_BANNER_ID=${ADMOB_BANNER_ID}
           ADMOB_INTERSTITIAL_ID=${ADMOB_INTERSTITIAL_ID}
           CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID}
           EOF

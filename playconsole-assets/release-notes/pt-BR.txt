@@ -1,0 +1,8 @@
+v1.6.9 Saída de Emergência mais estável!
+• Auto-refresh de anúncios mais preciso (funciona ao retomar o app)
+• Português (Brasil) — agora 8 idiomas
+• Aviso "entretenimento / simulação" mais claro
+• ~270 linhas de limpeza interna — mais leve
+• Rótulo de quem chama respeita seu idioma ("Mobile", "Móvel" etc.)
+
+Feedback é bem-vindo! Bip bip 🚨
