@@ -3,10 +3,13 @@
     비상탈출 v1.5.14 — Adaptive 런처 아이콘.
     배경: EmergencyRed 단색 (@drawable/ic_launcher_background) — 전체 마스크 fill
     전경: 흰 비상구 + 빨강 인물, 외부 빨강 투명화 (자체 배경 제거), 108dp 표준 dimensions
-    monochrome: 인물 + 신호 silhouette only (Android 13+ 테마 아이콘 wallpaper tint)
+
+    v1.6.10 — <monochrome> 제거. 사용자 폰에서 wallpaper 색조로 tint 되어 거의 흰색
+    아이콘으로 보이는 현상 확인. 비상안전 도구 특성상 브랜드 RED 식별성이 테마 통합성보다
+    우선이라 themed-icon (Android 13+) 지원을 의도적으로 끔. PNG 자산은 보존 (향후 더 강한
+    실루엣 디자인 후 재활성화 가능).
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background"/>
     <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>
 </adaptive-icon>

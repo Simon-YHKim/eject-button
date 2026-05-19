@@ -83,7 +83,6 @@ import com.ejectbutton.ui.coachmark.CoachmarkState
 import com.ejectbutton.ui.coachmark.CoachmarkStep
 import com.ejectbutton.ui.coachmark.SpotShape
 import com.ejectbutton.ui.coachmark.rememberCoachmarkState
-import android.provider.Settings as AndroidSettings
 import com.ejectbutton.ui.theme.*
 import com.microsoft.clarity.modifiers.clarityMask
 import kotlinx.coroutines.Dispatchers
@@ -142,6 +141,10 @@ fun MainScreen(
     onPurchaseRemoveAds: () -> Unit = {},
     removeAdsPrice: String? = null,
     onEject: (scenario: Scenario, delayMs: Long) -> Unit,
+    // v1.6.10 — EJECT 전 권한 게이트. arm/fire 직전에 모든 trigger 분기가 이 콜백을 통해
+    // proceed 람다를 등록. PermissionGate.missing() 이 비어있으면 즉시 실행, 아니면
+    // MainActivity 의 PermissionGateDialog 가 사용자에게 재요청 후 grant 시 실행.
+    ensurePermissions: (mode: TriggerMode, delayMs: Long, proceed: () -> Unit) -> Unit = { _, _, proceed -> proceed() },
 ) {
     val ctx     = LocalContext.current
     val strings = LocalAppStrings.current
@@ -664,122 +667,99 @@ fun MainScreen(
                     onEject          = handleEject@{
                         // Round 12 — 프리미엄 게이팅 임시 해제 (사용자 테스트용).
 
-                        // Round 9 — SIDE_BUTTON 모드: EJECT 탭으로 arm + 볼륨 안내 팝업.
+                        // SIDE_BUTTON cmd 미설정 — 권한 게이트와 무관, 사용자에게 설정 안내만.
                         if (selectedTrigger == TriggerMode.SIDE_BUTTON) {
                             val cmd = EjectPrefs.loadSideButtonCommand(ctx)
                             if (!cmd.isEnabled) {
                                 sideButtonNotice = true
                                 return@handleEject
                             }
-                            // 오버레이 권한이 없으면 arm 해도 트리거 시 가짜 전화가 뜨지 않으므로
-                            // 권한 설정 화면을 띄우고 arm 은 보류.
-                            if (!AndroidSettings.canDrawOverlays(ctx)) {
-                                EjectPrefs.saveSideButtonArmed(ctx, false)
-                                ButtonWatchService.reconcile(ctx)
-                                runCatching {
-                                    ctx.startActivity(
-                                        android.content.Intent(
-                                            AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                            android.net.Uri.parse("package:${ctx.packageName}"),
-                                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    )
-                                }
-                                android.widget.Toast.makeText(
-                                    ctx,
-                                    strings.sideButtonOverlayRequired,
-                                    android.widget.Toast.LENGTH_LONG,
-                                ).show()
-                                return@handleEject
-                            }
-                            EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
-                            EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
-                            EjectPrefs.saveSideButtonArmed(ctx, true)
-                            ButtonWatchService.reconcile(ctx)
-                            sideButtonStandby    = true
-                            showSideVolumeHint   = true
-                            if (EjectPrefs.loadHaptic(ctx)) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                            return@handleEject
                         }
 
-                        // Round 9 — SHAKE 모드: EJECT 탭으로 ShakeDetectionService arm.
-                        if (selectedTrigger == TriggerMode.SHAKE) {
-                            if (!AndroidSettings.canDrawOverlays(ctx)) {
-                                runCatching {
-                                    ctx.startActivity(
-                                        android.content.Intent(
-                                            AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                            android.net.Uri.parse("package:${ctx.packageName}"),
-                                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    )
-                                }
-                                android.widget.Toast.makeText(
-                                    ctx,
-                                    strings.sideButtonOverlayRequired,
-                                    android.widget.Toast.LENGTH_LONG,
-                                ).show()
-                                return@handleEject
-                            }
-                            EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
-                            EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
-                            val shakeDelayMs = when (selectedTime) {
-                                TimeChoice.IMMEDIATE -> 0L
-                                TimeChoice.AFTER_10S -> 10_000L
-                                TimeChoice.CUSTOM    -> customDelaySec * 1000L
-                            }
-                            // v1.2 — SHAKE armed 시점에 runtime caller label 을 결정해서
-                            // service intent 에 직접 박는다. ShakeDetectionService 가
-                            // 자체적으로 또 무작위화하지 않도록 발사 직전 한 번만 샘플링.
-                            val shakeScenario = selectedScenario.withRuntimeCallerLabel()
-                            ShakeDetectionService.start(
-                                ctx,
-                                shakeScenario.callerName,
-                                shakeScenario.callerLabel,
-                                shakeScenario.prompterHint,
-                                shakeDelayMs,
-                                scenarioId = shakeScenario.id,
-                                mode = "shake",
-                            )
-                            shakeStandby = true
-                            if (EjectPrefs.loadHaptic(ctx)) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                            return@handleEject
-                        }
-
-                        val delayMs = when (selectedTrigger) {
+                        // v1.6.10 — 권한 게이트 진입을 위해 mode+delay 를 미리 계산.
+                        // 이전 버전에서는 trigger 마다 분기 내부에서 canDrawOverlays 만 체크하고 그 외
+                        // (POST_NOTIFICATIONS, 배터리 최적화 제외) 는 검증 안 해서, 사용자가 거부하면
+                        // arm 만 되고 화면 OFF 시 silent fail 났다.
+                        val gateDelayMs = when (selectedTrigger) {
                             TriggerMode.IMMEDIATE -> 0L
                             TriggerMode.AFTER_10S -> 10_000L
                             TriggerMode.AFTER_30S -> 30_000L
                             TriggerMode.AFTER_1MIN -> 60_000L
                             TriggerMode.SHAKE     -> -1L
-                            TriggerMode.SIDE_BUTTON -> 0L // handled above
+                            TriggerMode.SIDE_BUTTON -> 0L
                             TriggerMode.CUSTOM    -> customDelaySec * 1000L
                         }
-                        CountdownBus.start(delayMs)
 
-                        if (EjectPrefs.loadHaptic(ctx)) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
+                        ensurePermissions(selectedTrigger, gateDelayMs) {
+                            // Round 9 — SIDE_BUTTON 모드: EJECT 탭으로 arm + 볼륨 안내 팝업.
+                            if (selectedTrigger == TriggerMode.SIDE_BUTTON) {
+                                EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
+                                EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
+                                EjectPrefs.saveSideButtonArmed(ctx, true)
+                                ButtonWatchService.reconcile(ctx)
+                                sideButtonStandby    = true
+                                showSideVolumeHint   = true
+                                if (EjectPrefs.loadHaptic(ctx)) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                return@ensurePermissions
+                            }
 
-                        val triggerLabel = when (selectedTrigger) {
-                            TriggerMode.IMMEDIATE -> strings.triggerNow
-                            TriggerMode.AFTER_10S -> strings.trigger10s
-                            TriggerMode.AFTER_30S -> strings.trigger30s
-                            TriggerMode.AFTER_1MIN -> strings.trigger1min
-                            TriggerMode.SHAKE     -> strings.triggerShake
-                            TriggerMode.SIDE_BUTTON -> strings.triggerSideButton
-                            TriggerMode.CUSTOM    -> "${customDelaySec}s"
+                            // Round 9 — SHAKE 모드: EJECT 탭으로 ShakeDetectionService arm.
+                            if (selectedTrigger == TriggerMode.SHAKE) {
+                                EjectPrefs.saveSelectedScenarioId(ctx, selectedScenario.id)
+                                EjectPrefs.saveSelectedTrigger(ctx, selectedTrigger.name)
+                                val shakeDelayMs = when (selectedTime) {
+                                    TimeChoice.IMMEDIATE -> 0L
+                                    TimeChoice.AFTER_10S -> 10_000L
+                                    TimeChoice.CUSTOM    -> customDelaySec * 1000L
+                                }
+                                // v1.2 — SHAKE armed 시점에 runtime caller label 을 결정해서
+                                // service intent 에 직접 박는다. ShakeDetectionService 가
+                                // 자체적으로 또 무작위화하지 않도록 발사 직전 한 번만 샘플링.
+                                val shakeScenario = selectedScenario.withRuntimeCallerLabel()
+                                ShakeDetectionService.start(
+                                    ctx,
+                                    shakeScenario.callerName,
+                                    shakeScenario.callerLabel,
+                                    shakeScenario.prompterHint,
+                                    shakeDelayMs,
+                                    scenarioId = shakeScenario.id,
+                                    mode = "shake",
+                                )
+                                shakeStandby = true
+                                if (EjectPrefs.loadHaptic(ctx)) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                return@ensurePermissions
+                            }
+
+                            // IMMEDIATE / DELAYED / CUSTOM
+                            val delayMs = gateDelayMs
+                            CountdownBus.start(delayMs)
+
+                            if (EjectPrefs.loadHaptic(ctx)) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+
+                            val triggerLabel = when (selectedTrigger) {
+                                TriggerMode.IMMEDIATE -> strings.triggerNow
+                                TriggerMode.AFTER_10S -> strings.trigger10s
+                                TriggerMode.AFTER_30S -> strings.trigger30s
+                                TriggerMode.AFTER_1MIN -> strings.trigger1min
+                                TriggerMode.SHAKE     -> strings.triggerShake
+                                TriggerMode.SIDE_BUTTON -> strings.triggerSideButton
+                                TriggerMode.CUSTOM    -> "${customDelaySec}s"
+                            }
+                            val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
+                            EjectPrefs.addHistory(ctx, entry)
+                            history = EjectPrefs.loadHistory(ctx)
+                            // Round 30 / v1.2 — mom/dad 프리셋은 isRandomPhone=true 이므로 실제
+                            // 통화 직전 매번 새로운 무작위 번호로 callerLabel 갱신. 커스텀 발신자는
+                            // 입력한 번호 유지. 인라인 분기 → Scenario.withRuntimeCallerLabel() 헬퍼.
+                            val scenarioToSend = selectedScenario.withRuntimeCallerLabel()
+                            onEject(scenarioToSend, delayMs)
                         }
-                        val entry = "${SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date())} · ${selectedScenario.emoji}${selectedScenario.name} · $triggerLabel"
-                        EjectPrefs.addHistory(ctx, entry)
-                        history = EjectPrefs.loadHistory(ctx)
-                        // Round 30 / v1.2 — mom/dad 프리셋은 isRandomPhone=true 이므로 실제
-                        // 통화 직전 매번 새로운 무작위 번호로 callerLabel 갱신. 커스텀 발신자는
-                        // 입력한 번호 유지. 인라인 분기 → Scenario.withRuntimeCallerLabel() 헬퍼.
-                        val scenarioToSend = selectedScenario.withRuntimeCallerLabel()
-                        onEject(scenarioToSend, delayMs)
                     },
                     onCancel = {
                         // countdown 중이면 진행 중인 가짜 전화 서비스도 함께 종료.
