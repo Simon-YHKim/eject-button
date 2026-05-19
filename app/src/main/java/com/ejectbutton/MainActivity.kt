@@ -14,17 +14,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
-// v1.6.11 — In-App Update API (Flexible flow).
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import com.google.android.play.core.appupdate.AppUpdateManager
-import com.google.android.play.core.appupdate.AppUpdateManagerFactory
-import com.google.android.play.core.appupdate.AppUpdateOptions
-import com.google.android.play.core.install.InstallStateUpdatedListener
-import com.google.android.play.core.install.model.AppUpdateType
-import com.google.android.play.core.install.model.InstallStatus
-import com.google.android.play.core.install.model.UpdateAvailability
-import com.google.firebase.crashlytics.FirebaseCrashlytics
+// v1.7.0 — In-App Update: lifecycle/state machine 은 com.ejectbutton.update.UpdateManager
+// 가 책임. Activity 는 매니저 instantiate + state collect + Snackbar 노출만 담당.
+import com.ejectbutton.update.UpdateManager
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -117,149 +109,13 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {}
 
-    // v1.6.11 — In-App Update (Flexible flow). 사용자가 Play Store 갱신을 안 켜뒀거나
-    // 미루는 경우에도 앱이 자체적으로 백그라운드 다운로드 → "재시작" 스낵바로 적용 유도.
-    //   - FLEXIBLE: 사용자가 앱 사용을 계속할 수 있는 비강제 모드. 다운로드 완료 시
-    //     [updateDownloaded] state 가 true 가 되고 Compose 트리가 Snackbar 표시.
-    //   - 디버그/사이드로드 환경은 startUpdateFlow 가 즉시 실패 — 로그만 남기고 무시.
-    //   - 다음 출시(v1.6.12+) 부터 실제 trigger. v1.6.11 자체는 코드 ship 만 함.
-    private val appUpdateManager: AppUpdateManager by lazy {
-        AppUpdateManagerFactory.create(applicationContext)
-    }
-
-    private val updateDownloaded = mutableStateOf(false)
-
-    // v1.6.11 — completeUpdate() 더블 콜 가드. Snackbar action 빠른 두 번 탭 시
-    // 두 번째 호출이 swallowed exception 으로 묻히지 않도록.
-    @Volatile
-    private var updateCompleting: Boolean = false
-
-    private val installStateListener = InstallStateUpdatedListener { state ->
-        if (state.installStatus() == InstallStatus.DOWNLOADED) {
-            // emergency 도중에는 state 만 set 하지 않고, eject service 가 종료된 다음에
-            // Snackbar LaunchedEffect 가 자체적으로 polling 으로 노출 시점 결정 (아래).
-            updateDownloaded.value = true
-            // v1.6.11 — funnel 시작점. restart_clicked 와 비율 비교가 자발적 갱신율 지표.
-            EjectAnalytics.logUpdateDownloaded()
-        }
-    }
+    // v1.7.0 — In-App Update lifecycle 은 UpdateManager 가 책임. Activity 는 매니저를
+    // instantiate 하고 state 를 collect, 그리고 ActivityResult launcher 만 보유.
+    private val updateManager by lazy { UpdateManager(applicationContext) }
 
     private val updateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
-    ) { /* 거부 시 그냥 패스. 다음 onResume 에서 재시도 안 함 — 사용자 선택 존중 */ }
-
-    /**
-     * v1.6.11 — Wi-Fi / 이더넷 등 unmetered network 일 때만 true. 모바일 데이터 / 핫스팟
-     * 등 metered 일 때는 silent 50~150MB 다운로드를 막기 위해 startUpdateFlow 건너뜀.
-     * 한국 / 인도 / 브라질 등 데이터 절약 시장에서 특히 중요.
-     */
-    private fun isUnmeteredNetwork(): Boolean {
-        val cm = getSystemService(CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-    }
-
-    private fun checkForFlexibleUpdate() {
-        // v1.6.11 — metered 네트워크에서는 자동 다운로드 건너뜀. 다음 launch 또는
-        // Wi-Fi 연결된 onResume 에서 재시도. Play Store auto-update 정책 ("Wi-Fi 만")
-        // 과 동일한 사용자 기대치 유지.
-        if (!isUnmeteredNetwork()) return
-
-        appUpdateManager.appUpdateInfo
-            .addOnSuccessListener { info ->
-                // v1.6.11 — 이미 DOWNLOADING / DOWNLOADED / INSTALLED 면 startUpdateFlow
-                // 재호출 금지. rotation 으로 onCreate 재진입 시 consent prompt 재출현 방지.
-                val status = info.installStatus()
-                if (status == InstallStatus.DOWNLOADING ||
-                    status == InstallStatus.DOWNLOADED ||
-                    status == InstallStatus.INSTALLED
-                ) {
-                    return@addOnSuccessListener
-                }
-                if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
-                    info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
-                ) {
-                    runCatching {
-                        appUpdateManager.startUpdateFlowForResult(
-                            info,
-                            updateLauncher,
-                            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build(),
-                        )
-                    }.onFailure { e ->
-                        // v1.6.11 — release 빌드에서 로그 노이즈 최소화. message 만 짧게.
-                        if (BuildConfig.DEBUG) {
-                            android.util.Log.w("MainActivity", "startUpdateFlow failed", e)
-                        }
-                    }
-                }
-            }
-            .addOnFailureListener { e ->
-                // 디버그 빌드, 사이드로드 APK, Play Store 미설치 디바이스 등에서 발생.
-                if (BuildConfig.DEBUG) {
-                    android.util.Log.d("MainActivity", "appUpdateInfo not available: ${e.message}")
-                }
-            }
-    }
-
-    /**
-     * v1.6.11 — In-App Update 의 "재시작" 액션 처리. 절대 emergency 도중 호출되지 않도록
-     * 다중 가드:
-     *   1. eject service 활성 여부 — 활성 중이면 묵묵히 reject (Snackbar LaunchedEffect 가
-     *      polling 으로 service 종료 후 다시 안내).
-     *   2. double-call 가드 — Snackbar action 빠른 두 번 탭 시 두 번째 호출 묵음.
-     *   3. cleanup before kill — completeUpdate() 는 Process.killProcess + relaunch 라
-     *      onDestroy 보장 X. BillingClient endConnection / AdManager destroy 명시 수행 후
-     *      restart 트리거. pending 구매 acknowledge 가 진행 중이면 그건 다음 launch 에서
-     *      BillingManager.connect() 재진입 시 Play Store 측 entitlement 재조회로 복구됨.
-     */
-    private fun completeFlexibleUpdate() {
-        if (!shouldCompleteUpdate(
-                emergencyActive = FakeCallOverlayService.isRunning || ShakeDetectionService.isRunning,
-                alreadyCompleting = updateCompleting,
-            )
-        ) {
-            return
-        }
-        updateCompleting = true
-
-        // v1.6.11 — kill 직전 forensic markers + funnel event. 모두 disk-persist 호출
-        // 이라 Process.killProcess 가 다음 라인에서 와도 다음 launch 에서 회수 가능.
-        //   1. logUpdateRestartClicked: Firebase SDK 가 worker thread 에서 disk persist
-        //      → 다음 launch 에 upload.
-        //   2. setCustomKey("update_in_progress", true): Crashlytics 의 session metadata
-        //      는 즉시 disk write. v1.6.12 첫 launch 가 크래시 시 이 tag 가 함께 박혀
-        //      "In-App Update 직후 크래시" 인지 식별 가능.
-        //   3. EjectPrefs.markPostUpdateRelaunch(this): .commit() 동기 저장 — 다음
-        //      MainActivity.onCreate 가 splash 2초 건너뜀 (사용자 능동 재시작 = panic
-        //      open 과 동일한 친절함 부여).
-        runCatching { EjectAnalytics.logUpdateRestartClicked() }
-        runCatching { FirebaseCrashlytics.getInstance().setCustomKey("update_in_progress", true) }
-        runCatching { EjectPrefs.markPostUpdateRelaunch(this) }
-
-        runCatching {
-            // Pre-kill cleanup — Process.killProcess 전에 명시적 자원 해제.
-            runCatching { billingManager.destroy() }
-            runCatching { AdManager.destroy() }
-        }
-        runCatching { appUpdateManager.completeUpdate() }
-    }
-
-    companion object {
-        /**
-         * v1.6.11 — completeFlexibleUpdate() 가드 predicate. JUnit 으로 회귀 방지.
-         *
-         * 이 함수가 false 를 반환하는 두 경우는 둘 다 silent reject:
-         * - emergencyActive=true: fake call / shake 진행 중 → process kill 금지 (위협 모델).
-         * - alreadyCompleting=true: 더블 탭 등으로 이미 진행 중인 호출.
-         *
-         * Side-effect 없이 boolean 만 반환하므로 plain JUnit 테스트 가능.
-         */
-        @JvmStatic
-        internal fun shouldCompleteUpdate(
-            emergencyActive: Boolean,
-            alreadyCompleting: Boolean,
-        ): Boolean = !emergencyActive && !alreadyCompleting
-    }
+    ) { /* 거부 시 그냥 패스. 다음 launch 에서 재시도 가능 — 사용자 선택 존중 */ }
 
     /**
      * Round 18 — 최초 실행 & 튜토리얼을 끝냈을 때 한 번만 호출.
@@ -372,16 +228,15 @@ class MainActivity : ComponentActivity() {
         billingManager = BillingManager(this)
         billingManager.connect()
 
-        // v1.6.11 — In-App Update Flexible flow. Listener 는 매 onCreate 마다 등록
-        // (onDestroy 에서 unregister 짝). startUpdateFlow 는 savedInstanceState 가 null
-        // 일 때 (= fresh launch, rotation/recreate 아님) AND emergency service 비활성일
-        // 때만 호출 — rotation 으로 consent prompt 재출현, eject 중 prompt 발화 모두 방지.
-        appUpdateManager.registerListener(installStateListener)
+        // v1.7.0 — In-App Update Flexible flow. UpdateManager 가 모든 lifecycle 책임.
+        // savedInstanceState 가 null + emergency 미활성일 때만 트리거 — rotation 으로
+        // consent prompt 재출현, eject 중 prompt 발화 모두 방지.
+        updateManager.registerListener()
         if (savedInstanceState == null &&
             !FakeCallOverlayService.isRunning &&
             !ShakeDetectionService.isRunning
         ) {
-            checkForFlexibleUpdate()
+            updateManager.checkForUpdate(updateLauncher)
         }
 
         // Round 18 — 권한 요청은 onCreate 가 아니라 '튜토리얼 이후' 에 실행.
@@ -667,38 +522,55 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // v1.6.11 — In-App Update Snackbar.
-                        //   - rememberSaveable: rotation/config-change 후에도 dismissed 상태 보존.
-                        //     기존 remember 는 recomposition 으로 리셋 → 회전마다 Snackbar 재발화.
-                        //   - emergency 가드: FakeCallOverlayService / ShakeDetectionService 활성 중에는
-                        //     2초 간격 polling 으로 안전 상태까지 대기. completeUpdate() 가 fake call
-                        //     도중 발화하면 process kill 로 환상 붕괴 — 정확히 이 앱의 위협 모델.
+                        // v1.7.0 — In-App Update Snackbar. UpdateManager.state StateFlow 를
+                        // 직접 collect 해 Downloaded / Failed 둘 다 처리.
+                        //   - Downloaded: "재시작" 액션 Snackbar (Indefinite duration).
+                        //   - Failed: 짧은 retry-안내 Snackbar (Short duration, action 없음 —
+                        //     사용자는 다음 launch 에 자동 재시도됨).
+                        //   - rememberSaveable: rotation 후에도 dismissed 상태 보존.
+                        //   - Emergency 가드: 2초 polling 으로 fake call / shake 종료까지 대기.
                         val snackbarHostState = remember { SnackbarHostState() }
-                        val downloaded by updateDownloaded
+                        val updateState by updateManager.state.collectAsState()
                         var snackbarHandled by rememberSaveable { mutableStateOf(false) }
-                        LaunchedEffect(downloaded) {
-                            if (!downloaded || snackbarHandled) return@LaunchedEffect
-                            while (FakeCallOverlayService.isRunning ||
-                                   ShakeDetectionService.isRunning
-                            ) {
-                                delay(2_000L)
-                            }
-                            snackbarHandled = true
-                            val result = snackbarHostState.showSnackbar(
-                                message = strings.updateDownloadedMsg,
-                                actionLabel = strings.updateRestartBtn,
-                                duration = SnackbarDuration.Indefinite,
-                            )
-                            if (result == SnackbarResult.ActionPerformed) {
-                                completeFlexibleUpdate()
+                        LaunchedEffect(updateState) {
+                            when (updateState) {
+                                UpdateManager.UpdateState.Downloaded -> {
+                                    if (snackbarHandled) return@LaunchedEffect
+                                    while (FakeCallOverlayService.isRunning ||
+                                           ShakeDetectionService.isRunning
+                                    ) {
+                                        delay(2_000L)
+                                    }
+                                    snackbarHandled = true
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = strings.updateDownloadedMsg,
+                                        actionLabel = strings.updateRestartBtn,
+                                        duration = SnackbarDuration.Indefinite,
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        updateManager.completeUpdate(
+                                            onDestroyExtras = {
+                                                billingManager.destroy()
+                                                AdManager.destroy()
+                                            },
+                                        )
+                                    }
+                                }
+                                UpdateManager.UpdateState.Failed -> {
+                                    // v1.7.0 — Adversarial #8: silent failure 방지. 사용자에게
+                                    // 짧게 안내, action 없음 (다음 launch / Wi-Fi 시 자동 재시도).
+                                    snackbarHostState.showSnackbar(
+                                        message = strings.updateFailedMsg,
+                                        duration = SnackbarDuration.Short,
+                                    )
+                                }
+                                else -> Unit
                             }
                         }
                         SnackbarHost(
                             hostState = snackbarHostState,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
-                                // enableEdgeToEdge() 가 활성이라 system nav bar 위에
-                                // 정렬되도록 inset 적용. 없으면 snackbar 가 nav bar 뒤에 깔림.
                                 .windowInsetsPadding(WindowInsets.navigationBars)
                                 .padding(bottom = 16.dp),
                         )
@@ -719,14 +591,10 @@ class MainActivity : ComponentActivity() {
         foregroundDetector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
         ButtonWatchService.reconcile(this)
 
-        // v1.6.11 — Flexible update 가 백그라운드 다운로드 완료된 채로 앱을 떠났다가
+        // v1.7.0 — Flexible update 가 백그라운드 다운로드 완료된 채로 앱을 떠났다가
         // 돌아왔을 때 (예: 사용자가 잠시 다른 앱 쓰는 사이 다운로드 마무리) Snackbar 가
         // 다시 뜨도록 install status 재평가.
-        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
-            if (info.installStatus() == InstallStatus.DOWNLOADED) {
-                updateDownloaded.value = true
-            }
-        }
+        updateManager.refreshInstallStatus()
     }
 
     /**
@@ -784,8 +652,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         billingManager.destroy()
         AdManager.destroy()
-        // v1.6.11 — In-App Update listener 누수 방지.
-        runCatching { appUpdateManager.unregisterListener(installStateListener) }
+        // v1.7.0 — UpdateManager listener 누수 방지.
+        updateManager.unregisterListener()
     }
 }
 

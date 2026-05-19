@@ -5,12 +5,31 @@
 
 ---
 
-## [Unreleased — v1.6.11 후보] — 2026-05-19
+## [Unreleased — v1.7.0 후보] — 2026-05-19
 
-> v1.6.10 핫픽스 직후 출시 인프라 강화. Play Store 자동 업데이트만으로는 v1.6.10
-> 사용자가 즉시 갱신을 받지 못해 (자동 업데이트 OFF / 느린 rollout), 다음 출시부터는
-> **앱이 직접 새 버전을 받아 사용자에게 "재시작" 만 요청**하도록 Google Play
-> In-App Update API (Flexible flow) 를 내장.
+> **v1.6.10 직후 minor 출시.** 두 가지 큰 흐름:
+> 1. **In-App Update Flexible flow 통합** — 사용자의 수동 갱신 의존 제거. 다음 출시부터
+>    앱이 직접 새 버전을 받아 "재시작" 만 요청.
+> 2. **Manager 패턴 통일 + 안전 가드 강화** — UpdateManager 추출로 architectural
+>    consistency 회복 (BillingManager / AdManager / ConsentManager 와 동일 시그너처),
+>    동시에 active eject 중 process kill 금지 등 safety-critical 가드 다중화.
+
+### Refactored — UpdateManager 추출 (v1.7.0 architectural)
+- 신규 `com.ejectbutton.update.UpdateManager` — Activity 에서 In-App Update lifecycle
+  전체 분리. `BillingManager` 와 동일하게 `StateFlow<UpdateState>` 노출
+  (`Idle` / `Downloading` / `Downloaded` / `Failed`). MainActivity 는 매니저 instantiate
+  + state collect + Snackbar 노출만 담당, In-App Update 도메인 로직 0 라인.
+- `MainActivity.kt`: -120 lines (In-App Update 관련 모두 UpdateManager 로 이관).
+- 테스트 이동: `MainActivityUpdateGuardTest` → `UpdateManagerGuardTest`.
+
+### Added — Failure status handling (Adversarial #8 → adopted)
+- `UpdateManager.installStateListener` 가 `InstallStatus.FAILED` / `CANCELED` 도 처리
+  → `_state.value = UpdateState.Failed`. UI 는 짧은 (Short duration) Snackbar 로
+  "다운로드 실패 — 다음에 다시 시도할게요" 안내. 다음 cold launch / Wi-Fi 자동 재시도.
+  silent failure 로 사용자가 "왜 재시작 안 뜨지" 라는 상황 방지.
+- `AppStrings.kt`: 7-locale `updateFailedMsg` 신규 추가.
+
+
 
 ### Added — In-App Update (Flexible)
 - `MainActivity` — `AppUpdateManager` + `InstallStateUpdatedListener` 등록. 앱 진입 시
