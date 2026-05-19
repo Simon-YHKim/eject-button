@@ -19,8 +19,9 @@
   Compose UI 라이브러리 내부 deprecated API 사용. BOM 업그레이드로 자동 해결.
 
 ### Changed
-- `gradle/libs.versions.toml`: `composeBom = "2024.06.00"` → `"2024.12.00"`.
-  6개월 LTS jump (4 minor 버전). transitive 의존성 (foundation / material3 / ui / runtime) 모두 동반 업그레이드.
+- `gradle/libs.versions.toml`: `composeBom = "2024.06.00"` → `"2024.12.01"`.
+  6개월 LTS jump. transitive 의존성 (foundation / material3 / ui / runtime) 모두 동반 업그레이드.
+  (참고: `2024.12.00` 은 Maven 에 없는 buildup version. 실제 publish 된 patch 는 `2024.12.01`.)
 
 ### Notes
 - v1.7.1 (1086) 출시 직후 production 으로 promote 하기 전에 Compose BOM 업그레이드를 묶어서 v1.7.2 로 단번에 production rollout 권장.
