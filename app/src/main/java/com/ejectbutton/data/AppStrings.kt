@@ -16,7 +16,14 @@ enum class AppLanguage(val code: String, val nativeName: String) {
     }
 }
 
-data class AppStrings(
+// v1.7.1 — data class 가 아닌 일반 class. 247 fields 의 data class 는 컴파일러가
+//   componentN() × 247 + copy() + equals + hashCode + toString 합성 → 결과 클래스
+//   가 JVM method size limit (64KB) 또는 constant pool 한도 (65535) 초과 →
+//   ClassFormatError 로 testDebugUnitTest 가 모든 AppStrings 접근에서 fail.
+//   data class 기능 (copy/componentN/equals/hashCode/toString) 은 코드베이스 전체
+//   에서 0개 사용 확인됨 (`grep -rn "AppStrings.*\.copy\|componentN" → 0 hit`).
+//   일반 class 변환 시 자동 합성 사라져 클래스 size 대폭 감소.
+class AppStrings(
     // v1.5.2 — 앱 브랜드 라벨 다국어화 (#5)
     val appBrandLabel: String,        // 헤더 / 가짜 통화 overlay 의 "EJECT BUTTON" / "비상 탈출" 등
     val ejectButtonLabel: String,     // 큰 빨간 버튼 안 라벨 "EJECT" / "탈출" 등 (짧게)
@@ -334,7 +341,7 @@ data class AppStrings(
 // marketing ("Your escape, on demand") — now it reads like a radio-ops
 // handoff, with matching caps, callsigns, and "pilot / mission / briefing"
 // terminology throughout.
-private val en = AppStrings(
+private val en: AppStrings by lazy { AppStrings(
     appBrandLabel        = "EMERGENCY EXIT",
     ejectButtonLabel     = "EJECT!",
     catchphrase          = "Beep beep! Your exit, anytime.",
@@ -586,11 +593,11 @@ private val en = AppStrings(
     shareUnlockShareHead   = "Share the app",
     shareUnlockShareSub    = "Tell a friend — permanent unlock.",
     shareUnlockShareBadge  = "Free",
-)
+) }
 
 // Round 18 — 한국어 전체 "상사 → 존중받는 파일럿" 말투로 개편.
 // 앱(상사)이 파일럿(사용자)에게 브리핑하는 톤. 존대 + 군대 용어 + 짧은 명령조.
-private val ko = AppStrings(
+private val ko: AppStrings by lazy { AppStrings(
     appBrandLabel        = "비상탈출",
     ejectButtonLabel     = "탈출!",
     catchphrase          = "삐뽀삐뽀, 언제든지.",
@@ -842,9 +849,9 @@ private val ko = AppStrings(
     shareUnlockShareHead   = "앱 공유하기",
     shareUnlockShareSub    = "친구한테 알려주면 → 영구 잠금 해제",
     shareUnlockShareBadge  = "무료",
-)
+) }
 
-private val zhCN = AppStrings(
+private val zhCN: AppStrings by lazy { AppStrings(
     appBrandLabel        = "紧急脱身",
     ejectButtonLabel     = "脱身！",
     catchphrase          = "嘀嘀！随时弹射。",
@@ -1096,9 +1103,9 @@ private val zhCN = AppStrings(
     shareUnlockShareHead   = "分享应用",
     shareUnlockShareSub    = "告诉朋友 → 永久解锁",
     shareUnlockShareBadge  = "免费",
-)
+) }
 
-private val zhTW = AppStrings(
+private val zhTW: AppStrings by lazy { AppStrings(
     appBrandLabel        = "緊急脫身",
     ejectButtonLabel     = "脫身！",
     catchphrase          = "嘀嘀！隨時彈射。",
@@ -1350,9 +1357,9 @@ private val zhTW = AppStrings(
     shareUnlockShareHead   = "分享 App",
     shareUnlockShareSub    = "告訴朋友 → 永久解鎖",
     shareUnlockShareBadge  = "免費",
-)
+) }
 
-private val ja = AppStrings(
+private val ja: AppStrings by lazy { AppStrings(
     appBrandLabel        = "緊急脱出",
     ejectButtonLabel     = "脱出！",
     catchphrase          = "ピーポー、いつでも。",
@@ -1604,9 +1611,9 @@ private val ja = AppStrings(
     shareUnlockShareHead   = "アプリをシェア",
     shareUnlockShareSub    = "友達に教える → 永久アンロック",
     shareUnlockShareBadge  = "無料",
-)
+) }
 
-private val es = AppStrings(
+private val es: AppStrings by lazy { AppStrings(
     appBrandLabel        = "SALIDA DE EMERGENCIA",
     ejectButtonLabel     = "¡SALIR!",
     catchphrase          = "¡Bip bip! Tu salida, cuando quieras.",
@@ -1859,9 +1866,9 @@ private val es = AppStrings(
     shareUnlockShareHead   = "Compartir la app",
     shareUnlockShareSub    = "Dile a alguien → desbloqueo permanente",
     shareUnlockShareBadge  = "Gratis",
-)
+) }
 
-private val hi = AppStrings(
+private val hi: AppStrings by lazy { AppStrings(
     appBrandLabel        = "आपातकालीन निकास",
     ejectButtonLabel     = "निकलो!",
     catchphrase          = "बीप बीप! कभी भी निकलो।",
@@ -2113,7 +2120,7 @@ private val hi = AppStrings(
     shareUnlockShareHead   = "ऐप शेयर करें",
     shareUnlockShareSub    = "दोस्त को बताएँ → स्थायी अनलॉक",
     shareUnlockShareBadge  = "मुफ़्त",
-)
+) }
 
 val stringsMap: Map<AppLanguage, AppStrings> = mapOf(
     AppLanguage.ENGLISH             to en,
