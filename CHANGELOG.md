@@ -5,6 +5,42 @@
 
 ---
 
+## [Unreleased — v1.6.10 후보] — 2026-05-19
+
+> 정식 출시 직후 발견된 두 가지 사용자 보고 이슈에 대한 핫픽스.
+
+### Fixed
+- **흰 런처 아이콘 (Themed icon)** — Android 13+ 단말에서 "테마 아이콘" 토글이 ON 인 경우
+  `<monochrome>` 실루엣이 wallpaper 색조로 tint 되어 거의 흰색 아이콘으로 노출되던 현상 수정.
+  `mipmap-anydpi-v26/ic_launcher.xml` 및 `ic_launcher_round.xml` 의 `<monochrome>` 선언 제거 →
+  Material You themed-icon 미지원으로 전환하고 항상 브랜드 RED adaptive icon 으로 통일.
+  비상안전 도구 특성상 브랜드 식별성이 OS 테마 통합성보다 우선. monochrome PNG 자산은 보존 (향후
+  더 강한 실루엣 재디자인 후 재활성화 가능).
+- **권한 거부 시 EJECT silent fail** — 이전엔 `requestInitialPermissionsIfNeeded` 가 온보딩 직후
+  한 번만 권한 요청 + `perms_requested` flag 로 영구 차단. 사용자가 배터리 최적화 제외/오버레이/
+  알림 권한을 거부하면 그 이후 EJECT 누름이 silent fail (특히 화면 OFF 상태에서 SHAKE/SIDE_BUTTON
+  무반응). 사용자 보고 케이스: "백그라운드 작동 허용 안 해서 화면 끄니 반응 없음".
+
+### Added — Pre-arm permission gate
+- `data/PermissionGate.kt` — Trigger 모드별 필수 권한 매트릭스 + missing 계산 (pure utility).
+    - `OVERLAY`: 모든 모드 필수 (가짜 통화 화면 그리기).
+    - `POST_NOTIFICATIONS`: API 33+ 항상 (FGS 알림 가시성).
+    - `BATTERY_OPT`: SHAKE / SIDE_BUTTON / 10초 이상 delay (화면 OFF 생존 필요).
+- `MainActivity.PermissionGateDialog` — EJECT 시점에 미충족 권한 있으면 다이얼로그로 안내 + 시스템
+  intent 순차 launch. ON_RESUME 마다 missing 재평가 → 모두 grant 되면 자동으로 arm/fire 진행.
+  거부 시 폐기되어 **다음 EJECT 누름에 다시 prompt** (사용자 요구 spec: "권한이 없는 작업에 대해
+  처음 설치했을때 처럼 사용자에게 다시 요청").
+- `MainScreen` — 모든 trigger 분기 (SIDE_BUTTON / SHAKE / IMMEDIATE / DELAYED / CUSTOM) 가
+  `ensurePermissions(mode, delayMs)` 콜백을 거치도록 wrap. 기존의 분기별 `canDrawOverlays` 단편
+  체크는 통합 게이트로 대체되어 제거.
+
+### Changed
+- `AppStrings.kt` — 7개 로케일 (en/ko/zh-CN/zh-TW/ja/es/hi) 에 `permGateTitle` / `permGateBody` /
+  `permGateBtnGrant` / `permGateBtnCancel` 4개 신규 string 추가. 톤 가이드 (본부 무전사 voice)
+  일관 유지.
+
+---
+
 ## [Unreleased — v1.6.9 후보] — 2026-05-18
 
 ### Added

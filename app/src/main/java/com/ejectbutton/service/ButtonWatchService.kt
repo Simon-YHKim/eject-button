@@ -189,8 +189,7 @@ class ButtonWatchService : Service() {
                     return
                 }
                 // 통화 중에는 가짜 전화가 뜨면 안 되므로 무시.
-                val tm = getSystemService(TELEPHONY_SERVICE) as? TelephonyManager
-                if (tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE) return
+                if (isInActiveCall()) return
 
                 when {
                     direction > 0 -> detector.onVolumeUp()
@@ -213,6 +212,24 @@ class ButtonWatchService : Service() {
         // 현재 볼륨으로 기준선 재설정
         snapshotAllStreams()
         return START_STICKY
+    }
+
+    /**
+     * 실통화 중인지 안전하게 확인. v1.6.10 핫픽스 — 일부 단말 (Samsung Android 16
+     * SM-S948N 등) 은 매니페스트에 READ_PHONE_STATE 가 선언돼 있어도 runtime grant
+     * 가 없으면 [TelephonyManager.callState] 호출 시 SecurityException 을 던진다.
+     * 권한 결핍은 정상적인 런타임 상태로 취급하고 "통화 중 아님 = 진행 허용" 으로
+     * graceful degrade.
+     */
+    private fun isInActiveCall(): Boolean {
+        return try {
+            val tm = getSystemService(TELEPHONY_SERVICE) as? TelephonyManager
+            tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE
+        } catch (_: SecurityException) {
+            false
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun snapshotAllStreams() {
@@ -261,8 +278,7 @@ class ButtonWatchService : Service() {
     private fun handleVolumeChange() {
         // 실통화 중이면 볼륨 키는 VOICE_CALL 조절용이고, 가짜 전화가
         // 그 위에 뜨는 건 명백히 잘못된 동작. 감지 자체를 short-circuit.
-        val tm = getSystemService(TELEPHONY_SERVICE) as? TelephonyManager
-        if (tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE) {
+        if (isInActiveCall()) {
             // 통화 종료 후 곧바로 이전 볼륨과 비교해 유령 이벤트가 나지 않도록
             // 기준선도 현재 값으로 재스냅샷.
             snapshotAllStreams()

@@ -13,6 +13,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -28,18 +29,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.ejectbutton.ads.AdManager
 import com.ejectbutton.billing.BillingManager
 import com.ejectbutton.data.AppLanguage
 import com.ejectbutton.data.EjectPrefs
 import com.ejectbutton.data.LocalAppStrings
+import com.ejectbutton.data.PermissionGate
 import com.ejectbutton.data.Scenario
 import com.ejectbutton.data.ThemeMode
+import com.ejectbutton.data.TriggerMode
 import com.ejectbutton.data.strings
 import com.ejectbutton.crash.CrashReportManager
 import com.ejectbutton.data.SideButtonCommand
@@ -247,6 +254,25 @@ class MainActivity : ComponentActivity() {
                     // 먹히지 않으려면 제외 설정이 필요하다. 첫 진입 후 한 번만 물어본다.
                     var showBatteryOptDialog by remember { mutableStateOf(false) }
 
+                    // v1.6.10 — EJECT 시점 권한 게이트. MainScreen 의 모든 arm/fire 분기가
+                    // 이 콜백을 통해 들어온다. 미충족 권한이 있으면 [PermissionGateDialog] 가
+                    // 떠서 사용자에게 다시 안내하고, 모두 grant 된 뒤에야 [pendingProceed] 가
+                    // 실행돼 실제 arm/fire 가 일어난다. 거부 시 pendingProceed 는 폐기되어
+                    // 다음 EJECT 누름에 다시 재확인됨 (사용자 요청 spec).
+                    var pendingProceed by remember { mutableStateOf<(() -> Unit)?>(null) }
+                    var pendingMode by remember { mutableStateOf<TriggerMode?>(null) }
+                    var pendingDelayMs by remember { mutableStateOf(0L) }
+                    val ensurePermissions: (TriggerMode, Long, () -> Unit) -> Unit =
+                        { mode, delayMs, proceed ->
+                            if (PermissionGate.missing(this@MainActivity, mode, delayMs).isEmpty()) {
+                                proceed()
+                            } else {
+                                pendingMode = mode
+                                pendingDelayMs = delayMs
+                                pendingProceed = proceed
+                            }
+                        }
+
                     // 프리미엄 구매/복원 시 광고 로더/슬롯을 즉시 비운다.
                     LaunchedEffect(isPremium) {
                         AdManager.setPremium(this@MainActivity, isPremium)
@@ -325,14 +351,14 @@ class MainActivity : ComponentActivity() {
                                     billingManager.launchPurchaseRemoveAds(this@MainActivity)
                                 },
                                 removeAdsPrice = billingManager.getRemoveAdsPriceText(),
+                                ensurePermissions = ensurePermissions,
                                 onEject = { scenario: Scenario, delayMs: Long ->
-                                    if (!Settings.canDrawOverlays(this@MainActivity)) {
-                                        overlayPermLauncher.launch(
-                                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                                Uri.parse("package:$packageName"))
-                                        )
-                                        return@MainScreen
-                                    }
+                                    // v1.6.10 — overlay 권한은 MainScreen 이 ensurePermissions 로
+                                    // 사전에 검증하므로 여기서는 별도 체크 불필요. 안전망 차원에서
+                                    // canDrawOverlays 가 의외로 false 면 그냥 fire 시도 (Service 가
+                                    // SecurityException 으로 fallback) 보다는 사용자에게 다시
+                                    // 안내하는 게 낫지만, 게이트가 fail-safe 로 동작하므로 직접
+                                    // 도달 가능성은 거의 없다.
                                     if (delayMs == -1L) {
                                         ShakeDetectionService.start(
                                             this@MainActivity,
@@ -434,6 +460,26 @@ class MainActivity : ComponentActivity() {
                                     }) {
                                         Text(strings.batteryOptLater)
                                     }
+                                },
+                            )
+                        }
+
+                        // v1.6.10 — pre-arm permission gate (EJECT 시점에 필수 권한 부족하면 등장).
+                        // pendingProceed 는 onAllGranted 호출 시 한 번만 실행 후 초기화.
+                        val proceedSnap = pendingProceed
+                        val modeSnap = pendingMode
+                        if (proceedSnap != null && modeSnap != null) {
+                            PermissionGateDialog(
+                                mode = modeSnap,
+                                delayMs = pendingDelayMs,
+                                onAllGranted = {
+                                    pendingProceed = null
+                                    pendingMode = null
+                                    proceedSnap()
+                                },
+                                onCancel = {
+                                    pendingProceed = null
+                                    pendingMode = null
                                 },
                             )
                         }
@@ -592,5 +638,113 @@ private fun PulsingDot() {
         Modifier
             .size(8.dp)
             .background(TacticalCyan.copy(alpha = alpha), androidx.compose.foundation.shape.CircleShape)
+    )
+}
+
+// ── v1.6.10 — Pre-arm permission gate dialog ─────────────────────────────────
+//
+// EJECT 누른 시점에 [PermissionGate.missing] 이 비어있지 않을 때 노출. 다이얼로그가 떠 있는
+// 동안:
+//   1. ON_RESUME 마다 missing 재계산 → 모두 grant 되면 즉시 [onAllGranted] 호출 후 dismiss.
+//   2. "허용하기" 클릭 시 첫 번째 미충족 권한의 시스템 intent 를 launch. 사용자가 시스템 화면에서
+//      돌아오면 (1) 의 ON_RESUME 훅이 missing 을 다시 평가하므로 자동으로 다음 권한으로 진행
+//      하거나 모두 충족 시 onAllGranted.
+//   3. "다음에" 클릭 시 [onCancel] — 다이얼로그만 닫고 다음 EJECT 누름에 다시 재확인됨.
+//
+// Notif permission 은 RequestPermission contract, 나머지(overlay / battery opt)는 settings
+// activity 이므로 StartActivityForResult contract 를 별도로 보유. 두 launcher 모두 결과 자체는
+// 무시하고 ON_RESUME 재평가에 위임.
+@Composable
+private fun PermissionGateDialog(
+    mode: TriggerMode,
+    delayMs: Long,
+    onAllGranted: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    val strings = LocalAppStrings.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // 초기 진입 + 매 ON_RESUME 마다 재계산.
+    var missing by remember(mode, delayMs) {
+        mutableStateOf(PermissionGate.missing(ctx, mode, delayMs))
+    }
+
+    DisposableEffect(lifecycleOwner, mode, delayMs) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                missing = PermissionGate.missing(ctx, mode, delayMs)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // 게이트 통과 시점에 한 번만 onAllGranted 호출. LaunchedEffect 안에서 호출해
+    // recomposition 중 부수효과가 발생하지 않도록 한다.
+    LaunchedEffect(missing) {
+        if (missing.isEmpty()) onAllGranted()
+    }
+
+    if (missing.isEmpty()) return
+
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* result 자체는 무시; ON_RESUME 재평가로 처리 */ }
+
+    val settingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* result 자체는 무시; ON_RESUME 재평가로 처리 */ }
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(strings.permGateTitle, fontWeight = FontWeight.Bold) },
+        text = { Text(strings.permGateBody) },
+        confirmButton = {
+            TextButton(onClick = {
+                when (missing.first()) {
+                    PermissionGate.Req.OVERLAY -> {
+                        settingsLauncher.launch(
+                            Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${ctx.packageName}"),
+                            )
+                        )
+                    }
+                    PermissionGate.Req.POST_NOTIFICATIONS -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                    PermissionGate.Req.BATTERY_OPT -> {
+                        runCatching {
+                            settingsLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                    Uri.parse("package:${ctx.packageName}"),
+                                )
+                            )
+                        }.onFailure {
+                            runCatching {
+                                settingsLauncher.launch(
+                                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                )
+                            }
+                        }
+                    }
+                }
+            }) {
+                Text(
+                    strings.permGateBtnGrant,
+                    color = EjectCoral,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(strings.permGateBtnCancel)
+            }
+        },
     )
 }
