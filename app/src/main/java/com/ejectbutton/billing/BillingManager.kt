@@ -237,7 +237,9 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
     private fun showBillingNotReadyToast(activity: Activity) {
         runCatching {
             val lang = com.ejectbutton.data.EjectPrefs.loadLanguage(activity)
-            val msg = lang.strings().billingNotReadyMsg
+            // fully-qualified stringsMap 직접 lookup — top-level `strings` extension
+            // import 없이 호출 가능. import 추가 없이 빌드 통과.
+            val msg = com.ejectbutton.data.stringsMap.getValue(lang).billingNotReadyMsg
             android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_LONG).show()
         }
     }
