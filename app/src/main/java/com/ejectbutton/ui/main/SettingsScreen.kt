@@ -1425,24 +1425,32 @@ fun ColumnScope.SettingsBodyInline(
  * Google Play Billing 에서 가격을 못 가져왔을 때 (제품 미등록·디버그 빌드·오프라인)
  * 기기 로케일 기반으로 월 구독 근사치 가격을 표시한다.
  *
- * Round 18 — 일회성 가격에서 월 구독 (약 ₩1,900 / $1.99 수준) 로 전환.
+ * Round 18 — 일회성 가격에서 월 구독으로 전환.
+ * v1.7.1 — MainScreen.localizedFallbackPrice 의 v1.6.2 PPP 매핑과 100% 동기화.
+ *   이전엔 두 fallback 이 서로 다른 가격 (Settings 는 옛 ₩1,900, Main 은 ₩3,000)
+ *   으로 어긋나 사용자가 같은 PremiumUpgradeDialog 를 어디서 여느냐에 따라 다른
+ *   금액을 보는 일관성 버그 발생. PPP (Purchasing Power Parity) 기준:
+ *   한국 ₩3,000 = US $2.49 ≈ €2.29 ≈ £1.99 ≈ ¥350 (JP) ≈ ¥15 (CN).
  * premiumBuyBtn 포맷에 /월 접미사를 붙이므로 여기서는 통화 금액만 반환한다.
  */
 @Composable
 private fun localizedFallbackPrice(): String {
     val country = Locale.getDefault().country  // ISO 3166-1 alpha-2
     return when (country) {
-        "KR" -> "₩1,900"
-        "JP" -> "¥250"
-        "CN", "TW", "HK" -> "¥9.9"
-        "IN" -> "₹99"
-        "MX" -> "MX\$29"
-        "ES" -> "1,49 €"
-        "GB" -> "£1.49"
-        "DE", "FR", "IT", "NL" -> "1,49 €"
-        "BR" -> "R\$6.90"
-        "AU" -> "A\$1.99"
-        "CA" -> "CA\$1.99"
-        else -> "$1.99"
+        "KR" -> "₩3,000"
+        "JP" -> "¥350"
+        "CN" -> "¥15"
+        "TW" -> "NT\$70"
+        "HK" -> "HK\$18"
+        "IN" -> "₹149"
+        "MX" -> "MX\$45"
+        "ES" -> "2,29 €"
+        "GB" -> "£1.99"
+        "DE", "FR", "IT", "NL" -> "2,29 €"
+        "BR" -> "R\$10.90"
+        "AU" -> "A\$3.49"
+        "CA" -> "CA\$3.29"
+        "ID" -> "Rp35.000"
+        else -> "\$2.49"
     }
 }

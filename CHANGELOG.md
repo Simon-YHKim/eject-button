@@ -5,6 +5,45 @@
 
 ---
 
+## [Unreleased — v1.7.1 후보] — 2026-05-19
+
+> **v1.7.0 출시 직후 발견된 결제 흐름 3건 핫픽스.** 사용자 보고:
+> - 설정 → "비상탈출 Mayday 업그레이드" 버튼 → 팝업이 "프리미엄 업그레이드" 로 표시
+> - 가격이 ₩3,000 이 아님 (옛 ₩1,900 노출)
+> - "구독시작" 눌러도 Play Store 결제 화면 안 뜨고 팝업만 닫힘
+
+### Fixed
+- **PremiumUpgradeDialog 제목 브랜드 통일** — 7개 로케일 `prTitle` 을 "Mayday 업그레이드"
+  (en: "Upgrade to Mayday", ko: "Mayday 업그레이드", ja: "Mayday へアップグレード",
+  zh-CN: "升级到 Mayday", zh-TW: "升級至 Mayday", es: "Actualizar a Mayday",
+  hi: "Mayday में अपग्रेड") 로 변경. 기존 `premiumTitle` ("비상탈출 Mayday")
+  의 브랜드 voice 와 일관.
+- **Fallback 가격 PPP 매핑 동기화** — 7개 로케일 `prMonthlyPrice` / `prAnnualPrice` /
+  `prAnnualAvg` 를 v1.6.2 PPP 재책정 결과 (한국 ₩3,000 = $2.49 = €2.29 = ¥350 등) 로
+  일괄 갱신. **`SettingsScreen.kt` 의 `localizedFallbackPrice()` 도 `MainScreen.kt`
+  의 v1.6.2 매핑과 100% 동기화** — 이전엔 Settings 진입 시 옛 ₩1,900, Main 진입 시
+  ₩3,000 로 어긋나 사용자가 같은 dialog 에서 다른 금액 보는 inconsistency.
+- **결제 silent fail 안내** — `BillingManager.launchPurchase` / `launchPurchaseRemoveAds`
+  가 `subsDetails` / `inappDetails` null 일 때 silent return 하던 것을 **Toast 안내
+  ("Play 스토어와 연결 중이에요. 잠시 후 다시 눌러주세요") + `queryProducts()` 재호출**
+  로 변경. 사용자가 "팝업만 닫히고 결제 화면 안 뜸" 으로 보던 증상 해결. 가능한 원인은
+  Play Console 미등록 / inactive product, license tester 미등록, BillingClient
+  connection 지연, queryProductDetailsAsync 네트워크 실패 — Toast 출력 후 다음 시도에서
+  재시도 가능.
+
+### Changed
+- `AppStrings.kt`: 7-locale `billingNotReadyMsg` 신규 추가.
+
+### Notes
+- **실제 결제 가격은 Play Console 의 product 가격을 따라간다.** 본 PR 의 fallback 변경은
+  Play Console 이 응답 못 했을 때 노출되는 임시 가격일 뿐. Play Console 에 등록된 가격이
+  ₩3,000 인지 확인 필요 (Simon 의 후속 작업). 등록된 가격과 fallback 이 다르면 사용자가
+  서로 다른 금액을 보고 결제 시점에 놀랄 수 있음.
+- 결제가 여전히 안 뜨면 (Toast 가 뜨고 다시 눌러도 같은 증상): Play Console 에 product
+  미등록 가능성이 가장 높음. logcat 의 "BillingManager" tag 메시지 확인.
+
+---
+
 ## [Unreleased — v1.7.0 후보] — 2026-05-19
 
 > **v1.6.10 직후 minor 출시.** 두 가지 큰 흐름:

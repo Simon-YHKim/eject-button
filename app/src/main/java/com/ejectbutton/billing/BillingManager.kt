@@ -158,13 +158,37 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
 
     /**
      * SUBS premium 결제 시작 (월 구독). offerToken 필수.
+     *
+     * v1.7.1 — 이전엔 `subsDetails == null` 이면 silent return → 사용자에게는 팝업이
+     * 그냥 닫히는 것 처럼 보임 (Play Store 결제 화면 안 뜸). 이제 Toast 로 안내 +
+     * queryProducts() 재호출로 다음 시도가 성공할 수 있게 한다. 가능한 원인:
+     *   - Play Console 에 PRODUCT_PREMIUM 구독 상품이 미등록 또는 inactive
+     *   - 사용자의 Play 계정이 license testing list 에 없음
+     *   - BillingClient connection 이 아직 안 됨 (cold start 직후)
+     *   - 네트워크 오류로 queryProductDetailsAsync 실패
      */
     fun launchPurchase(activity: Activity) {
-        val details = subsDetails ?: return
-        val offerToken = details.subscriptionOfferDetails
-            ?.firstOrNull()
-            ?.offerToken
-            ?: return
+        val details = subsDetails
+        if (details == null) {
+            android.util.Log.w(
+                "BillingManager",
+                "launchPurchase: subsDetails null. " +
+                    "Play Console product 'eject_premium_monthly' 가 미등록이거나 " +
+                    "BillingClient 가 아직 product detail 못 받아옴. queryProducts() 재시도."
+            )
+            showBillingNotReadyToast(activity)
+            queryProducts()
+            return
+        }
+        val offerToken = details.subscriptionOfferDetails?.firstOrNull()?.offerToken
+        if (offerToken == null) {
+            android.util.Log.w(
+                "BillingManager",
+                "launchPurchase: offerToken null. Play Console 의 subscription base plan 누락."
+            )
+            showBillingNotReadyToast(activity)
+            return
+        }
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(
                 listOf(
@@ -180,9 +204,20 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
 
     /**
      * v1.3.0 — INAPP 광고 제거 일회성 결제 시작. offerToken 불필요 (구독이 아니므로).
+     * v1.7.1 — null guard + Toast 안내 (launchPurchase 와 동일 패턴).
      */
     fun launchPurchaseRemoveAds(activity: Activity) {
-        val details = inappDetails ?: return
+        val details = inappDetails
+        if (details == null) {
+            android.util.Log.w(
+                "BillingManager",
+                "launchPurchaseRemoveAds: inappDetails null. " +
+                    "Play Console product 'eject_remove_ads_lifetime' 미등록 가능."
+            )
+            showBillingNotReadyToast(activity)
+            queryProducts()
+            return
+        }
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(
                 listOf(
@@ -193,6 +228,18 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
             )
             .build()
         billingClient.launchBillingFlow(activity, flowParams)
+    }
+
+    /**
+     * v1.7.1 — Toast 로 사용자에게 결제가 막힌 이유 안내. 로케일별 메시지는
+     * AppStrings.billingNotReadyMsg 사용. Activity context 라 main thread.
+     */
+    private fun showBillingNotReadyToast(activity: Activity) {
+        runCatching {
+            val lang = com.ejectbutton.data.EjectPrefs.loadLanguage(activity)
+            val msg = lang.strings().billingNotReadyMsg
+            android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 
     /**
