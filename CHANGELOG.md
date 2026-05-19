@@ -5,6 +5,37 @@
 
 ---
 
+## [Unreleased — v1.6.11 후보] — 2026-05-19
+
+> v1.6.10 핫픽스 직후 출시 인프라 강화. Play Store 자동 업데이트만으로는 v1.6.10
+> 사용자가 즉시 갱신을 받지 못해 (자동 업데이트 OFF / 느린 rollout), 다음 출시부터는
+> **앱이 직접 새 버전을 받아 사용자에게 "재시작" 만 요청**하도록 Google Play
+> In-App Update API (Flexible flow) 를 내장.
+
+### Added — In-App Update (Flexible)
+- `MainActivity` — `AppUpdateManager` + `InstallStateUpdatedListener` 등록. 앱 진입 시
+  `appUpdateInfo` 로 새 버전 확인 → 가능하면 **백그라운드 다운로드** 시작. 다운로드 완료
+  시 `updateDownloaded` state 가 true 가 되고 Compose 트리가 화면 하단에 **Material3
+  Snackbar (Indefinite duration)** 로 "업데이트 다운로드 완료 — 재시작" 안내. 사용자가
+  Restart 액션을 누르면 `appUpdateManager.completeUpdate()` 호출 → 자동 재시작/적용.
+- `onResume` — 사용자가 잠시 다른 앱으로 이탈한 사이 다운로드가 완료된 경우에도 다시
+  Snackbar 가 뜨도록 install status 재평가.
+- `onDestroy` — listener 누수 방지.
+- `gradle/libs.versions.toml` + `app/build.gradle.kts` — `com.google.android.play:app-update-ktx:2.1.0` 의존성 추가.
+- `AppStrings.kt` — 7개 로케일 (en/ko/zh-CN/zh-TW/ja/es/hi) 에 `updateDownloadedMsg` /
+  `updateRestartBtn` 2개 신규 string 추가.
+
+### Notes
+- **첫 trigger 시점**: v1.6.11 이 앱에 ship 된 이후 출시되는 다음 버전 (v1.6.12+) 부터.
+  v1.6.10 → v1.6.11 업데이트는 여전히 Play Store 의 일반 자동 업데이트로 도착.
+- **권한**: In-App Update 는 추가 manifest permission 불필요.
+- **디버그/사이드로드 빌드**: `startUpdateFlow` 가 즉시 실패 → Log.d 로만 표시되고 사용자
+  UX 에는 영향 없음.
+- **Flexible vs Immediate**: 본 출시는 비강제 Flexible 만 채택. 보안/결제 치명 이슈가 생기면
+  Immediate flow 로 한 줄 변경하여 강제 업데이트 가능.
+
+---
+
 ## [Unreleased — v1.6.10 후보] — 2026-05-19
 
 > 정식 출시 직후 발견된 두 가지 사용자 보고 이슈에 대한 핫픽스.

@@ -14,6 +14,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
+// v1.6.11 — In-App Update API (Flexible flow).
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -22,6 +30,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -100,6 +112,55 @@ class MainActivity : ComponentActivity() {
     private val overlayPermLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {}
+
+    // v1.6.11 — In-App Update (Flexible flow). 사용자가 Play Store 갱신을 안 켜뒀거나
+    // 미루는 경우에도 앱이 자체적으로 백그라운드 다운로드 → "재시작" 스낵바로 적용 유도.
+    //   - FLEXIBLE: 사용자가 앱 사용을 계속할 수 있는 비강제 모드. 다운로드 완료 시
+    //     [updateDownloaded] state 가 true 가 되고 Compose 트리가 Snackbar 표시.
+    //   - 디버그/사이드로드 환경은 startUpdateFlow 가 즉시 실패 — 로그만 남기고 무시.
+    //   - 다음 출시(v1.6.12+) 부터 실제 trigger. v1.6.11 자체는 코드 ship 만 함.
+    private val appUpdateManager: AppUpdateManager by lazy {
+        AppUpdateManagerFactory.create(applicationContext)
+    }
+
+    private val updateDownloaded = mutableStateOf(false)
+
+    private val installStateListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) {
+            updateDownloaded.value = true
+        }
+    }
+
+    private val updateLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { /* 거부 시 그냥 패스. 다음 onResume 에서 재시도 안 함 — 사용자 선택 존중 */ }
+
+    private fun checkForFlexibleUpdate() {
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { info ->
+                if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
+                    info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
+                ) {
+                    runCatching {
+                        appUpdateManager.startUpdateFlowForResult(
+                            info,
+                            updateLauncher,
+                            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build(),
+                        )
+                    }.onFailure { e ->
+                        android.util.Log.w("MainActivity", "startUpdateFlow failed", e)
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                // 디버그 빌드, 사이드로드 APK, Play Store 미설치 디바이스 등에서 발생.
+                android.util.Log.d("MainActivity", "appUpdateInfo not available: ${e.message}")
+            }
+    }
+
+    private fun completeFlexibleUpdate() {
+        runCatching { appUpdateManager.completeUpdate() }
+    }
 
     /**
      * Round 18 — 최초 실행 & 튜토리얼을 끝냈을 때 한 번만 호출.
@@ -211,6 +272,11 @@ class MainActivity : ComponentActivity() {
         // 인앱 결제 초기화
         billingManager = BillingManager(this)
         billingManager.connect()
+
+        // v1.6.11 — In-App Update Flexible flow. Listener 등록 후 첫 체크.
+        // 결과는 [updateDownloaded] state 로 Compose 트리에 전달돼 Snackbar 표시.
+        appUpdateManager.registerListener(installStateListener)
+        checkForFlexibleUpdate()
 
         // Round 18 — 권한 요청은 onCreate 가 아니라 '튜토리얼 이후' 에 실행.
         // 컴포지션 트리 안의 LaunchedEffect 에서 showOnboarding 이 false 로 바뀐 순간
@@ -483,6 +549,32 @@ class MainActivity : ComponentActivity() {
                                 },
                             )
                         }
+
+                        // v1.6.11 — In-App Update Snackbar.
+                        // [updateDownloaded] 가 true 가 되면 한 번 띄우고 dismiss/action 후 더는
+                        // 안 띄움 (snackbarHandled 플래그). 다음 앱 lifecycle (재실행) 에 다시.
+                        val snackbarHostState = remember { SnackbarHostState() }
+                        val downloaded by updateDownloaded
+                        var snackbarHandled by remember { mutableStateOf(false) }
+                        LaunchedEffect(downloaded) {
+                            if (downloaded && !snackbarHandled) {
+                                snackbarHandled = true
+                                val result = snackbarHostState.showSnackbar(
+                                    message = strings.updateDownloadedMsg,
+                                    actionLabel = strings.updateRestartBtn,
+                                    duration = SnackbarDuration.Indefinite,
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    completeFlexibleUpdate()
+                                }
+                            }
+                        }
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 16.dp),
+                        )
                     }
                 }
             }
@@ -499,6 +591,15 @@ class MainActivity : ComponentActivity() {
         foregroundDetector.command = EjectPrefs.loadSideButtonCommand(this)
         foregroundDetector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
         ButtonWatchService.reconcile(this)
+
+        // v1.6.11 — Flexible update 가 백그라운드 다운로드 완료된 채로 앱을 떠났다가
+        // 돌아왔을 때 (예: 사용자가 잠시 다른 앱 쓰는 사이 다운로드 마무리) Snackbar 가
+        // 다시 뜨도록 install status 재평가.
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+            if (info.installStatus() == InstallStatus.DOWNLOADED) {
+                updateDownloaded.value = true
+            }
+        }
     }
 
     /**
@@ -556,6 +657,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         billingManager.destroy()
         AdManager.destroy()
+        // v1.6.11 — In-App Update listener 누수 방지.
+        runCatching { appUpdateManager.unregisterListener(installStateListener) }
     }
 }
 
