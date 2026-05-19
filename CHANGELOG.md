@@ -5,6 +5,29 @@
 
 ---
 
+## [Unreleased — v1.7.2 후보] — 2026-05-20
+
+> v1.7.1 출시 직후 Crashlytics / Play Console Vitals 점검 결과 발견된 두 가지 위험 해소.
+
+### Fixed
+- **`RenderNode.addAnimator: Cannot start this animator on a detached view!` (Compose Material Ripple 크래시)** —
+  지난 28일간 7 users / 26 events. 영향 버전: 1028 (v1.0.0-rebuild) / 1052 (v1.5.12) / 1076 (v1.6.9).
+  주로 Samsung 디바이스 (Android 15 / 16 Beta). 원인: Compose Material `RippleForeground.startPending` 이
+  사용자 탭과 동시에 Composable dispose 가 일어나는 경우 detached RenderNode 에 animator 추가 시도.
+  Compose BOM 업그레이드로 다수의 ripple lifecycle race fix 누적 반영.
+- **Play Console 권장 조치 B: `LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES` deprecated** —
+  Compose UI 라이브러리 내부 deprecated API 사용. BOM 업그레이드로 자동 해결.
+
+### Changed
+- `gradle/libs.versions.toml`: `composeBom = "2024.06.00"` → `"2024.12.00"`.
+  6개월 LTS jump (4 minor 버전). transitive 의존성 (foundation / material3 / ui / runtime) 모두 동반 업그레이드.
+
+### Notes
+- v1.7.1 (1086) 출시 직후 production 으로 promote 하기 전에 Compose BOM 업그레이드를 묶어서 v1.7.2 로 단번에 production rollout 권장.
+- 권장 조치 A ("Android 15+ edge-to-edge") 는 v1.7.1 에서 이미 해결 (MainActivity 의 `enableEdgeToEdge()` 호출).
+
+---
+
 ## [Unreleased — v1.7.1 후보] — 2026-05-19
 
 > **v1.7.0 출시 직후 발견된 결제 흐름 3건 핫픽스.** 사용자 보고:

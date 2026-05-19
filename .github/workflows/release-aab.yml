@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+    # v1.7.2 one-shot trigger — v1.7.1 PR #15 와 동일 패턴. release-build publish 후 cleanup PR 로 원복.
+    branches:
+      - claude/compose-bom-v1.7.2
   workflow_dispatch:
     inputs:
       version_name:
@@ -107,6 +110,9 @@ jobs:
             VERSION_NAME="${{ inputs.version_name }}"
           elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
             VERSION_NAME="${GITHUB_REF_NAME#v}"
+          elif [ "${GITHUB_REF_NAME}" = "claude/compose-bom-v1.7.2" ]; then
+            # v1.7.2 one-shot — branch 삭제 또는 cleanup PR 후 자동 정리.
+            VERSION_NAME="1.7.2"
           else
             VERSION_NAME="1.0.0"
           fi
