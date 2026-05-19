@@ -14,6 +14,8 @@ firebaseCrashlyticsPlugin = "3.0.2"
 # v1.4.0 ??Geofencing API. FusedLocationProvider + GeofencingClient.
 # v1.4.2 — Lottie animation for drag-to-confirm rings on call buttons.
 lottieCompose = "6.4.0"
+# v1.6.11 — In-App Update API (Flexible flow: background DL + restart snackbar).
+playAppUpdate = "2.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +32,8 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 androidx-savedstate = { group = "androidx.savedstate", name = "savedstate-ktx", version = "1.2.1" }
 androidx-lifecycle-common = { group = "androidx.lifecycle", name = "lifecycle-common", version.ref = "lifecycleRuntimeKtx" }
 play-review = { group = "com.google.android.play", name = "review-ktx", version = "2.0.2" }
+# v1.6.11 — In-App Update (Flexible). Background download + snackbar prompt restart.
+play-app-update = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "playAppUpdate" }
 play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
 google-admob = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "admob" }
 # v1.2 ??UMP (User Messaging Platform) SDK. GDPR/EEA ?ъ슜??愿묎퀬 ?숈쓽 ?ㅼ씠?쇰줈洹?

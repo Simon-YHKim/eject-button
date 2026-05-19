@@ -5,6 +5,122 @@
 
 ---
 
+## [Unreleased — v1.7.0 후보] — 2026-05-19
+
+> **v1.6.10 직후 minor 출시.** 두 가지 큰 흐름:
+> 1. **In-App Update Flexible flow 통합** — 사용자의 수동 갱신 의존 제거. 다음 출시부터
+>    앱이 직접 새 버전을 받아 "재시작" 만 요청.
+> 2. **Manager 패턴 통일 + 안전 가드 강화** — UpdateManager 추출로 architectural
+>    consistency 회복 (BillingManager / AdManager / ConsentManager 와 동일 시그너처),
+>    동시에 active eject 중 process kill 금지 등 safety-critical 가드 다중화.
+
+### Refactored — UpdateManager 추출 (v1.7.0 architectural)
+- 신규 `com.ejectbutton.update.UpdateManager` — Activity 에서 In-App Update lifecycle
+  전체 분리. `BillingManager` 와 동일하게 `StateFlow<UpdateState>` 노출
+  (`Idle` / `Downloading` / `Downloaded` / `Failed`). MainActivity 는 매니저 instantiate
+  + state collect + Snackbar 노출만 담당, In-App Update 도메인 로직 0 라인.
+- `MainActivity.kt`: -120 lines (In-App Update 관련 모두 UpdateManager 로 이관).
+- 테스트 이동: `MainActivityUpdateGuardTest` → `UpdateManagerGuardTest`.
+
+### Added — Failure status handling (Adversarial #8 → adopted)
+- `UpdateManager.installStateListener` 가 `InstallStatus.FAILED` / `CANCELED` 도 처리
+  → `_state.value = UpdateState.Failed`. UI 는 짧은 (Short duration) Snackbar 로
+  "다운로드 실패 — 다음에 다시 시도할게요" 안내. 다음 cold launch / Wi-Fi 자동 재시도.
+  silent failure 로 사용자가 "왜 재시작 안 뜨지" 라는 상황 방지.
+- `AppStrings.kt`: 7-locale `updateFailedMsg` 신규 추가.
+
+
+
+### Added — In-App Update (Flexible)
+- `MainActivity` — `AppUpdateManager` + `InstallStateUpdatedListener` 등록. 앱 진입 시
+  `appUpdateInfo` 로 새 버전 확인 → 가능하면 **백그라운드 다운로드** 시작. 다운로드 완료
+  시 `updateDownloaded` state 가 true 가 되고 Compose 트리가 화면 하단에 **Material3
+  Snackbar (Indefinite duration)** 로 "업데이트 다운로드 완료 — 재시작" 안내. 사용자가
+  Restart 액션을 누르면 `appUpdateManager.completeUpdate()` 호출 → 자동 재시작/적용.
+- `onResume` — 사용자가 잠시 다른 앱으로 이탈한 사이 다운로드가 완료된 경우에도 다시
+  Snackbar 가 뜨도록 install status 재평가.
+- `onDestroy` — listener 누수 방지.
+- `gradle/libs.versions.toml` + `app/build.gradle.kts` — `com.google.android.play:app-update-ktx:2.1.0` 의존성 추가.
+- `AppStrings.kt` — 7개 로케일 (en/ko/zh-CN/zh-TW/ja/es/hi) 에 `updateDownloadedMsg` /
+  `updateRestartBtn` 2개 신규 string 추가.
+
+### Added — Upgrade funnel attribution (Phase 9 deferred → adopted)
+- `EjectPrefs.loadLastSeenVersionCode` / `saveLastSeenVersionCode` — 매 cold start
+  마다 마지막으로 본 `BuildConfig.VERSION_CODE` 추적.
+- `EjectAnalytics.logAppUpdated(prev, new)` — `Application.onCreate` 에서 versionCode
+  변화 감지 시 발사 (최초 설치 시점은 0 → 발사 안 함, `first_open` 으로 대체됨).
+- `FirebaseCrashlytics.setCustomKey("last_seen_version_code", ...)` — 매 cold start
+  custom key. v1.6.12 첫 launch 가 크래시할 경우 `update_in_progress` (In-App Update
+  경로일 때만 set) + `last_seen_version_code` 결합으로 어떤 경로의 어떤 버전 회귀인지
+  정확 식별. Play Store 자동 업데이트 / In-App Update / 사이드로드 모두 attribution.
+
+### UX + Analytics polish (post-Phase 5/9 specialist audit)
+SimonK-stack Phase 5 (UX walkthrough) + Phase 9 (analytics/Crashlytics 연속성) audit 결과 5건 반영:
+
+- **Metered network 가드** — `checkForFlexibleUpdate()` 시작에서 `ConnectivityManager.NET_CAPABILITY_NOT_METERED`
+  확인. Wi-Fi / 이더넷 / 무제한 5G 가 아니면 silent skip. 모바일 데이터에서 50~150MB
+  자동 다운로드 방지 (KR/IN/BR 데이터 절약 시장 중요). `ACCESS_NETWORK_STATE` 는 implicit.
+- **Post-update relaunch 시 2초 splash 건너뜀** — `completeUpdate()` 직전에
+  `EjectPrefs.markPostUpdateRelaunch(this)` (.commit() 동기 저장) → 다음 `onCreate` 에서
+  `consumePostUpdateRelaunch()` (atomic read-and-reset) 가 true 면 `splashDone = true` 로
+  시작. 사용자가 능동 재시작한 상황에서 panic-open 의 friction 제거.
+- **In-App Update funnel 이벤트** — `EjectAnalytics.logUpdateDownloaded()` (listener 의
+  DOWNLOADED 시점) + `logUpdateRestartClicked()` (Snackbar action 직후, cleanup 전).
+  두 이벤트 비율이 자발 갱신율 KPI. Firebase SDK worker thread disk persist → kill 직전
+  안전.
+- **Crashlytics `update_in_progress` custom key** — completeUpdate() 직전 set. v1.6.12 첫
+  launch 가 크래시할 경우 이 tag 가 함께 박혀 "In-App Update 직후 크래시" 인지 식별
+  가능 (post-update regression 진단용).
+- **Pre-kill analytics 순서 보장** — analytics / Crashlytics / prefs flag 호출이
+  `billingManager.destroy()` / `AdManager.destroy()` / `completeUpdate()` 보다 먼저 실행되어
+  disk persistence 시간 확보.
+
+Deferred to v1.7 (별도 ticket):
+- Day-0 first-launch update prompt 게이팅 (`installAgeDays >= 1` 조건)
+- `last_seen_version` pref + `app_updated` 이벤트 (upgrade funnel attribution)
+- Clarity custom tag `entered_via=in_app_update`
+- Crashlytics breadcrumb 기반 forensic clarity
+
+### Safety — Emergency-aware guards (post-/review specialist audit)
+SimonK-stack 6명 specialist (security / lifecycle / i18n / code-health / build / adversarial)
+종합 점검 결과 발견된 ship-blocker 5건 즉시 반영:
+- **`completeUpdate()` 가 active eject 중 절대 발화 금지** — `FakeCallOverlayService.isRunning` /
+  `ShakeDetectionService.isRunning` 가드. 가짜 통화 / 흔들기 감지 진행 중에 process kill 되면
+  fake call 환상이 즉시 붕괴 → 정확히 이 앱이 막아야 할 위협 모델 (가해자 옆에 있는 상황).
+  두 Service 의 companion object 에 `@Volatile var isRunning` flag 신설, onCreate/onDestroy 에서
+  set. MainActivity 의 Snackbar `LaunchedEffect` 가 2초 polling 으로 안전 상태까지 대기 후 노출.
+- **Rotation/config-change 시 consent prompt 재출현 차단** — `onCreate` 의 `checkForFlexibleUpdate()`
+  호출을 `savedInstanceState == null && !emergencyActive` 로 가드. 회전마다 update sheet 재발화
+  방지.
+- **Rotation 시 Snackbar 재발화 차단** — `snackbarHandled` 를 `remember` → `rememberSaveable` 로
+  격상. dismiss 상태가 config change 를 넘어 보존됨.
+- **`completeUpdate()` 더블 콜 가드** — `@Volatile var updateCompleting` flag 로 Snackbar 액션 빠른
+  두 번 탭 시 두 번째 호출 묵음.
+- **`completeUpdate()` 전 명시적 cleanup** — Process.killProcess + relaunch 는 `onDestroy` 보장 X
+  → `billingManager.destroy()` + `AdManager.destroy()` 명시 호출 후 restart 트리거. pending purchase
+  acknowledge 는 다음 launch 에서 BillingClient 재진입 시 Play Store entitlement 재조회로 복구.
+- **이미 진행 중인 update 재트리거 차단** — `checkForFlexibleUpdate()` 가 `installStatus` 가
+  DOWNLOADING / DOWNLOADED / INSTALLED 면 즉시 return.
+- **ProGuard 방어** — `proguard-rules.pro` 에 `com.google.android.play.core.**` keep + dontwarn 추가.
+  AAR consumer rules 가 자동 적용되지만, v1.0.9 의 Firebase Analytics 패턴 ("이전에 keep 누락으로
+  release 빌드에서 silent failure 위험") 과 동일한 defensive policy. R8 full-mode + 미래 AGP
+  업그레이드 시 `InstallStateUpdatedListener` SAM 이 reflection-invoked 라 strip 되면 listener
+  silent-fail 가능.
+- **Release 빌드 log 노이즈 최소화** — `Log.w` / `Log.d` 호출을 `BuildConfig.DEBUG` 로 gate.
+- **Snackbar nav-bar inset 적용** — `windowInsetsPadding(WindowInsets.navigationBars)` 추가 →
+  edge-to-edge 환경에서 system nav bar 뒤에 깔리지 않음.
+
+### Notes
+- **첫 trigger 시점**: v1.6.11 이 앱에 ship 된 이후 출시되는 다음 버전 (v1.6.12+) 부터.
+  v1.6.10 → v1.6.11 업데이트는 여전히 Play Store 의 일반 자동 업데이트로 도착.
+- **권한**: In-App Update 는 추가 manifest permission 불필요.
+- **디버그/사이드로드 빌드**: `startUpdateFlow` 가 즉시 실패 → Log.d 로만 표시되고 사용자
+  UX 에는 영향 없음.
+- **Flexible vs Immediate**: 본 출시는 비강제 Flexible 만 채택. 보안/결제 치명 이슈가 생기면
+  Immediate flow 로 한 줄 변경하여 강제 업데이트 가능.
+
+---
+
 ## [Unreleased — v1.6.10 후보] — 2026-05-19
 
 > 정식 출시 직후 발견된 두 가지 사용자 보고 이슈에 대한 핫픽스.

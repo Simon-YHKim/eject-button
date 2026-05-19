@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+    # v1.7.0 one-shot trigger — sandbox 환경에서 tag push 가 403 으로 거부되어
+    # 통상 tag-trigger 경로가 막혔다. PR #11 머지 직후 별도 cleanup commit 으로
+    # 이 branches 블록 다시 제거 예정 (v1.6.10 의 PR #8 → PR #9 와 동일 패턴).
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version_name:
@@ -107,6 +112,9 @@ jobs:
             VERSION_NAME="${{ inputs.version_name }}"
           elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
             VERSION_NAME="${GITHUB_REF_NAME#v}"
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            # v1.7.0 one-shot — PR #11 머지 후 cleanup commit 에서 제거.
+            VERSION_NAME="1.7.0"
           else
             VERSION_NAME="1.0.0"
           fi

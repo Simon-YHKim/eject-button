@@ -132,6 +132,8 @@ dependencies {
     implementation(libs.androidx.savedstate)
     implementation(libs.androidx.lifecycle.common)
     implementation(libs.play.review)
+    // v1.6.11 — In-App Update (Flexible flow). 사용자 수동 갱신 의존 제거.
+    implementation(libs.play.app.update)
     implementation(libs.play.billing)
     implementation(libs.google.admob)
     // v1.2 ??UMP SDK. GDPR consent flow. ConsentManager媛 wrapping.
@@ -155,4 +157,7 @@ dependencies {
     // history parser, callerLabel formatting, and future pure-Kotlin logic.
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
+    // v1.6.11 — kotlin-reflect: AppStringsCompletenessTest 가 7-locale × N-field
+    //   reflection iteration 으로 빈 문자열 검출. test 전용이라 release AAB 사이즈 영향 X.
+    testImplementation("org.jetbrains.kotlin:kotlin-reflect:2.0.21")
 }

@@ -141,6 +141,52 @@ object EjectPrefs {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_REVIEW_REQUESTED, false)
 
+    // ── Post-update relaunch (v1.6.11) ───────────────────────────────────────
+    //
+    // In-App Update completeUpdate() 호출 직전에 true 로 set, 다음 onCreate 에서
+    // consume (= 즉시 false 로 reset 하고 boolean 반환). consume 가 true 면 사용자가
+    // "재시작" 액션으로 능동 트리거한 relaunch 이므로 2초 splash 건너뜀. panic-open
+    // 시나리오 (사용자가 즉시 EJECT 사용하고 싶은데 splash 가 막는 경우) 와 동일한
+    // 친절함을 post-update 에도 적용. .commit() 사용 — kill 직전 호출이라 .apply()
+    // async flush 손실 위험 있음.
+
+    private const val KEY_POST_UPDATE_RELAUNCH = "post_update_relaunch"
+
+    fun markPostUpdateRelaunch(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_POST_UPDATE_RELAUNCH, true).commit()
+    }
+
+    /** 한 번만 true 를 반환하고 즉시 reset (atomic via .commit()). */
+    fun consumePostUpdateRelaunch(ctx: Context): Boolean {
+        val prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val v = prefs.getBoolean(KEY_POST_UPDATE_RELAUNCH, false)
+        if (v) prefs.edit().putBoolean(KEY_POST_UPDATE_RELAUNCH, false).commit()
+        return v
+    }
+
+    // ── Upgrade funnel attribution (v1.6.11) ─────────────────────────────────
+    //
+    // 매 Application.onCreate 에서 BuildConfig.VERSION_CODE 와 last_seen 비교 →
+    // 다르면 사용자가 방금 새 버전으로 업그레이드된 상황. Firebase Analytics
+    // app_updated 이벤트 + Crashlytics last_seen_version_code custom key 가 결합되어
+    // post-update 첫 launch 의 회귀 / 크래시를 정확히 식별 가능 (특히 In-App Update
+    // 의 update_in_progress 태그와 함께 보면 In-App Update flow 가 ship 시킨 회귀인지
+    // 일반 Play Store 자동 업데이트의 회귀인지 구분 가능).
+    //
+    // 0 = 최초 설치 (이전 last_seen 없음). 이 케이스에는 app_updated 이벤트 발사 안 함.
+
+    private const val KEY_LAST_SEEN_VERSION_CODE = "last_seen_version_code"
+
+    fun loadLastSeenVersionCode(ctx: Context): Int =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getInt(KEY_LAST_SEEN_VERSION_CODE, 0)
+
+    fun saveLastSeenVersionCode(ctx: Context, versionCode: Int) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_LAST_SEEN_VERSION_CODE, versionCode).apply()
+    }
+
     // ── Share-to-unlock (v1.6.6) ─────────────────────────────────────────────
 
     /**

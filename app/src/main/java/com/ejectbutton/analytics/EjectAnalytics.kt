@@ -109,4 +109,37 @@ object EjectAnalytics {
         })
         EjectClarity.onboardingCompleted(stepCount = stepCount, skipFurther = skipFurther)
     }
+
+    /**
+     * v1.6.11 — In-App Update (Flexible flow) 의 funnel 이벤트.
+     *
+     * - logUpdateDownloaded: InstallStateUpdatedListener 가 DOWNLOADED 받은 순간.
+     *   사용자가 "재시작" 액션을 보기 전이지만 다운로드 자체는 성공한 시점.
+     * - logUpdateRestartClicked: 사용자가 Snackbar "재시작" 액션 탭. completeUpdate()
+     *   호출 직전 (cleanup 전) 에 발사 — Firebase SDK 가 worker thread 에서 disk
+     *   persist 한 뒤 다음 launch 에 upload 한다.
+     *
+     * 두 이벤트 비율 (downloaded vs restart_clicked) 이 곧 사용자 자발 갱신율의
+     * 객관 지표. v1.7 funnel 확장 시 update_available / update_completed 추가 예정.
+     */
+    fun logUpdateDownloaded() {
+        instance?.logEvent("update_downloaded", Bundle())
+    }
+
+    fun logUpdateRestartClicked() {
+        instance?.logEvent("update_restart_clicked", Bundle())
+    }
+
+    /**
+     * v1.6.11 — Application.onCreate 에서 versionCode 가 직전 launch 와 다르면 호출.
+     * Play Store 자동 업데이트 / In-App Update / 사이드로드 모두 동일하게 잡힘.
+     * Crashlytics 의 update_in_progress custom key (In-App Update flow 에서만 set) 와
+     * 결합하면 어떤 경로로 업그레이드된 사용자에게 v1.6.12 회귀가 발생했는지 분리 가능.
+     */
+    fun logAppUpdated(prevVersionCode: Int, newVersionCode: Int) {
+        instance?.logEvent("app_updated", Bundle().apply {
+            putLong("prev_version_code", prevVersionCode.toLong())
+            putLong("new_version_code", newVersionCode.toLong())
+        })
+    }
 }

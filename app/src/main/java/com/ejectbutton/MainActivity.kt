@@ -14,6 +14,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
+// v1.7.0 — In-App Update: lifecycle/state machine 은 com.ejectbutton.update.UpdateManager
+// 가 책임. Activity 는 매니저 instantiate + state collect + Snackbar 노출만 담당.
+import com.ejectbutton.update.UpdateManager
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -22,9 +25,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -100,6 +108,14 @@ class MainActivity : ComponentActivity() {
     private val overlayPermLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {}
+
+    // v1.7.0 — In-App Update lifecycle 은 UpdateManager 가 책임. Activity 는 매니저를
+    // instantiate 하고 state 를 collect, 그리고 ActivityResult launcher 만 보유.
+    private val updateManager by lazy { UpdateManager(applicationContext) }
+
+    private val updateLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { /* 거부 시 그냥 패스. 다음 launch 에서 재시도 가능 — 사용자 선택 존중 */ }
 
     /**
      * Round 18 — 최초 실행 & 튜토리얼을 끝냈을 때 한 번만 호출.
@@ -212,6 +228,17 @@ class MainActivity : ComponentActivity() {
         billingManager = BillingManager(this)
         billingManager.connect()
 
+        // v1.7.0 — In-App Update Flexible flow. UpdateManager 가 모든 lifecycle 책임.
+        // savedInstanceState 가 null + emergency 미활성일 때만 트리거 — rotation 으로
+        // consent prompt 재출현, eject 중 prompt 발화 모두 방지.
+        updateManager.registerListener()
+        if (savedInstanceState == null &&
+            !FakeCallOverlayService.isRunning &&
+            !ShakeDetectionService.isRunning
+        ) {
+            updateManager.checkForUpdate(updateLauncher)
+        }
+
         // Round 18 — 권한 요청은 onCreate 가 아니라 '튜토리얼 이후' 에 실행.
         // 컴포지션 트리 안의 LaunchedEffect 에서 showOnboarding 이 false 로 바뀐 순간
         // 아래 [requestInitialPermissionsIfNeeded] 를 호출한다.
@@ -239,7 +266,15 @@ class MainActivity : ComponentActivity() {
                 val strings = currentLanguage.strings()
 
                 CompositionLocalProvider(LocalAppStrings provides strings) {
-                    var splashDone by remember { mutableStateOf(false) }
+                    // v1.6.11 — In-App Update 의 "재시작" 액션으로 relaunch 된 경우엔
+                    // 2초 splash 건너뜀. 사용자가 능동적으로 재시작을 누른 상황이라
+                    // splash 가 panic-open 의 친절함을 깨는 friction 으로 작용.
+                    // consumePostUpdateRelaunch 는 한 번 true 반환 후 즉시 false 로 reset
+                    // (atomic via .commit()) — 다음 일반 launch 부터는 splash 정상 노출.
+                    val postUpdateRelaunch = remember {
+                        EjectPrefs.consumePostUpdateRelaunch(this@MainActivity)
+                    }
+                    var splashDone by remember { mutableStateOf(postUpdateRelaunch) }
                     val isPremium by billingManager.isPremium.collectAsState()
                     // v1.3.0 — INAPP 광고 제거 일회성 unlock 상태. premium 과 별도.
                     val isAdsRemoved by billingManager.isAdsRemoved.collectAsState()
@@ -283,6 +318,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchedEffect(Unit) {
+                        // v1.6.11 — post-update relaunch 면 splashDone 이 이미 true 라
+                        // delay 자체를 건너뜀 (cleaner UX, 메모리 효율).
+                        if (splashDone) return@LaunchedEffect
                         delay(2_000L)   // 2초 스플래시
                         splashDone = true
                     }
@@ -483,6 +521,59 @@ class MainActivity : ComponentActivity() {
                                 },
                             )
                         }
+
+                        // v1.7.0 — In-App Update Snackbar. UpdateManager.state StateFlow 를
+                        // 직접 collect 해 Downloaded / Failed 둘 다 처리.
+                        //   - Downloaded: "재시작" 액션 Snackbar (Indefinite duration).
+                        //   - Failed: 짧은 retry-안내 Snackbar (Short duration, action 없음 —
+                        //     사용자는 다음 launch 에 자동 재시도됨).
+                        //   - rememberSaveable: rotation 후에도 dismissed 상태 보존.
+                        //   - Emergency 가드: 2초 polling 으로 fake call / shake 종료까지 대기.
+                        val snackbarHostState = remember { SnackbarHostState() }
+                        val updateState by updateManager.state.collectAsState()
+                        var snackbarHandled by rememberSaveable { mutableStateOf(false) }
+                        LaunchedEffect(updateState) {
+                            when (updateState) {
+                                UpdateManager.UpdateState.Downloaded -> {
+                                    if (snackbarHandled) return@LaunchedEffect
+                                    while (FakeCallOverlayService.isRunning ||
+                                           ShakeDetectionService.isRunning
+                                    ) {
+                                        delay(2_000L)
+                                    }
+                                    snackbarHandled = true
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = strings.updateDownloadedMsg,
+                                        actionLabel = strings.updateRestartBtn,
+                                        duration = SnackbarDuration.Indefinite,
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        updateManager.completeUpdate(
+                                            onDestroyExtras = {
+                                                billingManager.destroy()
+                                                AdManager.destroy()
+                                            },
+                                        )
+                                    }
+                                }
+                                UpdateManager.UpdateState.Failed -> {
+                                    // v1.7.0 — Adversarial #8: silent failure 방지. 사용자에게
+                                    // 짧게 안내, action 없음 (다음 launch / Wi-Fi 시 자동 재시도).
+                                    snackbarHostState.showSnackbar(
+                                        message = strings.updateFailedMsg,
+                                        duration = SnackbarDuration.Short,
+                                    )
+                                }
+                                else -> Unit
+                            }
+                        }
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .padding(bottom = 16.dp),
+                        )
                     }
                 }
             }
@@ -499,6 +590,11 @@ class MainActivity : ComponentActivity() {
         foregroundDetector.command = EjectPrefs.loadSideButtonCommand(this)
         foregroundDetector.customSequence = EjectPrefs.loadSideButtonCustomSequence(this)
         ButtonWatchService.reconcile(this)
+
+        // v1.7.0 — Flexible update 가 백그라운드 다운로드 완료된 채로 앱을 떠났다가
+        // 돌아왔을 때 (예: 사용자가 잠시 다른 앱 쓰는 사이 다운로드 마무리) Snackbar 가
+        // 다시 뜨도록 install status 재평가.
+        updateManager.refreshInstallStatus()
     }
 
     /**
@@ -556,6 +652,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         billingManager.destroy()
         AdManager.destroy()
+        // v1.7.0 — UpdateManager listener 누수 방지.
+        updateManager.unregisterListener()
     }
 }
 

@@ -1,6 +1,7 @@
 package com.ejectbutton
 
 import android.app.Application
+import com.ejectbutton.analytics.EjectAnalytics
 import com.ejectbutton.analytics.EjectClarity
 import com.ejectbutton.crash.CrashReportManager
 import com.ejectbutton.data.EjectPrefs
@@ -38,5 +39,23 @@ class EjectApplication : Application() {
             locale  = locale,
             userTier = userTier,
         )
+
+        // v1.6.11 — Upgrade funnel attribution. Application.onCreate 는 cold start
+        // 마다 1회 보장되므로 여기서 versionCode 비교가 신뢰 가능.
+        //   - prevVersionCode == 0: 최초 설치. app_updated 이벤트 발사 안 함 (new install
+        //     은 별도 Firebase 자동 이벤트 first_open 으로 잡힘).
+        //   - prevVersionCode != currentVersionCode: 업그레이드 (Play Store auto / In-App
+        //     Update / 사이드로드 무관). app_updated 이벤트 발사 + last_seen_version
+        //     Crashlytics custom key 도 set 해 post-update 크래시 진단에 활용.
+        // .apply() 비동기 저장이지만 Application context 라 process kill 직전 같은
+        // 위험 없음 — 다음 onCreate 까지 충분히 flush.
+        val prevVersionCode = EjectPrefs.loadLastSeenVersionCode(this)
+        val currentVersionCode = BuildConfig.VERSION_CODE
+        crashlytics.setCustomKey("last_seen_version_code", prevVersionCode.toLong())
+        if (prevVersionCode != 0 && prevVersionCode != currentVersionCode) {
+            EjectAnalytics.init(this)
+            EjectAnalytics.logAppUpdated(prevVersionCode, currentVersionCode)
+        }
+        EjectPrefs.saveLastSeenVersionCode(this, currentVersionCode)
     }
 }

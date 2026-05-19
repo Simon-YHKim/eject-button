@@ -53,6 +53,16 @@ class ShakeDetectionService : Service(), SensorEventListener {
         fun stop(ctx: Context) {
             ctx.stopService(Intent(ctx, ShakeDetectionService::class.java))
         }
+
+        /**
+         * v1.6.11 — 활성 shake detection 진행 중인지 외부에서 안전하게 확인하는 플래그.
+         * In-App Update Snackbar / completeUpdate() 가 emergency 중 절대 발화하지
+         * 않도록 MainActivity 가 체크. completeUpdate() = Process.killProcess + relaunch
+         * 이므로 shake armed 중에 트리거되면 emergency 발사 채널 자체가 사라진다.
+         */
+        @Volatile
+        var isRunning: Boolean = false
+            internal set
     }
 
     private lateinit var sensorManager: SensorManager
@@ -78,6 +88,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         createChannel()
     }
@@ -134,6 +145,7 @@ class ShakeDetectionService : Service(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onDestroy() {
+        isRunning = false
         // v1.0.10 — onCreate 에서 sensorManager 초기화가 실패한 (혹은 onCreate 가
         // 호출되지 않고 곧장 onDestroy 가 호출되는) edge case 에서 lateinit
         // UninitializedPropertyAccessException 으로 죽는 것을 방지.
