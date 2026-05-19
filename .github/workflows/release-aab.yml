@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+    # v1.7.1 hotfix one-shot trigger — v1.6.10 의 PR #8 패턴 (branch trigger).
+    # main trigger 가 yml 변경 인식 타이밍 이슈로 발화 안 했음. branch trigger
+    # 는 PR #8 에서 검증된 reliable 방식.
+    branches:
+      - claude/trigger-v1.7.1-release
   workflow_dispatch:
     inputs:
       version_name:
@@ -107,6 +112,9 @@ jobs:
             VERSION_NAME="${{ inputs.version_name }}"
           elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
             VERSION_NAME="${GITHUB_REF_NAME#v}"
+          elif [ "${GITHUB_REF_NAME}" = "claude/trigger-v1.7.1-release" ]; then
+            # v1.7.1 one-shot — branch 삭제 후 자동 정리.
+            VERSION_NAME="1.7.1"
           else
             VERSION_NAME="1.0.0"
           fi
