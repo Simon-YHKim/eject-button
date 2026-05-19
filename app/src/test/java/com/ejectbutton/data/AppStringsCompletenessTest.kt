@@ -3,42 +3,26 @@ package com.ejectbutton.data
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.reflect.full.memberProperties
 
 /**
- * v1.6.11 — 7개 로케일 [AppStrings] entries 가 모두 비어있지 않은지 reflection
- * 으로 검증. translation drift 방지 — 새 string field 가 추가되었을 때 일부
- * 로케일 entry 가 누락되거나 빈 문자열로 들어가면 사용자에게 빈 칸이 노출됨.
+ * v1.6.11 / v1.7.0 / v1.7.1 — 새 string fields 가 7-locale 전부 채워졌는지 검증.
  *
- * data class 의 모든 String property 가 .isNotBlank() 인지 확인. enum 값
- * 추가/제거 시 자동으로 새 로케일도 검사 대상에 포함됨.
+ * 이전 (v1.6.11) 버전은 kotlin-reflect 로 모든 String 필드를 자동 iterate 했으나,
+ * project Kotlin compiler (2.0.0) 와 kotlin-reflect 의 binary mismatch 가 모든
+ * test class 의 ClassFormatError 를 유발 → release-aab 빌드 차단. v1.7.1 에서
+ * reflection 의존성 제거 + 새 fields explicit 검증으로 재작성. 새 string 추가 시
+ * 이 파일에 한 줄 assertion 추가 (자동 검출 안 됨, 가독성 trade-off).
+ *
+ * 새 string 누락이 무엇인지 명확히 보이는 이점도 있음 — reflection 보다 fail
+ * message 가 더 actionable.
  */
 class AppStringsCompletenessTest {
 
-    private val stringProps = AppStrings::class.memberProperties
-        .filter { it.returnType.classifier == String::class }
-
-    @Test
-    fun `every locale has every string field non-blank`() {
-        val failures = mutableListOf<String>()
-        for (lang in AppLanguage.values()) {
-            val strings = lang.strings()
-            for (prop in stringProps) {
-                val value = prop.get(strings) as String
-                if (value.isBlank()) {
-                    failures += "${lang.name}.${prop.name} is blank"
-                }
-            }
-        }
-        assertTrue(
-            "Blank string entries found:\n${failures.joinToString("\n")}",
-            failures.isEmpty(),
-        )
-    }
+    private val allLanguages = AppLanguage.values()
 
     @Test
     fun `all seven locales present in stringsMap`() {
-        for (lang in AppLanguage.values()) {
+        for (lang in allLanguages) {
             assertTrue(
                 "AppLanguage.${lang.name} missing from stringsMap",
                 stringsMap.containsKey(lang),
@@ -48,16 +32,45 @@ class AppStringsCompletenessTest {
 
     @Test
     fun `v1_6_11 update strings present in every locale`() {
-        // 명시적으로 v1.6.11 신규 필드를 명명해 회귀 시 친절한 에러 메시지.
-        for (lang in AppLanguage.values()) {
-            val strings = lang.strings()
+        for (lang in allLanguages) {
+            val s = lang.strings()
             assertFalse(
                 "${lang.name}.updateDownloadedMsg is blank",
-                strings.updateDownloadedMsg.isBlank(),
+                s.updateDownloadedMsg.isBlank(),
             )
             assertFalse(
                 "${lang.name}.updateRestartBtn is blank",
-                strings.updateRestartBtn.isBlank(),
+                s.updateRestartBtn.isBlank(),
+            )
+        }
+    }
+
+    @Test
+    fun `v1_7_0 update strings present in every locale`() {
+        for (lang in allLanguages) {
+            val s = lang.strings()
+            assertFalse(
+                "${lang.name}.updateFailedMsg is blank",
+                s.updateFailedMsg.isBlank(),
+            )
+        }
+    }
+
+    @Test
+    fun `v1_7_1 billing strings present in every locale`() {
+        for (lang in allLanguages) {
+            val s = lang.strings()
+            assertFalse(
+                "${lang.name}.billingNotReadyMsg is blank",
+                s.billingNotReadyMsg.isBlank(),
+            )
+            assertFalse(
+                "${lang.name}.prTitle is blank",
+                s.prTitle.isBlank(),
+            )
+            assertFalse(
+                "${lang.name}.prMonthlyPrice is blank",
+                s.prMonthlyPrice.isBlank(),
             )
         }
     }

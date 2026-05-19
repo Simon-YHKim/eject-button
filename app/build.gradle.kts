@@ -157,10 +157,4 @@ dependencies {
     // history parser, callerLabel formatting, and future pure-Kotlin logic.
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
-    // v1.6.11 — kotlin-reflect: AppStringsCompletenessTest 가 7-locale × N-field
-    //   reflection iteration 으로 빈 문자열 검출. test 전용이라 release AAB 사이즈 영향 X.
-    // v1.7.1 — 버전을 project Kotlin compiler (2.0.0, libs.versions.toml) 와 정확히
-    //   일치시킴. 이전 2.0.21 는 ClassFormatError 유발 → testDebugUnitTest 4건 실패
-    //   (AppStringsCompletenessTest 3 + ScenarioRuntimeTest 1) → release-aab 빌드 차단.
-    testImplementation("org.jetbrains.kotlin:kotlin-reflect:2.0.0")
 }
