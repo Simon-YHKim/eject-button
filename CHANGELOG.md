@@ -25,6 +25,33 @@
 - `AppStrings.kt` — 7개 로케일 (en/ko/zh-CN/zh-TW/ja/es/hi) 에 `updateDownloadedMsg` /
   `updateRestartBtn` 2개 신규 string 추가.
 
+### UX + Analytics polish (post-Phase 5/9 specialist audit)
+SimonK-stack Phase 5 (UX walkthrough) + Phase 9 (analytics/Crashlytics 연속성) audit 결과 5건 반영:
+
+- **Metered network 가드** — `checkForFlexibleUpdate()` 시작에서 `ConnectivityManager.NET_CAPABILITY_NOT_METERED`
+  확인. Wi-Fi / 이더넷 / 무제한 5G 가 아니면 silent skip. 모바일 데이터에서 50~150MB
+  자동 다운로드 방지 (KR/IN/BR 데이터 절약 시장 중요). `ACCESS_NETWORK_STATE` 는 implicit.
+- **Post-update relaunch 시 2초 splash 건너뜀** — `completeUpdate()` 직전에
+  `EjectPrefs.markPostUpdateRelaunch(this)` (.commit() 동기 저장) → 다음 `onCreate` 에서
+  `consumePostUpdateRelaunch()` (atomic read-and-reset) 가 true 면 `splashDone = true` 로
+  시작. 사용자가 능동 재시작한 상황에서 panic-open 의 friction 제거.
+- **In-App Update funnel 이벤트** — `EjectAnalytics.logUpdateDownloaded()` (listener 의
+  DOWNLOADED 시점) + `logUpdateRestartClicked()` (Snackbar action 직후, cleanup 전).
+  두 이벤트 비율이 자발 갱신율 KPI. Firebase SDK worker thread disk persist → kill 직전
+  안전.
+- **Crashlytics `update_in_progress` custom key** — completeUpdate() 직전 set. v1.6.12 첫
+  launch 가 크래시할 경우 이 tag 가 함께 박혀 "In-App Update 직후 크래시" 인지 식별
+  가능 (post-update regression 진단용).
+- **Pre-kill analytics 순서 보장** — analytics / Crashlytics / prefs flag 호출이
+  `billingManager.destroy()` / `AdManager.destroy()` / `completeUpdate()` 보다 먼저 실행되어
+  disk persistence 시간 확보.
+
+Deferred to v1.7 (별도 ticket):
+- Day-0 first-launch update prompt 게이팅 (`installAgeDays >= 1` 조건)
+- `last_seen_version` pref + `app_updated` 이벤트 (upgrade funnel attribution)
+- Clarity custom tag `entered_via=in_app_update`
+- Crashlytics breadcrumb 기반 forensic clarity
+
 ### Safety — Emergency-aware guards (post-/review specialist audit)
 SimonK-stack 6명 specialist (security / lifecycle / i18n / code-health / build / adversarial)
 종합 점검 결과 발견된 ship-blocker 5건 즉시 반영:

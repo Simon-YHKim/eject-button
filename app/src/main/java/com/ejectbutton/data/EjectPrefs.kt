@@ -141,6 +141,30 @@ object EjectPrefs {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .getBoolean(KEY_REVIEW_REQUESTED, false)
 
+    // ── Post-update relaunch (v1.6.11) ───────────────────────────────────────
+    //
+    // In-App Update completeUpdate() 호출 직전에 true 로 set, 다음 onCreate 에서
+    // consume (= 즉시 false 로 reset 하고 boolean 반환). consume 가 true 면 사용자가
+    // "재시작" 액션으로 능동 트리거한 relaunch 이므로 2초 splash 건너뜀. panic-open
+    // 시나리오 (사용자가 즉시 EJECT 사용하고 싶은데 splash 가 막는 경우) 와 동일한
+    // 친절함을 post-update 에도 적용. .commit() 사용 — kill 직전 호출이라 .apply()
+    // async flush 손실 위험 있음.
+
+    private const val KEY_POST_UPDATE_RELAUNCH = "post_update_relaunch"
+
+    fun markPostUpdateRelaunch(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_POST_UPDATE_RELAUNCH, true).commit()
+    }
+
+    /** 한 번만 true 를 반환하고 즉시 reset (atomic via .commit()). */
+    fun consumePostUpdateRelaunch(ctx: Context): Boolean {
+        val prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val v = prefs.getBoolean(KEY_POST_UPDATE_RELAUNCH, false)
+        if (v) prefs.edit().putBoolean(KEY_POST_UPDATE_RELAUNCH, false).commit()
+        return v
+    }
+
     // ── Share-to-unlock (v1.6.6) ─────────────────────────────────────────────
 
     /**

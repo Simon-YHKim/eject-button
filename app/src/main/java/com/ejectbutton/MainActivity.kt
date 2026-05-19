@@ -15,6 +15,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 // v1.6.11 — In-App Update API (Flexible flow).
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
@@ -22,6 +24,7 @@ import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -136,6 +139,8 @@ class MainActivity : ComponentActivity() {
             // emergency 도중에는 state 만 set 하지 않고, eject service 가 종료된 다음에
             // Snackbar LaunchedEffect 가 자체적으로 polling 으로 노출 시점 결정 (아래).
             updateDownloaded.value = true
+            // v1.6.11 — funnel 시작점. restart_clicked 와 비율 비교가 자발적 갱신율 지표.
+            EjectAnalytics.logUpdateDownloaded()
         }
     }
 
@@ -143,7 +148,23 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { /* 거부 시 그냥 패스. 다음 onResume 에서 재시도 안 함 — 사용자 선택 존중 */ }
 
+    /**
+     * v1.6.11 — Wi-Fi / 이더넷 등 unmetered network 일 때만 true. 모바일 데이터 / 핫스팟
+     * 등 metered 일 때는 silent 50~150MB 다운로드를 막기 위해 startUpdateFlow 건너뜀.
+     * 한국 / 인도 / 브라질 등 데이터 절약 시장에서 특히 중요.
+     */
+    private fun isUnmeteredNetwork(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+
     private fun checkForFlexibleUpdate() {
+        // v1.6.11 — metered 네트워크에서는 자동 다운로드 건너뜀. 다음 launch 또는
+        // Wi-Fi 연결된 onResume 에서 재시도. Play Store auto-update 정책 ("Wi-Fi 만")
+        // 과 동일한 사용자 기대치 유지.
+        if (!isUnmeteredNetwork()) return
+
         appUpdateManager.appUpdateInfo
             .addOnSuccessListener { info ->
                 // v1.6.11 — 이미 DOWNLOADING / DOWNLOADED / INSTALLED 면 startUpdateFlow
@@ -200,6 +221,21 @@ class MainActivity : ComponentActivity() {
             return
         }
         updateCompleting = true
+
+        // v1.6.11 — kill 직전 forensic markers + funnel event. 모두 disk-persist 호출
+        // 이라 Process.killProcess 가 다음 라인에서 와도 다음 launch 에서 회수 가능.
+        //   1. logUpdateRestartClicked: Firebase SDK 가 worker thread 에서 disk persist
+        //      → 다음 launch 에 upload.
+        //   2. setCustomKey("update_in_progress", true): Crashlytics 의 session metadata
+        //      는 즉시 disk write. v1.6.12 첫 launch 가 크래시 시 이 tag 가 함께 박혀
+        //      "In-App Update 직후 크래시" 인지 식별 가능.
+        //   3. EjectPrefs.markPostUpdateRelaunch(this): .commit() 동기 저장 — 다음
+        //      MainActivity.onCreate 가 splash 2초 건너뜀 (사용자 능동 재시작 = panic
+        //      open 과 동일한 친절함 부여).
+        runCatching { EjectAnalytics.logUpdateRestartClicked() }
+        runCatching { FirebaseCrashlytics.getInstance().setCustomKey("update_in_progress", true) }
+        runCatching { EjectPrefs.markPostUpdateRelaunch(this) }
+
         runCatching {
             // Pre-kill cleanup — Process.killProcess 전에 명시적 자원 해제.
             runCatching { billingManager.destroy() }
@@ -375,7 +411,15 @@ class MainActivity : ComponentActivity() {
                 val strings = currentLanguage.strings()
 
                 CompositionLocalProvider(LocalAppStrings provides strings) {
-                    var splashDone by remember { mutableStateOf(false) }
+                    // v1.6.11 — In-App Update 의 "재시작" 액션으로 relaunch 된 경우엔
+                    // 2초 splash 건너뜀. 사용자가 능동적으로 재시작을 누른 상황이라
+                    // splash 가 panic-open 의 친절함을 깨는 friction 으로 작용.
+                    // consumePostUpdateRelaunch 는 한 번 true 반환 후 즉시 false 로 reset
+                    // (atomic via .commit()) — 다음 일반 launch 부터는 splash 정상 노출.
+                    val postUpdateRelaunch = remember {
+                        EjectPrefs.consumePostUpdateRelaunch(this@MainActivity)
+                    }
+                    var splashDone by remember { mutableStateOf(postUpdateRelaunch) }
                     val isPremium by billingManager.isPremium.collectAsState()
                     // v1.3.0 — INAPP 광고 제거 일회성 unlock 상태. premium 과 별도.
                     val isAdsRemoved by billingManager.isAdsRemoved.collectAsState()
@@ -419,6 +463,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchedEffect(Unit) {
+                        // v1.6.11 — post-update relaunch 면 splashDone 이 이미 true 라
+                        // delay 자체를 건너뜀 (cleaner UX, 메모리 효율).
+                        if (splashDone) return@LaunchedEffect
                         delay(2_000L)   // 2초 스플래시
                         splashDone = true
                     }
