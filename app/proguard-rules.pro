@@ -51,3 +51,13 @@
 -keep public class * extends java.lang.Exception
 -keep class com.google.firebase.crashlytics.** { *; }
 -dontwarn com.google.firebase.crashlytics.**
+
+# v1.6.11 — Google Play Core (In-App Update Flexible flow).
+# AAR consumer rules 가 자동 적용되지만, v1.0.9 의 Firebase Analytics 사례
+# ("이전에 keep 누락으로 release 빌드에서 silent failure 위험 있던 것 명시 추가")
+# 와 동일한 defensive 패턴. R8 full-mode 또는 미래 AGP 업그레이드 시
+# InstallStateUpdatedListener SAM 이 reflection-invoked 라 strip 되면 listener
+# silent-fail → 다운로드 완료 알림이 영원히 안 뜸.
+-keep class com.google.android.play.core.** { *; }
+-keep interface com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**

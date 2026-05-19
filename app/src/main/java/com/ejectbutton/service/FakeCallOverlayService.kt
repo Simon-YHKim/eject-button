@@ -64,6 +64,17 @@ class FakeCallOverlayService : Service() {
             internal set
 
         /**
+         * v1.6.11 — 활성 fake call 진행 중인지 외부에서 안전하게 확인하는 플래그.
+         * In-App Update Snackbar / completeUpdate() 가 emergency 중 절대 발화하지
+         * 않도록 MainActivity 가 체크한다. completeUpdate() 는 Process.killProcess()
+         * + relaunch 라, eject 도중 트리거되면 fake call 환상이 즉시 붕괴 — 정확히
+         * 이 앱이 막아야 할 위협 모델 (가해자가 옆에서 보는 상황).
+         */
+        @Volatile
+        var isRunning: Boolean = false
+            internal set
+
+        /**
          * v1.2 — scenarioId / mode 매개변수 추가 (호출부 호환성).
          *
          * MainActivity 가 EJECT 발사 시 ShakeDetectionService.start 와 시그니처를
@@ -124,6 +135,7 @@ class FakeCallOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         createChannel()
     }
@@ -626,6 +638,7 @@ class FakeCallOverlayService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         pendingHandler?.removeCallbacksAndMessages(null)
         if (!isDismissing) {
             overlay?.let { try { wm?.removeView(it) } catch (_: Exception) {} }

@@ -25,6 +25,35 @@
 - `AppStrings.kt` — 7개 로케일 (en/ko/zh-CN/zh-TW/ja/es/hi) 에 `updateDownloadedMsg` /
   `updateRestartBtn` 2개 신규 string 추가.
 
+### Safety — Emergency-aware guards (post-/review specialist audit)
+SimonK-stack 6명 specialist (security / lifecycle / i18n / code-health / build / adversarial)
+종합 점검 결과 발견된 ship-blocker 5건 즉시 반영:
+- **`completeUpdate()` 가 active eject 중 절대 발화 금지** — `FakeCallOverlayService.isRunning` /
+  `ShakeDetectionService.isRunning` 가드. 가짜 통화 / 흔들기 감지 진행 중에 process kill 되면
+  fake call 환상이 즉시 붕괴 → 정확히 이 앱이 막아야 할 위협 모델 (가해자 옆에 있는 상황).
+  두 Service 의 companion object 에 `@Volatile var isRunning` flag 신설, onCreate/onDestroy 에서
+  set. MainActivity 의 Snackbar `LaunchedEffect` 가 2초 polling 으로 안전 상태까지 대기 후 노출.
+- **Rotation/config-change 시 consent prompt 재출현 차단** — `onCreate` 의 `checkForFlexibleUpdate()`
+  호출을 `savedInstanceState == null && !emergencyActive` 로 가드. 회전마다 update sheet 재발화
+  방지.
+- **Rotation 시 Snackbar 재발화 차단** — `snackbarHandled` 를 `remember` → `rememberSaveable` 로
+  격상. dismiss 상태가 config change 를 넘어 보존됨.
+- **`completeUpdate()` 더블 콜 가드** — `@Volatile var updateCompleting` flag 로 Snackbar 액션 빠른
+  두 번 탭 시 두 번째 호출 묵음.
+- **`completeUpdate()` 전 명시적 cleanup** — Process.killProcess + relaunch 는 `onDestroy` 보장 X
+  → `billingManager.destroy()` + `AdManager.destroy()` 명시 호출 후 restart 트리거. pending purchase
+  acknowledge 는 다음 launch 에서 BillingClient 재진입 시 Play Store entitlement 재조회로 복구.
+- **이미 진행 중인 update 재트리거 차단** — `checkForFlexibleUpdate()` 가 `installStatus` 가
+  DOWNLOADING / DOWNLOADED / INSTALLED 면 즉시 return.
+- **ProGuard 방어** — `proguard-rules.pro` 에 `com.google.android.play.core.**` keep + dontwarn 추가.
+  AAR consumer rules 가 자동 적용되지만, v1.0.9 의 Firebase Analytics 패턴 ("이전에 keep 누락으로
+  release 빌드에서 silent failure 위험") 과 동일한 defensive policy. R8 full-mode + 미래 AGP
+  업그레이드 시 `InstallStateUpdatedListener` SAM 이 reflection-invoked 라 strip 되면 listener
+  silent-fail 가능.
+- **Release 빌드 log 노이즈 최소화** — `Log.w` / `Log.d` 호출을 `BuildConfig.DEBUG` 로 gate.
+- **Snackbar nav-bar inset 적용** — `windowInsetsPadding(WindowInsets.navigationBars)` 추가 →
+  edge-to-edge 환경에서 system nav bar 뒤에 깔리지 않음.
+
 ### Notes
 - **첫 trigger 시점**: v1.6.11 이 앱에 ship 된 이후 출시되는 다음 버전 (v1.6.12+) 부터.
   v1.6.10 → v1.6.11 업데이트는 여전히 Play Store 의 일반 자동 업데이트로 도착.
