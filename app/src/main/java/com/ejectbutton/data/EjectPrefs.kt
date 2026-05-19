@@ -165,6 +165,28 @@ object EjectPrefs {
         return v
     }
 
+    // ── Upgrade funnel attribution (v1.6.11) ─────────────────────────────────
+    //
+    // 매 Application.onCreate 에서 BuildConfig.VERSION_CODE 와 last_seen 비교 →
+    // 다르면 사용자가 방금 새 버전으로 업그레이드된 상황. Firebase Analytics
+    // app_updated 이벤트 + Crashlytics last_seen_version_code custom key 가 결합되어
+    // post-update 첫 launch 의 회귀 / 크래시를 정확히 식별 가능 (특히 In-App Update
+    // 의 update_in_progress 태그와 함께 보면 In-App Update flow 가 ship 시킨 회귀인지
+    // 일반 Play Store 자동 업데이트의 회귀인지 구분 가능).
+    //
+    // 0 = 최초 설치 (이전 last_seen 없음). 이 케이스에는 app_updated 이벤트 발사 안 함.
+
+    private const val KEY_LAST_SEEN_VERSION_CODE = "last_seen_version_code"
+
+    fun loadLastSeenVersionCode(ctx: Context): Int =
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .getInt(KEY_LAST_SEEN_VERSION_CODE, 0)
+
+    fun saveLastSeenVersionCode(ctx: Context, versionCode: Int) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_LAST_SEEN_VERSION_CODE, versionCode).apply()
+    }
+
     // ── Share-to-unlock (v1.6.6) ─────────────────────────────────────────────
 
     /**

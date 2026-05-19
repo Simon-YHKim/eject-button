@@ -129,4 +129,17 @@ object EjectAnalytics {
     fun logUpdateRestartClicked() {
         instance?.logEvent("update_restart_clicked", Bundle())
     }
+
+    /**
+     * v1.6.11 — Application.onCreate 에서 versionCode 가 직전 launch 와 다르면 호출.
+     * Play Store 자동 업데이트 / In-App Update / 사이드로드 모두 동일하게 잡힘.
+     * Crashlytics 의 update_in_progress custom key (In-App Update flow 에서만 set) 와
+     * 결합하면 어떤 경로로 업그레이드된 사용자에게 v1.6.12 회귀가 발생했는지 분리 가능.
+     */
+    fun logAppUpdated(prevVersionCode: Int, newVersionCode: Int) {
+        instance?.logEvent("app_updated", Bundle().apply {
+            putLong("prev_version_code", prevVersionCode.toLong())
+            putLong("new_version_code", newVersionCode.toLong())
+        })
+    }
 }

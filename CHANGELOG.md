@@ -25,6 +25,16 @@
 - `AppStrings.kt` — 7개 로케일 (en/ko/zh-CN/zh-TW/ja/es/hi) 에 `updateDownloadedMsg` /
   `updateRestartBtn` 2개 신규 string 추가.
 
+### Added — Upgrade funnel attribution (Phase 9 deferred → adopted)
+- `EjectPrefs.loadLastSeenVersionCode` / `saveLastSeenVersionCode` — 매 cold start
+  마다 마지막으로 본 `BuildConfig.VERSION_CODE` 추적.
+- `EjectAnalytics.logAppUpdated(prev, new)` — `Application.onCreate` 에서 versionCode
+  변화 감지 시 발사 (최초 설치 시점은 0 → 발사 안 함, `first_open` 으로 대체됨).
+- `FirebaseCrashlytics.setCustomKey("last_seen_version_code", ...)` — 매 cold start
+  custom key. v1.6.12 첫 launch 가 크래시할 경우 `update_in_progress` (In-App Update
+  경로일 때만 set) + `last_seen_version_code` 결합으로 어떤 경로의 어떤 버전 회귀인지
+  정확 식별. Play Store 자동 업데이트 / In-App Update / 사이드로드 모두 attribution.
+
 ### UX + Analytics polish (post-Phase 5/9 specialist audit)
 SimonK-stack Phase 5 (UX walkthrough) + Phase 9 (analytics/Crashlytics 연속성) audit 결과 5건 반영:
 
