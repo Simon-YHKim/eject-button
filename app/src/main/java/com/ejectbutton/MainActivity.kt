@@ -573,6 +573,9 @@ class MainActivity : ComponentActivity() {
                             hostState = snackbarHostState,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
+                                // enableEdgeToEdge() 가 활성이라 system nav bar 위에
+                                // 정렬되도록 inset 적용. 없으면 snackbar 가 nav bar 뒤에 깔림.
+                                .windowInsetsPadding(WindowInsets.navigationBars)
                                 .padding(bottom = 16.dp),
                         )
                     }
