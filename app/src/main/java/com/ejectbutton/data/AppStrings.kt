@@ -16,7 +16,14 @@ enum class AppLanguage(val code: String, val nativeName: String) {
     }
 }
 
-data class AppStrings(
+// v1.7.1 — data class 가 아닌 일반 class. 247 fields 의 data class 는 컴파일러가
+//   componentN() × 247 + copy() + equals + hashCode + toString 합성 → 결과 클래스
+//   가 JVM method size limit (64KB) 또는 constant pool 한도 (65535) 초과 →
+//   ClassFormatError 로 testDebugUnitTest 가 모든 AppStrings 접근에서 fail.
+//   data class 기능 (copy/componentN/equals/hashCode/toString) 은 코드베이스 전체
+//   에서 0개 사용 확인됨 (`grep -rn "AppStrings.*\.copy\|componentN" → 0 hit`).
+//   일반 class 변환 시 자동 합성 사라져 클래스 size 대폭 감소.
+class AppStrings(
     // v1.5.2 — 앱 브랜드 라벨 다국어화 (#5)
     val appBrandLabel: String,        // 헤더 / 가짜 통화 overlay 의 "EJECT BUTTON" / "비상 탈출" 등
     val ejectButtonLabel: String,     // 큰 빨간 버튼 안 라벨 "EJECT" / "탈출" 등 (짧게)
