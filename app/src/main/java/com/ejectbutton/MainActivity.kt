@@ -192,11 +192,13 @@ class MainActivity : ComponentActivity() {
      *      BillingManager.connect() 재진입 시 Play Store 측 entitlement 재조회로 복구됨.
      */
     private fun completeFlexibleUpdate() {
-        if (FakeCallOverlayService.isRunning || ShakeDetectionService.isRunning) {
-            // 비상 도중에는 절대 process kill 금지. 이 앱의 핵심 위협 모델.
+        if (!shouldCompleteUpdate(
+                emergencyActive = FakeCallOverlayService.isRunning || ShakeDetectionService.isRunning,
+                alreadyCompleting = updateCompleting,
+            )
+        ) {
             return
         }
-        if (updateCompleting) return
         updateCompleting = true
         runCatching {
             // Pre-kill cleanup — Process.killProcess 전에 명시적 자원 해제.
@@ -204,6 +206,23 @@ class MainActivity : ComponentActivity() {
             runCatching { AdManager.destroy() }
         }
         runCatching { appUpdateManager.completeUpdate() }
+    }
+
+    companion object {
+        /**
+         * v1.6.11 — completeFlexibleUpdate() 가드 predicate. JUnit 으로 회귀 방지.
+         *
+         * 이 함수가 false 를 반환하는 두 경우는 둘 다 silent reject:
+         * - emergencyActive=true: fake call / shake 진행 중 → process kill 금지 (위협 모델).
+         * - alreadyCompleting=true: 더블 탭 등으로 이미 진행 중인 호출.
+         *
+         * Side-effect 없이 boolean 만 반환하므로 plain JUnit 테스트 가능.
+         */
+        @JvmStatic
+        internal fun shouldCompleteUpdate(
+            emergencyActive: Boolean,
+            alreadyCompleting: Boolean,
+        ): Boolean = !emergencyActive && !alreadyCompleting
     }
 
     /**
