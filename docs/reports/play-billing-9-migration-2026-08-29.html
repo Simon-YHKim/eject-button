@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>비상탈출 · Google Play Billing 9 이전 보고서</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #64708a;
+      --accent: #2457d6;
+      --ok: #087a55;
+      --warn: #a65300;
+      --line: color-mix(in srgb, var(--muted) 30%, transparent);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10141d;
+        --panel: #181e2a;
+        --text: #eef2ff;
+        --muted: #a9b3c9;
+        --accent: #88aaff;
+        --ok: #61d6ad;
+        --warn: #ffb562;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.62 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 32px auto 64px; }
+    h1, h2, h3 { line-height: 1.25; letter-spacing: -.025em; }
+    h1 { margin: 10px 0 8px; font-size: clamp(28px, 5vw, 46px); }
+    h2 { margin: 0 0 16px; font-size: 22px; }
+    h3 { margin: 22px 0 8px; font-size: 17px; }
+    p { margin: 8px 0; }
+    a { color: var(--accent); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { overflow-wrap: anywhere; }
+    .eyebrow { color: var(--accent); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .subtitle { color: var(--muted); font-size: 17px; max-width: 850px; }
+    .stamp { color: var(--muted); font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
+    .card, section, details {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+    .card { padding: 18px; }
+    .card .label { color: var(--muted); font-size: 13px; }
+    .card .value { margin-top: 6px; font-size: 21px; font-weight: 800; }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    section { padding: 24px; margin: 16px 0; }
+    details { margin: 12px 0; padding: 0 18px; }
+    summary { cursor: pointer; font-weight: 750; padding: 16px 0; }
+    details > div { padding: 0 0 18px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 13px; }
+    ul, ol { padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    .callout { border-left: 4px solid var(--accent); padding: 12px 16px; background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 8px; }
+    .warning { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 9%, transparent); }
+    .flow { overflow-x: auto; padding: 12px 0 2px; }
+    svg { min-width: 860px; width: 100%; height: auto; }
+    .node { fill: var(--panel); stroke: var(--accent); stroke-width: 2; }
+    .edge { stroke: var(--muted); stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    .svg-title { fill: var(--text); font: 700 14px system-ui, sans-serif; }
+    .svg-sub { fill: var(--muted); font: 12px system-ui, sans-serif; }
+    .prompt-wrap { position: relative; }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: color-mix(in srgb, var(--muted) 10%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px;
+      max-height: 680px;
+      overflow: auto;
+    }
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 750;
+      padding: 9px 14px;
+      cursor: pointer;
+    }
+    button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .copy-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .copy-state { color: var(--muted); font-size: 13px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+    footer { margin-top: 22px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 800px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      section { padding: 18px; }
+      th:nth-child(3), td:nth-child(3) { display: none; }
+    }
+    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Eject Button · Play 정책 대응</div>
+    <h1>Google Play Billing 7.0.0 → 9.1.0</h1>
+    <p class="subtitle">비상탈출 - 가짜 전화 알리바이의 결제 SDK 이전, 결제 흐름 보강, AAB/APK 바이너리 검증 및 수동 Play 출시 게이트를 한 문서에 정리했다.</p>
+    <p class="stamp">생성: 2026-08-29 13:32:59 KST · 브랜치: <code>Simon-YHKim/chore-billing-lib-upgrade</code></p>
+  </header>
+
+  <div class="grid" aria-label="핵심 결과">
+    <div class="card"><div class="label">실제 해석된 Billing</div><div class="value ok">9.1.0</div></div>
+    <div class="card"><div class="label">Release 바이너리</div><div class="value ok">1089 / 1.7.3</div></div>
+    <div class="card"><div class="label">자동 검증</div><div class="value ok">52 tests · PASS</div></div>
+    <div class="card"><div class="label">Play 활성 트랙</div><div class="value warn">아직 미게시</div></div>
+  </div>
+
+  <section>
+    <h2>판정</h2>
+    <table>
+      <thead><tr><th>완료조건</th><th>상태</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>결제 라이브러리 ≥ 8.0.0</td><td class="ok"><strong>충족</strong></td><td>선언·resolved dependency·AAB·APK 모두 <code>9.1.0</code></td></tr>
+        <tr><td>소스가 아닌 바이너리 재확인</td><td class="ok"><strong>충족</strong></td><td>AAB <code>base/root/billing.properties</code>, APK <code>billing.properties</code>를 직접 읽고 manifest도 상호 대조</td></tr>
+        <tr><td>결제 흐름 생존 확인</td><td class="warn"><strong>부분 충족</strong></td><td>API 컴파일·정책 회귀 테스트·release build 통과. 실제 Play 승인/취소/pending/ack는 연결 기기 부재로 내부 트랙 QA 필요</td></tr>
+        <tr><td>활성 프로덕션 트랙 게시</td><td class="warn"><strong>미완료</strong></td><td>운영 게시 전 사용자 확인이 필요하며, 게시 전까지 정책 알림은 닫히지 않음</td></tr>
+      </tbody>
+    </table>
+    <p class="callout warning"><strong>즉, 코드·산출물 단계는 준비됐지만 전체 정책 대응은 아직 완료가 아니다.</strong> 내부 테스트 통과 후 동일 AAB를 프로덕션에 게시해야 최종 완료다.</p>
+  </section>
+
+  <section>
+    <h2>1단계 파악 결과</h2>
+    <table>
+      <tbody>
+        <tr><th>원본 저장소</th><td class="mono">E:\Eject Button</td></tr>
+        <tr><th>작업 worktree</th><td class="mono">C:\Users\202502\orca\workspaces\Eject Button\kelp</td></tr>
+        <tr><th>원격</th><td><a href="https://github.com/Simon-YHKim/eject-button">Simon-YHKim/eject-button</a></td></tr>
+        <tr><th>스택</th><td>네이티브 Android · Kotlin · Jetpack Compose</td></tr>
+        <tr><th>초기 의존성</th><td><code>com.android.billingclient:billing-ktx:7.0.0</code> — 선언값과 Gradle resolved graph에서 모두 실측</td></tr>
+        <tr><th>실제 package</th><td><code>com.simonykim.ejectbutton</code> — 발주서의 <code>com.simonkim...</code>에는 <strong>y 한 글자가 빠져 있었다.</strong></td></tr>
+        <tr><th>저장소 동일성</th><td>앱명, Play 앱 ID <code>4974211650203902764</code>, 개발자 계정 <code>4795577270086966748</code>가 저장소 문서와 일치</td></tr>
+      </tbody>
+    </table>
+    <p>2nd-B 저장소는 열거나 수정하지 않았다. 큰 화면 권장 조치 두 건도 명시된 범위 밖으로 유지했다.</p>
+  </section>
+
+  <section>
+    <h2>무엇을 바꿨는가</h2>
+    <details open>
+      <summary>Billing 9.1.0 및 API 이전</summary>
+      <div>
+        <ul>
+          <li>버전 카탈로그를 <code>9.1.0</code>으로 올리고 artifact를 <code>billing-ktx</code>에서 <code>billing</code> core로 전환했다.</li>
+          <li>첫 시도였던 <code>billing-ktx:9.1.0</code>은 이 프로젝트의 Kotlin 2.0 compiler가 더 최신 Kotlin metadata를 거부했다. 앱이 Billing KTX extension을 사용하지 않으므로 광범위한 Kotlin/Compose 업그레이드 대신 동일 PBL 9.1.0 Java core artifact를 택했다.</li>
+          <li><code>PendingPurchasesParams.enableOneTimeProducts()</code>, <code>QueryProductDetailsResult</code>, 자동 서비스 재연결, 즉시 <code>launchBillingFlow()</code> 결과 및 PBL 9 sub-response 로깅을 반영했다.</li>
+          <li>ProductDetails를 foreground 복귀 때 다시 조회해 stale cache 위험을 줄였다.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>구매·복원 회귀 방어</summary>
+      <div>
+        <ul>
+          <li>Play 복원이 <code>OK</code>일 때만 entitlement를 갱신하고, 네트워크/서비스 오류에서는 마지막 상태를 보존한다.</li>
+          <li>SUBS/INAPP의 목표 상품 중 <code>PURCHASED</code>이며 suspended가 아닌 구매만 grant·acknowledge한다.</li>
+          <li>성공한 INAPP 복원에서 상품이 없으면 광고 제거 권한을 해제해 환불·취소와 동기화한다.</li>
+          <li>latest-request-wins generation과 in-flight token set으로 오래된 restore callback과 중복 acknowledge를 억제한다.</li>
+          <li>one-time offer가 하나면 표시 가격과 같은 offer token으로 결제한다. 동시에 eligible offer가 여러 개면 임의 선택하지 않고 안전하게 중단한다.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>바이너리·CI 검증기</summary>
+      <div>
+        <ul>
+          <li>JDK 17 source-file 방식의 <code>scripts/CheckAndroidBillingVersion.java</code>를 추가했다.</li>
+          <li>APK/AAB의 canonical <code>billing.properties</code> 경로와 단일 <code>billing_client</code> 키를 강제하고 semver 하한·정확 버전을 검사한다.</li>
+          <li>APK binary XML과 AAB의 protobuf manifest를 각각 읽어 package/version을 검사한 뒤 두 산출물이 완전히 같은지 확인한다.</li>
+          <li>CI는 공식 <a href="https://github.com/google/bundletool/releases/tag/1.18.3">bundletool 1.18.3</a>을 SHA-256 <code>a099…8e29</code>로 고정 검증하고, release secret을 복원하기 전에 실행 준비를 마친다.</li>
+          <li><code>versionName</code> workflow input은 환경변수와 allowlist regex를 거치며 Gradle/Java 인자를 인용해 shell injection 경로를 닫았다.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section>
+    <h2>검증 증거</h2>
+    <table>
+      <thead><tr><th>검증</th><th>결과</th><th>실측</th></tr></thead>
+      <tbody>
+        <tr><td>Gradle dependencyInsight</td><td class="ok">PASS</td><td><code>com.android.billingclient:billing:9.1.0</code></td></tr>
+        <tr><td>JVM unit tests</td><td class="ok">PASS</td><td>52 tests · 0 failures · 0 errors · 0 skipped</td></tr>
+        <tr><td>Android lint</td><td class="ok">PASS</td><td><code>:app:lintDebug</code></td></tr>
+        <tr><td>Release build</td><td class="ok">PASS</td><td><code>:app:bundleRelease :app:assembleRelease</code> · R8 · lintVital · signing</td></tr>
+        <tr><td>Verifier self-test</td><td class="ok">PASS</td><td>14 checks: 오래된 버전, 누락/중복/잘못된 경로, XXE, APK/AAB mismatch 등</td></tr>
+        <tr><td>AAB binary gate</td><td class="ok">PASS</td><td><code>billing=9.1.0; com.simonykim.ejectbutton; 1089; 1.7.3</code></td></tr>
+        <tr><td>APK binary gate</td><td class="ok">PASS</td><td><code>billing=9.1.0; com.simonykim.ejectbutton; 1089; 1.7.3</code></td></tr>
+        <tr><td>AAB 구조 / APK 서명</td><td class="ok">PASS</td><td>bundletool validate · APK Signature Scheme v2 · 1 signer</td></tr>
+        <tr><td>Workflow YAML</td><td class="ok">PASS</td><td>PyYAML parse. <code>actionlint</code>은 로컬에 없어 미실행</td></tr>
+        <tr><td>실제 Play 결제</td><td class="warn">PENDING</td><td><code>adb devices</code>에 연결 기기 없음 · 내부 테스트/라이선스 테스터 필요</td></tr>
+      </tbody>
+    </table>
+
+    <h3>로컬 release 산출물</h3>
+    <table>
+      <thead><tr><th>파일</th><th>크기</th><th>SHA-256</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">app/build/outputs/bundle/release/app-release.aab</td><td>27,721,556 bytes</td><td class="mono">58342000AE9B2F6E54BAF56DB7EB740F0BB6093567F6ABD185525A271443EF28</td></tr>
+        <tr><td class="mono">app/build/outputs/apk/release/app-release.apk</td><td>13,406,080 bytes</td><td class="mono">8E35D1F7429B1D37FFCD448DEDBB109D4917DCF8252912CEACA98FC87627276A</td></tr>
+      </tbody>
+    </table>
+    <p class="stamp">산출물은 로컬 build output이며 Git에 포함하지 않는다. 실제 업로드에는 PR merge 뒤 CI가 만든 동일 커밋 기반 AAB를 사용한다.</p>
+  </section>
+
+  <section>
+    <h2>출시 흐름</h2>
+    <div class="flow" role="img" aria-label="PR부터 정책 알림 종료까지의 출시 흐름">
+      <svg viewBox="0 0 1000 170" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker></defs>
+        <path class="edge" d="M175 80H225M375 80H425M575 80H625M775 80H825"/>
+        <g><rect class="node" x="25" y="40" width="150" height="80" rx="12"/><text class="svg-title" x="100" y="70" text-anchor="middle">PR 검토·merge</text><text class="svg-sub" x="100" y="94" text-anchor="middle">main 직접 push 금지</text></g>
+        <g><rect class="node" x="225" y="40" width="150" height="80" rx="12"/><text class="svg-title" x="300" y="70" text-anchor="middle">CI binary gate</text><text class="svg-sub" x="300" y="94" text-anchor="middle">AAB/APK 9.1.0</text></g>
+        <g><rect class="node" x="425" y="40" width="150" height="80" rx="12"/><text class="svg-title" x="500" y="70" text-anchor="middle">내부 트랙 QA</text><text class="svg-sub" x="500" y="94" text-anchor="middle">결제·복원·ack</text></g>
+        <g><rect class="node" x="625" y="40" width="150" height="80" rx="12"/><text class="svg-title" x="700" y="70" text-anchor="middle">Simon 확인</text><text class="svg-sub" x="700" y="94" text-anchor="middle">운영 게시 승인</text></g>
+        <g><rect class="node" x="825" y="40" width="150" height="80" rx="12"/><text class="svg-title" x="900" y="70" text-anchor="middle">Production 게시</text><text class="svg-sub" x="900" y="94" text-anchor="middle">알림 종료 확인</text></g>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>남은 위험과 출시 게이트</h2>
+    <ol>
+      <li><strong>조건부 blocker:</strong> Play Console의 <code>eject_remove_ads_lifetime</code>이 동시에 두 개 이상의 eligible one-time offer를 반환하면 앱은 안전하게 결제를 차단한다. 현재 릴리스에서는 단일 backward-compatible Buy option/eligible offer인지 먼저 확인한다.</li>
+      <li><strong>실제 결제 QA:</strong> SUBS와 INAPP 각각 승인·취소·pending·재실행 복원·ITEM_ALREADY_OWNED·offline 보존·ack를 내부 트랙에서 검증한다.</li>
+      <li><strong>운영 상태:</strong> 활성 Production은 아직 <code>1088 (1.7.2)</code>다. <code>1089+</code>를 게시할 때까지 정책 알림은 유지된다.</li>
+      <li><strong>기존 보안 부채:</strong> 구매 진위는 서버 검증 없이 client에서 entitlement를 부여한다. RTDN/Voided Purchases 기반 서버 검증은 후속 개선으로 분리한다.</li>
+      <li><strong>기존 CI 공급망 부채:</strong> signing secret과 write token이 있는 release job에서 일부 GitHub Actions가 full commit SHA가 아닌 major tag를 사용한다. 이번 Billing 이전과 분리해 pinning/publish job 격리를 권장한다.</li>
+    </ol>
+    <p>큰 화면·태블릿·폴더블 관련 Play 권장 조치 두 건은 의도적으로 수정하지 않았다.</p>
+  </section>
+
+  <section>
+    <h2>GUI 작업용 프롬프트</h2>
+    <p>아래 내용을 GitHub/Play Console에 로그인된 GUI 작업 세션에 그대로 전달한다.</p>
+    <div class="prompt-wrap">
+      <div class="copy-row"><button type="button" id="copyPrompt">프롬프트 복사</button><span class="copy-state" id="copyState" aria-live="polite"></span></div>
+      <pre id="guiPrompt">역할: 비상탈출 Google Play Billing 9.1 출시 검증 담당자
+
+대상 앱
+- 앱명: 비상탈출 - 가짜 전화 알리바이
+- 실제 package: com.simonykim.ejectbutton
+- Play 앱 ID: 4974211650203902764
+- 개발자 계정: 4795577270086966748
+- 현재 Production: versionCode 1088 / versionName 1.7.2 / 177개 국가·지역
+- 작업 브랜치: Simon-YHKim/chore-billing-lib-upgrade
+
+안전 규칙
+1. 2nd-B 저장소/앱은 절대 건드리지 않는다.
+2. 큰 화면 관련 권장 조치 두 건은 이번 범위에서 수정하지 않는다.
+3. 키·시크릿·결제 자격증명을 화면 캡처나 코드에 노출하지 않는다.
+4. 내부 테스트를 통과하기 전 Production에 게시하지 않는다.
+5. “Start rollout to Production” 또는 동등한 최종 게시 버튼 직전에는 반드시 Simon에게 명시적 확인을 받고 멈춘다.
+6. 서비스 계정 자동화는 아직 없으므로 Play 업로드는 수동으로 진행한다.
+
+A. GitHub GUI
+1. Simon-YHKim/eject-button에서 위 브랜치의 PR을 연다.
+2. 변경 파일이 BillingManager/Policy/tests/version catalog/release verifier/workflow/report 범위인지 확인한다.
+3. PR 검증과 리뷰가 통과한 뒤에만 main으로 merge한다. main 직접 push는 하지 않는다.
+4. merge 후 Actions → “Build Release AAB + APK” → Run workflow를 연다.
+5. version_name은 1.7.3을 입력한다. workflow가 계산한 versionCode가 1089 이상인지 확인한다.
+6. 다음 로그가 모두 PASS인지 확인한다.
+   - unit tests
+   - release AAB/APK build
+   - verifier self-test
+   - AAB와 APK 각각 billing=9.1.0
+   - package=com.simonykim.ejectbutton
+   - 두 artifact의 versionCode/versionName 일치
+7. CI가 만든 AAB와 QA용 APK를 내려받고 run URL, commit SHA, versionCode, SHA-256을 기록한다.
+
+B. Play Console 상품 구성 사전 점검
+1. Monetize products에서 구독 eject_premium_monthly가 활성인지 확인한다.
+2. one-time product eject_remove_ads_lifetime의 현재 사용자가 동시에 받을 eligible purchase option/offer 수를 확인한다.
+3. 단일 backward-compatible Buy option 또는 eligible offer 1개면 계속한다.
+4. eligible offer가 2개 이상이면 업로드를 중단하고 CLI 세션으로 돌아와 offer 선택 UI 구현을 요청한다. 임의로 상품 설정을 삭제하거나 바꾸지 않는다.
+
+C. 내부 테스트 트랙
+1. CI에서 받은 동일 AAB를 Internal testing 새 release에 업로드한다.
+2. package, versionCode 1089+, versionName 1.7.3, Billing 9.1.0을 다시 확인한다.
+3. license tester 계정과 Play Billing test instruments를 사용하는 실제 Play 설치본으로 아래를 검증한다.
+   - SUBS 승인: premium grant, 광고 제거, acknowledge, 앱 재시작 후 복원
+   - SUBS 취소: entitlement 불변/오류 없음
+   - INAPP 승인: 광고 제거 grant, acknowledge, 앱 재시작 후 복원
+   - INAPP 취소: entitlement 불변
+   - pending one-time: 완료 전 grant/ack 없음, 완료 후 onResume에서 grant/ack
+   - ITEM_ALREADY_OWNED: 자동 restore
+   - offline/service 오류 restore: 기존 entitlement 보존
+   - INAPP 환불/취소 후 성공한 Play 재조회: 광고 제거 entitlement 해제
+   - 결제 UI 복귀 경쟁: grant 직후 entitlement가 다시 false로 튀지 않음
+4. 테스트 구매가 acknowledge되지 않아 자동 환불되는 현상이 없는지 확인한다.
+5. 각 항목의 기기/계정/시각/결과와 필요한 스크린샷을 남긴다. 실패가 하나라도 있으면 Production으로 가지 말고 재현 정보와 함께 중단한다.
+
+D. Production 게시 — Simon 확인 후에만
+1. Internal QA가 전부 통과한 증거를 Simon에게 보여 주고 게시 승인을 요청한다.
+2. 승인 후 Production → Create new release에서 내부 테스트와 동일한 AAB를 선택한다.
+3. 기존 177개 국가·지역 설정을 임의 변경하지 않는다.
+4. versionCode가 현재 활성 1088보다 큰지, package와 서명이 기존 앱과 맞는지 확인한다.
+5. 릴리스 노트에는 “Google Play Billing Library 9.1.0 compatibility and purchase recovery improvements” 정도의 변경만 적고 큰 화면 수정은 주장하지 않는다.
+6. 최종 게시 버튼 직전에 다시 화면 상태와 대상 앱을 확인한다. Simon의 명시적 확인이 없다면 클릭하지 않는다.
+7. 게시 처리 후 Production 활성 버전이 새 versionCode/1.7.3인지 확인한다.
+8. 정책 화면에서 “앱에서 Google Play 결제 라이브러리 버전 8.0.0 이상을 사용해야 합니다” 알림이 닫혔는지 확인한다. 처리 지연이면 완료로 단정하지 말고 재확인 시각을 기록한다.
+
+최종 보고 형식
+- PR/merge commit
+- GitHub Actions run 및 artifact 해시
+- 내부 테스트 항목별 PASS/FAIL
+- Production 활성 versionCode/versionName
+- 정책 알림 종료 여부
+- 건드리지 않은 범위: 큰 화면 권장 조치, 2nd-B
+- 실패/보류가 있으면 정확한 화면·시각·재현 단계</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>공식 근거</h2>
+    <ul>
+      <li><a href="https://developer.android.com/google/play/billing/migrate-gpblv9">Google Play Billing Library 9 마이그레이션</a></li>
+      <li><a href="https://developer.android.com/google/play/billing/release-notes">Play Billing release notes</a></li>
+      <li><a href="https://developer.android.com/google/play/billing/deprecation-faq">지원 중단 일정 FAQ</a></li>
+      <li><a href="https://developer.android.com/google/play/billing/integrate">결제 통합·pending 구매 처리</a></li>
+      <li><a href="https://developer.android.com/google/play/billing/test">Play Billing 테스트</a></li>
+      <li><a href="https://developer.android.com/google/play/billing/one-time-product-multi-purchase-options-offers">one-time purchase options/offers</a></li>
+      <li><a href="https://developer.android.com/reference/com/android/billingclient/api/BillingClient">BillingClient reference</a></li>
+      <li><a href="https://github.com/google/bundletool/releases/tag/1.18.3">bundletool 1.18.3</a></li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>보고 범위: 저장소 파악 → 구현 → 정적/빌드/바이너리 검증. Play Console 운영 게시와 실제 결제 QA는 의도적으로 실행하지 않았다.</p>
+  </footer>
+</main>
+<script>
+  const button = document.getElementById('copyPrompt');
+  const prompt = document.getElementById('guiPrompt');
+  const state = document.getElementById('copyState');
+  button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.textContent);
+      state.textContent = '복사됨';
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(prompt);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      state.textContent = '텍스트를 선택했습니다. Ctrl/Cmd+C를 누르세요.';
+    }
+  });
+</script>
+</body>
+</html>

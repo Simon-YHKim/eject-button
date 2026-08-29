@@ -5,6 +5,29 @@
 
 ---
 
+## [Unreleased — v1.7.3 후보] — 2026-08-29
+
+### Changed
+- Google Play Billing을 `billing-ktx:7.0.0`에서 core `billing:9.1.0`으로 이전.
+  Pending purchase 설정, `QueryProductDetailsResult`, 자동 서비스 재연결 및 즉시
+  `launchBillingFlow` 오류 처리를 PBL 9 API에 맞게 갱신.
+- foreground 복귀 시 ProductDetails와 SUBS/INAPP 구매를 다시 조회해 pending 완료와
+  stale 상품 정보를 회수. one-time offer는 eligible 항목이 하나일 때만 같은 가격/token으로
+  결제하며 여러 항목을 임의 선택하지 않음.
+
+### Fixed
+- Play 조회 실패 시 기존 entitlement를 보존하고, 성공한 조회에서 목표 상품이 없을 때만
+  권한을 회수하도록 복원 정책을 분리. INAPP 환불·취소 뒤 광고 제거 권한이 남던 문제 수정.
+- 오래된 restore callback과 같은 token의 중복 acknowledge가 최신 구매 결과를 덮지 않도록
+  generation/token guard 추가.
+
+### Verification
+- release AAB/APK에서 `billing.properties=9.1.0`, package
+  `com.simonykim.ejectbutton`, versionCode `1089`, versionName `1.7.3`을 직접 검증.
+- release workflow에 SHA-256으로 고정한 bundletool 기반 AAB manifest 검증 및 APK/AAB
+  metadata 동등성 gate 추가.
+- 실제 Play 결제와 Production 게시 전까지는 미출시 상태. 내부 테스트 트랙 QA 후 게시 필요.
+
 ## [Unreleased — v1.7.1 후보] — 2026-05-19
 
 > **v1.7.0 출시 직후 발견된 결제 흐름 3건 핫픽스.** 사용자 보고:

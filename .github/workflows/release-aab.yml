@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+env:
+  BUNDLETOOL_VERSION: '1.18.3'
+  BUNDLETOOL_SHA256: 'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -32,6 +36,19 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: 'platforms;android-35 build-tools;35.0.0'
+
+      - name: Install pinned bundletool
+        run: |
+          set -euo pipefail
+          bundletool_jar="$RUNNER_TEMP/bundletool-all-$BUNDLETOOL_VERSION.jar"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
+            --silent --show-error \
+            "https://github.com/google/bundletool/releases/download/$BUNDLETOOL_VERSION/bundletool-all-$BUNDLETOOL_VERSION.jar" \
+            --output "$bundletool_jar"
+          printf '%s  %s\n' "$BUNDLETOOL_SHA256" "$bundletool_jar" \
+            | sha256sum --check --strict
+          test "$(java -jar "$bundletool_jar" version)" = "$BUNDLETOOL_VERSION"
+          echo "BUNDLETOOL_JAR=$bundletool_jar" >> "$GITHUB_ENV"
 
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@v3
@@ -101,32 +118,66 @@ jobs:
       # the tag name minus the leading "v", matching the tag convention "v1.2.3".
       - name: Compute version metadata
         id: version
+        env:
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
         run: |
+          set -euo pipefail
           VERSION_CODE=$(( 1000 + GITHUB_RUN_NUMBER ))
-          if [ -n "${{ inputs.version_name }}" ]; then
-            VERSION_NAME="${{ inputs.version_name }}"
+          if [ "$VERSION_CODE" -lt 1089 ]; then
+            echo "::error::versionCode $VERSION_CODE is below the Play production floor 1089."
+            exit 1
+          fi
+          if [ -n "$INPUT_VERSION_NAME" ]; then
+            VERSION_NAME="$INPUT_VERSION_NAME"
           elif [[ "${GITHUB_REF_NAME}" == v* ]]; then
             VERSION_NAME="${GITHUB_REF_NAME#v}"
           else
             VERSION_NAME="1.0.0"
           fi
-          echo "versionCode=${VERSION_CODE}"  | tee -a "$GITHUB_OUTPUT"
-          echo "versionName=${VERSION_NAME}" | tee -a "$GITHUB_OUTPUT"
+          if [[ ! "$VERSION_NAME" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]{0,49}$ ]]; then
+            echo "::error::versionName must match ^[0-9A-Za-z][0-9A-Za-z._+-]{0,49}$"
+            exit 1
+          fi
+          printf 'versionCode=%s\n' "$VERSION_CODE" | tee -a "$GITHUB_OUTPUT"
+          printf 'versionName=%s\n' "$VERSION_NAME" | tee -a "$GITHUB_OUTPUT"
 
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
       - name: Assemble release AAB (Play Store)
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.versionCode }}
+          VERSION_NAME: ${{ steps.version.outputs.versionName }}
         run: |
           ./gradlew bundleRelease --no-daemon --stacktrace \
-            -PversionCodeOverride=${{ steps.version.outputs.versionCode }} \
-            -PversionNameOverride=${{ steps.version.outputs.versionName }}
+            "-PversionCodeOverride=$VERSION_CODE" \
+            "-PversionNameOverride=$VERSION_NAME"
 
       - name: Assemble release APK (sideload testing)
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.versionCode }}
+          VERSION_NAME: ${{ steps.version.outputs.versionName }}
         run: |
           ./gradlew assembleRelease --no-daemon --stacktrace \
-            -PversionCodeOverride=${{ steps.version.outputs.versionCode }} \
-            -PversionNameOverride=${{ steps.version.outputs.versionName }}
+            "-PversionCodeOverride=$VERSION_CODE" \
+            "-PversionNameOverride=$VERSION_NAME"
+
+      - name: Verify release artifacts from binaries
+        env:
+          EXPECTED_VERSION_CODE: ${{ steps.version.outputs.versionCode }}
+          EXPECTED_VERSION_NAME: ${{ steps.version.outputs.versionName }}
+        run: |
+          java scripts/CheckAndroidBillingVersion.java --self-test
+          java scripts/CheckAndroidBillingVersion.java \
+            --bundletool "$BUNDLETOOL_JAR" \
+            --minimum-billing 8.0.0 \
+            --expected-billing 9.1.0 \
+            --minimum-version-code 1089 \
+            --expected-version-code "$EXPECTED_VERSION_CODE" \
+            --expected-version-name "$EXPECTED_VERSION_NAME" \
+            --expected-package com.simonykim.ejectbutton \
+            app/build/outputs/bundle/release/app-release.aab \
+            app/build/outputs/apk/release/app-release.apk
 
       - name: Rename artifacts with run metadata
         run: |
