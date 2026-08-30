@@ -581,6 +581,9 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        // Billing 8+ 권장: 결제 UI/백그라운드에서 완료된 pending 구매를 즉시 회수한다.
+        // 조회 실패 시 BillingManager가 마지막 entitlement를 보존하므로 offline resume도 안전하다.
+        billingManager.onResume()
         // 가짜 전화 종료 후 → 전면 광고 표시
         if (FakeCallOverlayService.showInterstitialOnNextResume) {
             FakeCallOverlayService.showInterstitialOnNextResume = false
