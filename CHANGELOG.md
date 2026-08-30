@@ -5,6 +5,34 @@
 
 ---
 
+## [Unreleased — v1.7.4 후보] — 2026-08-31
+
+### Changed
+- **대상 API 수준을 Android 16(API 36)으로 상향** — `compileSdk 35 → 36`,
+  `targetSdk 35 → 36`. Play Console 정책 경고 "앱이 Android 16(API 수준 36) 이상을
+  타겟팅해야 함"(해결 기한 2026-11-01, 미조치 시 앱 업데이트 거부) 해소.
+- `release-aab.yml` 의 Android SDK 설치 패키지를 `platforms;android-35 build-tools;35.0.0`
+  에서 `platforms;android-36 build-tools;36.0.0` 으로 변경. compileSdk 36 빌드에
+  android-36 플랫폼이 러너에 있어야 한다.
+
+### Verification
+- Android 16 동작 변경 3종을 코드로 대조하고 **추가 대응이 불필요함을 확인**:
+  - **edge-to-edge 강제** (API 36 에서 `windowOptOutEdgeToEdgeEnforcement` 무시) —
+    `MainActivity` 가 이미 `enableEdgeToEdge()` 를 호출하고 `MainScreen`/`SettingsScreen`/
+    `OnboardingScreen` 이 `statusBarsPadding()`·`navigationBarsPadding()` 을 적용 중.
+    가짜 통화 화면은 Activity 창이 아니라 `FakeCallOverlayService` 의
+    `SYSTEM_ALERT_WINDOW` 오버레이라 Activity edge-to-edge 강제 대상이 아니며,
+    자체적으로 `WindowInsetsCompat.CONSUMED` + 시스템 바 hide 를 수행한다.
+  - **predictive back** — 매니페스트에 `android:enableOnBackInvokedCallback="true"`
+    이미 설정, Compose `BackHandler` 사용.
+  - **16 KB 페이지 크기** — 빌드 산출물에 네이티브 `.so` **0개**(APK `lib/` 항목 없음)
+    이므로 해당 없음.
+- 로컬 검증 (AGP 8.6.1 / Gradle 8.9 / JDK 17 타깃, Android SDK 36):
+  `:app:assembleDebug` 성공 · `:app:testDebugUnitTest` **52/52 통과** ·
+  R8 minify 포함 `:app:assembleRelease` 성공 · 산출 APK 의 targetSdk `36`, minSdk `26` 확인.
+- AGP 8.6.1 은 compileSdk 36 을 별도 억제 플래그(`android.suppressUnsupportedCompileSdk`)
+  없이 수용했다. AGP 상향은 이번 변경 범위에 넣지 않음(변경 최소화).
+
 ## [Unreleased — v1.7.3 후보] — 2026-08-29
 
 ### Changed

@@ -22,12 +22,12 @@ val secretsProps = Properties().also { props ->
 
 android {
     namespace = "com.ejectbutton"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.simonykim.ejectbutton"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // versionCode is overridden by CI via -PversionCodeOverride=<int>.
         // See .github/workflows/release-aab.yml (uses GITHUB_RUN_NUMBER + offset).
         versionCode = (project.findProperty("versionCodeOverride") as String?)?.toInt() ?: 1
