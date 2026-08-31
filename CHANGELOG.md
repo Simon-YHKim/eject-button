@@ -5,6 +5,22 @@
 
 ---
 
+## [Unreleased — v1.7.5 후보] — 2026-09-01
+
+### Fixed
+- SUBS와 INAPP 복원 세대 카운터를 분리해 한 상품의 실시간 구매가 다른 상품의
+  비행 중 복원 콜백을 무효화하지 않도록 수정. 새 복원과 `destroy()`만 양쪽을 함께 무효화한다.
+- 최초 Play Billing setup 실패 후 다음 `onResume()`에서 연결을 다시 시도한다.
+  연결 진행 중에는 추가 `startConnection()`을 막고, 성공 후 서비스 단절은 기존
+  `enableAutoServiceReconnection()`이 계속 담당한다.
+
+### Verification
+- 교차 상품 복원 독립성, 자기 타입 stale 처리, destroy 무효화, 최초 연결 실패 후
+  resume 재시도 및 중복 연결 억제를 순수 JVM 회귀 테스트로 고정.
+- `:app:testDebugUnitTest` **60/60**, `:app:lintDebug`, R8 포함 release AAB/APK 빌드 통과.
+- 로컬 release 바이너리에서 Billing `9.1.0`, package `com.simonykim.ejectbutton`,
+  versionCode `1092`, versionName `1.7.5`를 직접 검증. Play 업로드와 상품 상태 변경은 범위 밖이다.
+
 ## [Unreleased — v1.7.4 후보] — 2026-08-31
 
 ### Changed

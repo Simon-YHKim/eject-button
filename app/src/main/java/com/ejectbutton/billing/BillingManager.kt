@@ -8,7 +8,6 @@ import com.ejectbutton.data.EjectPrefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Google Play Billing 통합.
@@ -54,37 +53,59 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
 
     private var subsDetails: ProductDetails? = null
     private var inappDetails: ProductDetails? = null
-    @Volatile private var isBillingReady = false
-    private val restoreGeneration = AtomicInteger(0)
+    private val connectionState = BillingConnectionState()
+    private val restoreGenerations = BillingRestoreGenerationTracker(
+        subscriptionProductId = PRODUCT_PREMIUM,
+        oneTimeProductId = PRODUCT_REMOVE_ADS,
+    )
     private val acknowledgingTokens = ConcurrentHashMap.newKeySet<String>()
 
     fun connect() {
-        billingClient.startConnection(object : BillingClientStateListener {
-            override fun onBillingSetupFinished(result: BillingResult) {
-                if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    isBillingReady = true
-                    queryProducts()
-                    restorePurchases()
-                } else {
-                    android.util.Log.w(
-                        "BillingManager",
-                        "Play Billing setup failed: " +
-                            "code=${result.responseCode}, msg=${result.debugMessage}"
-                    )
+        connectionState.connectIfNeeded(::startReservedConnection)
+    }
+
+    private fun startReservedConnection() {
+        try {
+            billingClient.startConnection(object : BillingClientStateListener {
+                override fun onBillingSetupFinished(result: BillingResult) {
+                    val setupSucceeded = result.responseCode == BillingClient.BillingResponseCode.OK
+                    val acceptedSuccess = connectionState.onSetupFinished(setupSucceeded)
+                    if (acceptedSuccess) {
+                        queryProducts()
+                        restorePurchases()
+                    } else if (!setupSucceeded) {
+                        android.util.Log.w(
+                            "BillingManager",
+                            "Play Billing setup failed: " +
+                                "code=${result.responseCode}, msg=${result.debugMessage}"
+                        )
+                    }
                 }
-            }
-            override fun onBillingServiceDisconnected() {
-                // Billing 8+ auto service reconnection이 다음 API 호출에서 재연결한다.
-                android.util.Log.w("BillingManager", "Play Billing service disconnected")
-            }
-        })
+
+                override fun onBillingServiceDisconnected() {
+                    // Billing 8+ auto service reconnection이 다음 API 호출에서 재연결한다.
+                    android.util.Log.w("BillingManager", "Play Billing service disconnected")
+                }
+            })
+        } catch (error: RuntimeException) {
+            connectionState.onSetupFinished(success = false)
+            android.util.Log.e(
+                "BillingManager",
+                "Play Billing startConnection failed before setup callback",
+                error,
+            )
+        }
     }
 
     /** Refreshes stale product details and recovers purchases completed while backgrounded. */
     fun onResume() {
-        if (!isBillingReady) return
-        queryProducts()
-        restorePurchases()
+        connectionState.onResume(
+            startConnection = ::startReservedConnection,
+            refresh = {
+                queryProducts()
+                restorePurchases()
+            },
+        )
     }
 
     /**
@@ -180,7 +201,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
      */
     fun restorePurchases() {
         // A newer restore (including a debug mock request) invalidates older async callbacks.
-        val generation = restoreGeneration.incrementAndGet()
+        val generations = restoreGenerations.beginRestore()
         // v1.5.12 — DEBUG mock: BuildConfig.DEBUG && EjectPrefs.is_premium=true 인 경우
         // Play Store sync 를 skip 하여 SharedPreferences 상태를 그대로 유지.
         // 이는 release 빌드에는 영향 없음 (BuildConfig.DEBUG=false 이라 분기 자체 안 탐).
@@ -201,7 +222,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build()
         ) { result, purchases ->
-            if (generation != restoreGeneration.get()) {
+            if (!restoreGenerations.isCurrent(BillingProductKind.SUBSCRIPTION, generations)) {
                 android.util.Log.d("BillingManager", "stale subscription restore ignored")
                 return@queryPurchasesAsync
             }
@@ -235,7 +256,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 .setProductType(BillingClient.ProductType.INAPP)
                 .build()
         ) { result, purchases ->
-            if (generation != restoreGeneration.get()) {
+            if (!restoreGenerations.isCurrent(BillingProductKind.ONE_TIME, generations)) {
                 android.util.Log.d("BillingManager", "stale one-time restore ignored")
                 return@queryPurchasesAsync
             }
@@ -497,31 +518,29 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
      * PURCHASED 상태 처리 — 상품 ID 로 분기. premium / ads-removed 각각 처리.
      */
     private fun handlePurchased(purchase: Purchase) {
-        when {
-            purchase.products.contains(PRODUCT_PREMIUM) -> {
+        when (restoreGenerations.invalidatePurchasedProducts(purchase.products)) {
+            BillingProductKind.SUBSCRIPTION -> {
                 // A live purchase update is newer than any restore snapshot already in flight.
-                restoreGeneration.incrementAndGet()
                 EjectPrefs.savePremium(context, true)
                 _isPremium.value = true
                 EjectAnalytics.logPremiumPurchased(PRODUCT_PREMIUM)
                 ackIfNeeded(purchase, "premium-new")
             }
-            purchase.products.contains(PRODUCT_REMOVE_ADS) -> {
-                restoreGeneration.incrementAndGet()
+            BillingProductKind.ONE_TIME -> {
                 EjectPrefs.saveAdsRemoved(context, true)
                 _isAdsRemoved.value = true
                 EjectAnalytics.logPremiumPurchased(PRODUCT_REMOVE_ADS)
                 ackIfNeeded(purchase, "ads-removed-new")
             }
-            else -> {
+            null -> {
                 android.util.Log.w("BillingManager", "unknown product purchased: ${purchase.products}")
             }
         }
     }
 
     fun destroy() {
-        isBillingReady = false
-        restoreGeneration.incrementAndGet()
+        connectionState.destroy()
+        restoreGenerations.invalidateAll()
         billingClient.endConnection()
     }
 }
