@@ -96,7 +96,18 @@ Play 프로덕션 운영 중(패키지 `com.simonykim.ejectbutton`, 177개국).
   같은 기기에 깔아도 같은 로그가 나온다(09-04 대조 확인).
 - **난독화 비율을 재는 법** — 새로 빌드할 필요 없다. AAB 안에
   `BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map` 이 들어 있다.
-  클래스 줄(`orig -> new:`)에서 `new != orig` 비율을 세면 된다.
+  도구가 저장소에 있다 (`CheckAndroidBillingVersion.java` 와 같은 자리):
+
+  ```bash
+  java scripts/MeasureObfuscation.java --self-test
+  java scripts/MeasureObfuscation.java --minimum-class-ratio 25 어떤-릴리스.aab
+  java scripts/MeasureObfuscation.java app/build/outputs/mapping/release/mapping.txt
+  ```
+
+  `--minimum-class-ratio` 는 미달 시 **종료코드 1** 을 낸다. 1093 을 올리기 전에
+  이걸로 25% 이상인지 확인하면 REQ-260904-01 의 완료조건을 업로드 전에 판정할 수 있다.
+  ⚠ 종료코드를 볼 때 `| grep` 이나 `| tail` 로 파이프하지 말 것 — 파이프 뒤 명령의
+  종료코드가 잡혀서 실패가 초록으로 보인다.
 
 ---
 
@@ -113,6 +124,9 @@ Play 프로덕션 운영 중(패키지 `com.simonykim.ejectbutton`, 177개국).
   오버레이 권한 인텐트까지 정상, R8 계열 예외 **0건**. 프로덕션 1091 APK 대조군으로
   잔여 로그가 환경 문제임을 확인.
 - 산출: PR #23 → `258ecde`.
+- 후속: `docs/HANDOFF.md` 신설(PR #24 → `9af92f7`), `scripts/MeasureObfuscation.java`
+  추가(PR #25) — 측정을 재현 가능하게 만들어 1093 판정에 쓴다. Java 구현과
+  세션 중 쓴 Python 구현이 **같은 수치**를 냈다(20.23% / 73.76%, 패키지 귀속까지 일치).
 - 부수: 이 세션 시작 시 받은 발주(patch `git am` → PR → 머지 → 1.7.4 dispatch)는
   **08-31 에 이미 전량 집행된 건**이라 재실행하지 않았다. 재실행했다면 1091 이 아니라
   1093 이 나오고 1.7.4 버전명이 중복됐을 것이다.
