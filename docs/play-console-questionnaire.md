@@ -165,7 +165,8 @@ IARC 설문 기반 예상 등급:
 | 짧은 설명 | (언어별) | `fastlane/metadata/.../short_description.txt` |
 | 자세한 설명 | (언어별) | `fastlane/metadata/.../full_description.txt` |
 | 연락처 이메일 | simonkim250405@gmail.com | |
-| 전화번호 | (개발자 본인 입력) | |
+| 전화번호 | ⚠️ **비워둘 것** (선택 — 개인 번호 노출 방지) | |
+| ⚠️ 거래자(Trader) 주소·실명 | **집주소 금지** → 가상오피스/사서함으로 교체 | `docs/play-console-privacy-fix.md` |
 | 웹사이트 | https://eject-button.hwanydanh.workers.dev/ | |
 | 개인정보처리방침 | https://eject-button.hwanydanh.workers.dev/privacy-policy | |
 
