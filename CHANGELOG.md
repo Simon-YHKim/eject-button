@@ -5,6 +5,56 @@
 
 ---
 
+## [Unreleased — v1.7.6 후보] — 2026-09-04
+
+### Changed
+- **R8 blanket `-keep` 3줄 제거** — `androidx.compose.**`, `kotlin.**`,
+  `kotlinx.coroutines.**`. Play Console "앱 최적화" 카드가 1091(1.7.4) 대상으로
+  **난독화 23% < 기준 25%** 를 띄웠고, 문구가 "권장"이 아니라
+  **"Google Play에서 앱의 공개 상태와 게시 기능에 영향을 미칠 수 있습니다"**
+  였다(해결 기한 2027-02).
+- 셋 다 라이브러리가 consumer ProGuard 규칙을 자체 동봉하고 AGP 가 자동 적용하므로
+  명시 keep 은 **중복**이었다. Compose 가 실제로 리플렉션 접근하는 것은
+  `ui-release/proguard.txt` 의 3건뿐이고, R8 병합 설정에 그대로 들어간다:
+  `ViewLayerContainer.dispatchGetDisplayList()`,
+  `AndroidComposeView.findViewByAccessibilityIdTraversal(int)`,
+  `* extends ModifierNodeElement`. kotlin-stdlib 은 consumer 규칙 자체가 없다.
+- 앱 코드 keep(`com.ejectbutton.data/service/crash/billing`)과 Clarity·Billing·
+  AdMob·Firebase·Play Core keep 은 **건드리지 않았다** — 넷을 합쳐도 kept 클래스의
+  일부(앱 코드는 전체의 0.20%)라 효과 대비 위험만 산다.
+
+### Verification
+- **원인 규명**: 프로덕션 1091 AAB 에 동봉된
+  `BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map` 을 전수 분석
+  (SHA-256 `6c92603b…63bd`, GitHub 릴리스 API digest 와 일치). kept 클래스 22,973개를
+  규칙별로 귀속한 결과 `androidx.compose.**` 단독 **18,308개 = 전체 클래스의 63.57%**.
+- **로컬 A/B 실측** (동일 툴체인, 규칙 3줄만 차이):
+
+  | 지표 | before | after |
+  |---|---:|---:|
+  | 난독화율(클래스) | 20.22% | **73.76%** |
+  | 클래스 수 | 28,807 | 11,027 (−61.7%) |
+  | 메서드 난독화율 | 54.90% | 67.82% |
+  | release APK | 13,408,564 B | **6,861,253 B (−48.8%)** |
+
+  기준선 20.22% 가 프로덕션 1091 AAB 실측 **20.23%** 와 일치해 로컬이 CI 를
+  재현함을 먼저 확인한 뒤 비교했다.
+- `:app:testReleaseUnitTest` 통과 · `lintVitalRelease` 통과 ·
+  R8 포함 `:app:assembleRelease` 성공.
+- **런타임 검증** — 에뮬레이터(API 36, `sdk_gphone16k_x86_64`)에 난독화 release APK
+  설치 후 실행: 온보딩 5장 Compose 렌더 → 페이지 인디케이터 → `SYSTEM_ALERT_WINDOW`
+  오버레이 권한 인텐트 발화까지 정상. **ClassNotFoundException / NoSuchMethodError /
+  NoClassDefFoundError / FATAL 0건.**
+- 잔여 E 레벨 로그(Firebase Installations 설정 오류, Crashlytics settings 404,
+  `No package ID 6a`)는 **프로덕션 1091 APK 를 같은 에뮬레이터에 설치해 대조한 결과
+  동일**했다 → placeholder `google-services.json`(711 B) 때문인 기존 환경 문제이며
+  이 변경과 무관.
+- **범위 밖**: AAB 생성·Play 업로드 안 함. 1092(1.7.5)가 검토 중이라
+  `release-aab.yml` dispatch 를 하지 않았다. 후속 빌드는 1093 / 1.7.6 예정.
+- ⚠ Play 표기 23% 와 본 측정 20.23% 사이 2.8%p 차이가 있다. Play 는 산식을
+  공개하지 않아 **정확히 재현하지 못했다(미검증)**. 세 지표 중 클래스만 25% 미만이라
+  클래스 기준으로 판단했다. 카드 소멸 여부는 실제 업로드 후에만 확정된다.
+
 ## [Unreleased — v1.7.5 후보] — 2026-09-01
 
 ### Fixed
