@@ -120,11 +120,16 @@
 | App category | **Tools** |
 | Tags (선택) | Productivity, Utility |
 | Contact details — Email | `simonkim250405@gmail.com` |
-| Contact details — Phone | (선택, 본인 번호) |
+| Contact details — Phone | ⚠️ **비워둘 것** (선택 항목 — 개인 번호 노출 방지) |
 | Contact details — Website | `https://eject-button.hwanydanh.workers.dev/` |
 | Privacy Policy | `https://eject-button.hwanydanh.workers.dev/privacy-policy` |
 
 → **Save** 클릭.
+
+> 🔒 **개인정보 노출 주의**: 광고·구독 수익이 있는 앱은 DSA상 **거래자(Trader)** 로
+> 분류돼 스토어에 **실명·주소·전화번호가 공개**된다. 개인(집) 주소·본명 노출을
+> 막는 방법은 `docs/play-console-privacy-fix.md` 참고. 계정 주소는 **집이 아닌 주소**
+> (가상 오피스/사서함/사업장)로, 개발자 이름은 브랜드명(`Eject Button`)으로 설정한다.
 
 ---
 
